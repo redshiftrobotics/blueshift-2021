@@ -1,16 +1,11 @@
-from pyp2p.net import *
+import socket
 import time
 
-#Setup Alice's p2p node.
-water = Net(passive_bind="169.254.23.12", passive_port=44444, interface="eth0:2", node_type="passive", debug=1)
-water.start()
-water.bootstrap()
-water.advertise()
+UDP_IP = "169.254.23.12"
+UDP_PORT = 5005
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-#Event loop.
-while 1:
-    for con in water:
-        for reply in con:
-            print(reply)
-
-    time.sleep(1)
+while True:
+	v = raw_input("Message:   ")
+	MESSAGE = str(v)
+	sock.sendto(MESSAGE, (UDP_IP,UDP_PORT))

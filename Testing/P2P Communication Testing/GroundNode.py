@@ -1,14 +1,9 @@
-from pyp2p.net import *
+import socket
+import time
 
-#Setup Bob's p2p node.
-ground = Net(passive_bind="169.254.210.42", passive_port=44445, interface="eth0:1", node_type="passive", debug=1)
-ground.start()
-ground.bootstrap()
-ground.advertise()
+UDP_IP = "169.254.210.42"
+UDP_PORT = 5005
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-#Event loop.
-while 1:
-    for con in ground:
-        con.send_line("test")
-
-    time.sleep(1)
+while True:
+	msg, addr = sock.recvfrom(8192)
