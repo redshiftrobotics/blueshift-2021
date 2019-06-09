@@ -7,3 +7,4 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 while True:
 	msg, addr = sock.recvfrom(8192)
+	print msg.decode()
