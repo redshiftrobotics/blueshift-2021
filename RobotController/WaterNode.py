@@ -23,7 +23,9 @@ try:
 	while 1:
 		encoded_img = CommunicationUtils.encode_img(images[counter%len(images)])
 		counter += 1
-		print("Sending: ",CommunicationUtils.sendMsg(wtr,encoded_img,"image","None"))
+		sent = CommunicationUtils.sendMsg(wtr,encoded_img,"image","None")
+		print("Sending: ",sent)
+		print("Length: ", len(sent))
 
 except Exception as e:
 	print(e)

@@ -19,6 +19,7 @@ try:
     async def stream(websocket, path):
         while True:
             data = CommunicationUtils.recvMsg(conn)
+            ## print("Raw Data: ", data)
             j = json.loads(data)
             print(time.time()-float(j['timestamp']))
             await websocket.send(j['data']+str(int(time.time()*1000)))
