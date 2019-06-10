@@ -1,4 +1,5 @@
 import socket
+import CommunicationUtils
 
 HOST = '169.254.23.12'  # Standard loopback interface address (localhost)
 PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
@@ -9,13 +10,11 @@ try:
     gnd.bind((HOST, PORT))
     gnd.listen()
     conn, addr = gnd.accept()
-    with conn:
-        print('Connected by', addr)
-        while True:
-            data = conn.recv(1024)
-            if not data:
-                break
-            conn.sendall(data)
+    print('Connected by', addr)
+    data = CommunicationUtils.recvMsg(conn)
+    conn.sendall(data.encode())
+    gnd.close()
 
-except:
+except Exception as e:
+    print(e)
     gnd.close()
