@@ -12,9 +12,10 @@ def sendMsg(sckt,data,dataType,metadata):
 	msg += '"timestamp":'+str(time.time())+','
 	msg += '"metadata":"'+str(metadata)+'"'
 	msg += "}"
-	msg = str(len(msg))+msg
+	msgLen = len(msg)
+	msg = str(msgLen)+msg
 	sckt.sendall(msg.encode())
-	return msg
+	return msg, msgLen
 
 def recvMsg(conn):
 	lengthMarker = b'|'
@@ -26,8 +27,12 @@ def recvMsg(conn):
 			msgLength += data
 		else:
 			break
-	recv = conn.recv(int(msgLength)-1)
-	return recv
+
+	iMsgLength = int(msgLength)
+	while(len(conn.recv(iMsgLength, socket.MSG_PEEK))<iMsgLength):
+		time.sleep(0.0001)
+	recv = conn.recv(iMsgLength-1)
+	return str(recv.decode()), iMsgLength
 
 def encode_img(image):
 	retval, bffr = cv2.imencode('.jpg', image)

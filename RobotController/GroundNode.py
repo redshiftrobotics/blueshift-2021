@@ -1,6 +1,6 @@
 import socket
 import CommunicationUtils
-import json
+import simplejson as json
 import time
 import asyncio
 import websockets
@@ -18,10 +18,11 @@ try:
 
     async def stream(websocket, path):
         while True:
-            data = CommunicationUtils.recvMsg(conn)
+            data, dataLeng = CommunicationUtils.recvMsg(conn)
             ## print("Raw Data: ", data)
+            ## print("Recieved: ",data[:100],"...")
             j = json.loads(data)
-            print(time.time()-float(j['timestamp']))
+            print("TtS: ", time.time()-float(j['timestamp']))
             await websocket.send(j['data']+str(int(time.time()*1000)))
             await asyncio.sleep(0.001)
 

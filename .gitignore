@@ -1,1 +1,5 @@
 .DS_Store
+*.pyc
+imagezmq/
+pycache
+/Testing/ZMQ\ Video\ Test/*.zip

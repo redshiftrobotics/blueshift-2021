@@ -9,23 +9,24 @@ PORT = 65432        # The port used by the server
 
 wtr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-counter = 0
-images = []
-
-for img in glob.glob("images/*.png"):
-    n = cv2.imread(img)
-    images.append(n)
-
-print("loaded images")
+cap = cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH,640)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
+width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+fps = cap.get(cv2.CAP_PROP_FPS)
+print("W: "+str(width)+"  H: "+str(height))
+print("FPS: "+str(fps))
 
 try:
 	wtr.connect((HOST, PORT))
 	while 1:
-		encoded_img = CommunicationUtils.encode_img(images[counter%len(images)])
-		counter += 1
-		sent = CommunicationUtils.sendMsg(wtr,encoded_img,"image","None")
-		print("Sending: ",sent)
-		print("Length: ", len(sent))
+		ret, frame = cap.read()
+		encoded_img = CommunicationUtils.encode_img(frame)
+		sent, sentLen = CommunicationUtils.sendMsg(wtr,encoded_img,"image","None")
+		## print("Sending: ",sent[:100],"...")
+		## print("Length: ", sentLen)
+		# time.sleep(1.0/(fps*1.8))
 
 except Exception as e:
 	print(e)
