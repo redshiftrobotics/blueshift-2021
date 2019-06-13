@@ -23,7 +23,7 @@ try:
 	while 1:
 		ret, frame = cap.read()
 		encoded_img = CommunicationUtils.encode_img(frame)
-		sent, sentLen = CommunicationUtils.sendMsg(wtr,encoded_img,"image","None")
+		sent = CommunicationUtils.sendMsg(wtr,encoded_img,"image","None")
 		## print("Sending: ",sent[:100],"...")
 		## print("Length: ", sentLen)
 		# time.sleep(1.0/(fps*1.8))
