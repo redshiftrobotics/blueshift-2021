@@ -63,11 +63,12 @@ def sendVideoStreams(debug=False):
 	#for i in range(1,settings['numCams']):
 	#	camNames.append("bkpCam"+str(i))
 	#	camCaps.append(cv2.VideoCapture(i))
+	numCams = len(camCaps)
 	logging.debug('Cam names and Objects: '+str(camNames)+', '+str(camCaps))
 
 	time.sleep(2.0)
 	while True:
-		for i in range(0,settings['numCams']):
+		for i in range(0,numCams):
 			_, img = camCaps[i].read()
 			sender.send_image(camNames[i], img)
 			if debug:
@@ -144,12 +145,14 @@ def sendData(debug=False):
 if( __name__ == "__main__"):
 	# Setup Logging preferences
 	verbose = False
-	logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
+	logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 	# Setup a callback to force stop the program
 	keyboard.on_press_key("q", stopAllThreads, suppress=False)
 
 	# Start each thread
+    logging.info("Starting Water Node")
+    logging.debug("Started all Threads")
 	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose,),daemon=True)
 	recvDataThread = threading.Thread(target=receiveData, args=(verbose,))
 	sendDataThread = threading.Thread(target=sendData, args=(verbose,))
@@ -162,5 +165,5 @@ if( __name__ == "__main__"):
 	recvDataThread.join()
 	sendDataThread.join()
 	logging.debug("Stopped all Threads")
-	logging.info("Shutting Down Program")
+	logging.info("Shutting Down Water Node")
 	sys.exit()

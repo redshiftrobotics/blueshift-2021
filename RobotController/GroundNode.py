@@ -48,7 +48,7 @@ def stopAllThreads(callback=0):
     execute['updateSettings'] = False
     logging.debug("Stopping Threads")
 
-def receiveVideoStreams(display=False,debug=False):
+def receiveVideoStreams(debug=False):
     """ Recieves and processes video from the Water Node
 
         Arguments:
@@ -59,9 +59,6 @@ def receiveVideoStreams(display=False,debug=False):
     image_hub = imagezmq.ImageHub()
     while execute['streamVideo']:
         deviceName, image = image_hub.recv_image()
-        if display:
-            cv2.imshow(deviceName, image)
-            cv2.waitKey(1)
         if debug:
             print(image)
         image_hub.send_reply(b'OK')
@@ -145,13 +142,15 @@ def updateSettings(sckt,debug=False):
 if( __name__ == "__main__"):
     # Setup Logging preferences
     verbose = False
-    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
     # Setup a callback to force stop the program
     keyboard.on_press_key("q", stopAllThreads, suppress=False)
 
     # Start each thread
-    vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(True,True,),daemon=True)
+    logging.info("Starting Ground Node")
+    logging.debug("Started all Threads")
+    vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(verbose,),daemon=True)
     recvDataThread = threading.Thread(target=receiveData, args=(verbose,))
     sendDataThread = threading.Thread(target=sendData, args=(verbose,))
     vidStreamThread.start()
@@ -163,5 +162,5 @@ if( __name__ == "__main__"):
     recvDataThread.join()
     sendDataThread.join()
     logging.debug("Stopped all Threads")
-    logging.info("Shutting Down Program")
+    logging.info("Shutting Down Ground Node")
     sys.exit()
