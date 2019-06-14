@@ -59,9 +59,11 @@ def receiveVideoStreams(display=False,debug=False):
     image_hub = imagezmq.ImageHub()
     while execute['streamVideo']:
         deviceName, image = image_hub.recv_image()
-        if(display):
+        if display:
             cv2.imshow(deviceName, image)
             cv2.waitKey(1)
+        if debug:
+            print(image)
         image_hub.send_reply(b'OK')
     logging.debug("Stopped VideoStream")
 
@@ -75,7 +77,7 @@ def receiveData(debug=False):
     """
 
     HOST = '127.0.0.1'
-    PORT = 65432
+    PORT = CommunicationUtils.SNSR_PORT
 
     snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -83,7 +85,7 @@ def receiveData(debug=False):
         snsr.bind((HOST, PORT))
         snsr.listen()
         conn, addr = snsr.accept()
-        logging.info('Sensor Connected by'+str(addr))
+        logging.info('Sensor Connected by '+str(addr))
 
         while execute['receiveData']:
                 recv = CommunicationUtils.recvMsg(conn)
@@ -93,7 +95,7 @@ def receiveData(debug=False):
                     logging.debug("TtS: "+str(time.time()-float(j['timestamp'])))
         CommunicationUtils.closeSocket(snsr)
     except Exception as e:
-        logging.critical("receive Exception Occurred",exc_info=True)
+        logging.error("receive Exception Occurred",exc_info=True)
         CommunicationUtils.closeSocket(snsr)
     logging.debug("Stopped recvData")
 
@@ -106,19 +108,22 @@ def sendData(debug=False):
             debug: (optional) log debugging data
     """
     HOST = '127.0.0.1'
-    PORT = 65432
+    PORT = CommunicationUtils.CNTLR_PORT
 
     cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        cntlr.connect((HOST, PORT))
-        updtSettingsThread = threading.Thread(target=updateSettings, args=(cntlr,debug,))
+        cntlr.bind((HOST, PORT))
+        cntlr.listen()
+        conn, addr = cntlr.accept()
+        logging.info('Motor Connected by '+str(addr))
+        updtSettingsThread = threading.Thread(target=updateSettings, args=(conn,debug,))
         updtSettingsThread.start()
         while execute['sendData']:
-            sent = CommunicationUtils.sendMsg(cntlr,[90]*6,"motors","None")
+            sent = CommunicationUtils.sendMsg(conn,[90]*6,"motors","None")
             if debug:
                 logging.debug("Sending: "+str(sent))
-        CommunicationUtils.closeSocket(cntlr)
         updtSettingsThread.join()
+        CommunicationUtils.closeSocket(cntlr)
     except Exception as e:
         logging.error("Send Exception Occurred",exc_info=True)
         CommunicationUtils.closeSocket(cntlr)
@@ -138,18 +143,25 @@ def updateSettings(sckt,debug=False):
         time.sleep(2)
 
 if( __name__ == "__main__"):
+    # Setup Logging preferences
     verbose = False
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
+    # Setup a callback to force stop the program
     keyboard.on_press_key("q", stopAllThreads, suppress=False)
 
-    vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(True,verbose,),daemon=True)
+    # Start each thread
+    vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(True,True,),daemon=True)
     recvDataThread = threading.Thread(target=receiveData, args=(verbose,))
+    sendDataThread = threading.Thread(target=sendData, args=(verbose,))
     vidStreamThread.start()
     recvDataThread.start()
-    sendData(verbose)
+    sendDataThread.start()
+
+    # Begin the Shutdown
     vidStreamThread.join(timeout=5)
     recvDataThread.join()
+    sendDataThread.join()
     logging.debug("Stopped all Threads")
     logging.info("Shutting Down Program")
     sys.exit()

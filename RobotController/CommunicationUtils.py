@@ -5,6 +5,10 @@ import base64
 import cv2
 import time
 
+CAM_PORT = 5555
+CNTLR_PORT = 5554
+SNSR_PORT = 5553
+
 def sendMsg(sckt,data,dataType,metadata):
 	msg = "|"
 	msg += "{"
