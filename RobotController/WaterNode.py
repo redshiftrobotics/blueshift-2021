@@ -46,6 +46,7 @@ def stopAllThreads(callback=0):
 	execute['sendData'] = False
 	execute['updateSettings'] = False
 	logging.debug("Stopping Threads")
+	time.sleep(0.5)
 
 def sendVideoStreams(debug=False):
 	""" Sends video from each camera to the Ground Node
@@ -67,10 +68,14 @@ def sendVideoStreams(debug=False):
 	logging.debug('Cam names and Objects: '+str(camNames)+', '+str(camCaps))
 
 	time.sleep(2.0)
-	while True:
+	while execute['streamVideo']:
 		for i in range(0,numCams):
 			_, img = camCaps[i].read()
-			sender.send_image(camNames[i], img)
+			try:
+				sender.send_image(camNames[i], img)
+			except:
+				logging.warning("Invalid Image: "+str(img))
+				time.sleep(1)
 			if debug:
 				logging.debug("Sent Image: "+str(img[:1][:1]))
 	logging.debug("Stopped VideoStream")
@@ -92,11 +97,15 @@ def receiveData(debug=False):
 	try:
 		cntlr.connect((HOST, PORT))
 		while execute['receiveData']:
-				recv = CommunicationUtils.recvMsg(cntlr)
-				j = json.loads(recv)
-				if debug:
-					logging.debug("Raw receive: "+str(recv))
-					logging.debug("TtS: "+str(time.time()-float(j['timestamp'])))
+				recv = "{}"
+				try:
+					recv = CommunicationUtils.recvMsg(cntlr)
+					j = json.loads(recv)
+					if debug:
+						logging.debug("Raw receive: "+str(recv))
+						logging.debug("TtS: "+str(time.time()-float(j['timestamp'])))
+				except Exception as e:
+					logging.debug(e)
 		CommunicationUtils.closeSocket(cntlr)
 	except Exception as e:
 		logging.error("Receive Exception Occurred",exc_info=True)
@@ -133,8 +142,13 @@ def sendData(debug=False):
 				"volts": 0,
 				"amps": 0
 			}
-			sent = CommunicationUtils.sendMsg(snsr,sensors,"sensors","None")
+			try:
+				sent = CommunicationUtils.sendMsg(snsr,sensors,"sensors","None")
+			except ConnectionResetError:
+				logging.info("Socket closed by Ground Node")
+
 			if debug:
+				time.sleep(1)
 				logging.debug("Sending: "+str(sent))
 		CommunicationUtils.closeSocket(snsr)
 	except Exception as e:
@@ -144,7 +158,7 @@ def sendData(debug=False):
 
 if( __name__ == "__main__"):
 	# Setup Logging preferences
-	verbose = False
+	verbose = [False,True]
 	logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 	# Setup a callback to force stop the program
@@ -153,17 +167,19 @@ if( __name__ == "__main__"):
 	# Start each thread
 	logging.info("Starting Water Node")
 	logging.debug("Started all Threads")
-	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose,),daemon=True)
-	recvDataThread = threading.Thread(target=receiveData, args=(verbose,))
-	sendDataThread = threading.Thread(target=sendData, args=(verbose,))
+	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose[0],),daemon=True)
+	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
+	sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
 	vidStreamThread.start()
 	recvDataThread.start()
 	sendDataThread.start()
 
 	# Begin the Shutdown
-	vidStreamThread.join(timeout=5)
+		# Because there is no timeout on recvDataThread or sendDataThread, they won't join until manually stopped
+		# It's a bit of a hack, but it stops the program from shuting down instantly
 	recvDataThread.join()
 	sendDataThread.join()
+	vidStreamThread.join(timeout=5)
 	logging.debug("Stopped all Threads")
 	logging.info("Shutting Down Water Node")
 	sys.exit()

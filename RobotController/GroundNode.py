@@ -19,6 +19,10 @@ import simplejson as json
 import time
 import keyboard
 
+# Imports for Controller Communication and Processing
+import ControllerUtils
+import evdev
+
 # Settings Dict to keep track of editable settings for data processing
 settings = {
     "numCams": 4,
@@ -82,7 +86,7 @@ def receiveData(debug=False):
         snsr.bind((HOST, PORT))
         snsr.listen()
         conn, addr = snsr.accept()
-        logging.info('Sensor Connected by '+str(addr))
+        logging.info('Sensor Socket Connected by '+str(addr))
 
         while execute['receiveData']:
                 recv = CommunicationUtils.recvMsg(conn)
@@ -109,15 +113,29 @@ def sendData(debug=False):
 
     cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
+        # Setup socket communication
         cntlr.bind((HOST, PORT))
         cntlr.listen()
         conn, addr = cntlr.accept()
-        logging.info('Motor Connected by '+str(addr))
+        logging.info('Motor Socket Connected by '+str(addr))
+
+        # Start the update settings thread
         updtSettingsThread = threading.Thread(target=updateSettings, args=(conn,debug,))
         updtSettingsThread.start()
-        while execute['sendData']:
-            sent = CommunicationUtils.sendMsg(conn,[90]*6,"motors","None")
+
+        # Start Controller
+        gamepad = ControllerUtils.identifyControllers()
+        while (not gamepad):
+            time.sleep(5)
+            gamepad = ControllerUtils.identifyControllers()
+        for event in gamepad.read_loop():
+            if (not execute['sendData']):
+                break
+            ControllerUtils.processEvent(event)
+            speeds = ControllerUtils.calcThrust()
+            sent = CommunicationUtils.sendMsg(conn,speeds,"motorSpds","None",isString=False)
             if debug:
+                time.sleep(1)
                 logging.debug("Sending: "+str(sent))
         updtSettingsThread.join()
         CommunicationUtils.closeSocket(cntlr)
@@ -138,10 +156,11 @@ def updateSettings(sckt,debug=False):
     # Wait until a setting is updated, then make the change and or sent data to the water node
     while execute['updateSettings']:
         time.sleep(2)
+    logging.debug("Stopped updateSettings")
 
 if( __name__ == "__main__"):
     # Setup Logging preferences
-    verbose = False
+    verbose = [False,True]
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
     # Setup a callback to force stop the program
@@ -150,17 +169,19 @@ if( __name__ == "__main__"):
     # Start each thread
     logging.info("Starting Ground Node")
     logging.debug("Started all Threads")
-    vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(verbose,),daemon=True)
-    recvDataThread = threading.Thread(target=receiveData, args=(verbose,))
-    sendDataThread = threading.Thread(target=sendData, args=(verbose,))
+    vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(verbose[0],),daemon=True)
+    recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
+    sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
     vidStreamThread.start()
     recvDataThread.start()
     sendDataThread.start()
 
     # Begin the Shutdown
-    vidStreamThread.join(timeout=5)
+        # Because there is no timeout on recvDataThread or sendDataThread, they won't join until manually stopped
+        # It's a bit of a hack, but it stops the program from shuting down instantly
     recvDataThread.join()
     sendDataThread.join()
+    vidStreamThread.join(timeout=5)
     logging.debug("Stopped all Threads")
     logging.info("Shutting Down Ground Node")
     sys.exit()

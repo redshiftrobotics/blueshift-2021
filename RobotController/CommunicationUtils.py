@@ -4,16 +4,20 @@ import socket
 import base64
 import cv2
 import time
+import logging
 
 CAM_PORT = 5555
 CNTLR_PORT = 5554
 SNSR_PORT = 5553
 
-def sendMsg(sckt,data,dataType,metadata):
+def sendMsg(sckt,data,dataType,metadata,isString=True):
 	msg = "|"
 	msg += "{"
 	msg += '"dataType":"'+str(dataType)+'",'
-	msg += '"data":"'+str(data)+'",'
+	if isString:
+		msg += '"data":"'+str(data)+'",'
+	else:
+		msg += '"data":'+str(data)+','
 	msg += '"timestamp":'+str(time.time())+','
 	msg += '"metadata":"'+str(metadata)+'"'
 	msg += "}"
@@ -22,23 +26,25 @@ def sendMsg(sckt,data,dataType,metadata):
 	sckt.sendall(msg.encode())
 	return msg
 
-def recvMsg(conn,timeout=1):
+def recvMsg(conn,timeout=2):
 	lengthMarker = b'|'
-	msgLength = b''
+	numChars = 2
 
 	now = time.time()
-	while(conn.recv(1, socket.MSG_PEEK)):
-		data = conn.recv(1)
-		if(data != lengthMarker):
-			msgLength += data
-		else:
-			break
+	lastChar = conn.recv(numChars, socket.MSG_PEEK)[-1:]
+	while(lastChar != lengthMarker):
+		numChars += 1
+		lastChar = conn.recv(numChars, socket.MSG_PEEK)[-1:]
 
-	iMsgLength = int(msgLength)
-	while(len(conn.recv(iMsgLength, socket.MSG_PEEK))<iMsgLength):
+	bMsgLength = conn.recv(numChars, socket.MSG_PEEK)
+	iMsgLength = int(bMsgLength[:-1])
+	iTotalLength = iMsgLength+len(bMsgLength)
+	while(len(conn.recv(iTotalLength, socket.MSG_PEEK))<iTotalLength):
 		time.sleep(0.001)
 		if (time.time()-now) > timeout:
-			return False
+			raise Exception("recvMsg Timeout of {} was reached".format(timeout))
+
+	conn.recv(numChars)
 	recv = conn.recv(iMsgLength-1)
 	return str(recv.decode())
 
