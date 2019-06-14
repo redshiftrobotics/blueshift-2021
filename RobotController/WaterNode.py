@@ -151,8 +151,8 @@ if( __name__ == "__main__"):
 	keyboard.on_press_key("q", stopAllThreads, suppress=False)
 
 	# Start each thread
-    logging.info("Starting Water Node")
-    logging.debug("Started all Threads")
+	logging.info("Starting Water Node")
+	logging.debug("Started all Threads")
 	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose,),daemon=True)
 	recvDataThread = threading.Thread(target=receiveData, args=(verbose,))
 	sendDataThread = threading.Thread(target=sendData, args=(verbose,))
