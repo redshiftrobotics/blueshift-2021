@@ -125,18 +125,18 @@ def sendData(debug=False):
 
         # Start Controller
         gamepad = ControllerUtils.identifyControllers()
-        while (not gamepad):
+        while (not gamepad) and execute['sendData']:
             time.sleep(5)
             gamepad = ControllerUtils.identifyControllers()
-        for event in gamepad.read_loop():
-            if (not execute['sendData']):
-                break
-            ControllerUtils.processEvent(event)
-            speeds = ControllerUtils.calcThrust()
-            sent = CommunicationUtils.sendMsg(conn,speeds,"motorSpds","None",isString=False)
-            if debug:
-                time.sleep(1)
-                logging.debug("Sending: "+str(sent))
+        while execute['sendData']:
+            event = gamepad.read_one()
+            if event:
+                ControllerUtils.processEvent(event)
+                speeds = ControllerUtils.calcThrust()
+                sent = CommunicationUtils.sendMsg(conn,speeds,"motorSpds","None",isString=False)
+                if debug:
+                    time.sleep(1)
+                    logging.debug("Sending: "+str(sent))
         updtSettingsThread.join()
         CommunicationUtils.closeSocket(cntlr)
     except Exception as e:
