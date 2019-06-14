@@ -1,6 +1,7 @@
 import evdev
 import logging
 
+# Number-Motor mappings
 frontLeft = 0
 frontRight = 1
 backLeft = 2
@@ -10,19 +11,31 @@ verticalRight = 5
 verticalFront = 6
 verticalBack = 7
 
-# Create values to store the controller inputs
+# Values to store the controller inputs and motor speeds
 joyForward = 0
 joyHorizontal = 0
 joyRotation = 0
 joyVertical = 0
-
 mtrSpeeds = [0,0,0,0,0,0]
 
 def remapDeg(val):
+    """ Remaps a controller input to servo range
+
+        Arguments:
+            val: value to remap
+
+        Returns:
+            The remapped value
+    """
     deg = -val/32768.0 * 90.0 + 90.0
     return deg
 
 def calcThrust():
+    """ Calculates the speed for each motor based on stored controller inputs
+
+        Returns:
+            An array of calculated motors speed values
+    """
     global joyForward
     global joyHorizontal
     global joyRotation
@@ -37,18 +50,51 @@ def calcThrust():
     return mtrSpeeds
 
 def clamp(n, minn, maxn):
+    """ Clamps a number in a range
+
+        Arguments:
+            n: number to clamp
+            minn: minimum value for n
+            maxn: maximum value for n
+
+        Returns:
+            the clamped value
+    """
     return max(min(maxn, n), minn)
 
 def deadzoneCorrect(val):
+    """ Corrects a value if it is in the controller's deadzone
+
+        Argument:
+            val: value to correct
+
+        Returns:
+            the corrected value
+    """
     if 150 > val > -150:
         return 0
     else:
         return val
 
-def checkCenter(array):
-    return all(item==90 for item in array)
+def checkArrayValue(arry,val):
+    """ Checks if each item in array is equal to an input value
+
+        Arguments:
+            arry: array to check
+            val: value to check againts the array
+
+        Returns:
+            True if each item in the array was equal to the val
+            Otherwise False
+    """
+    return all(item==val for item in array)
 
 def identifyControllers():
+    """ Searches the available devices for a controller and returns it
+
+        Returns:
+            A controller device if it can find any
+    """
     controller_names = ["Logitech Gamepad F710", "Logitech Gamepad F310", "Microsoft X-Box One S pad", "PowerA Xbox One wired controller"]
 
     allDevices = [evdev.InputDevice(path) for path in evdev.list_devices()]
@@ -67,6 +113,8 @@ def identifyControllers():
         logging.error("Could not find valid controller device")
 
 def processEvent(generator):
+    """ Processes a gamepad event and extracts relevant values
+    """
     global joyForward
     global joyHorizontal
     global joyRotation

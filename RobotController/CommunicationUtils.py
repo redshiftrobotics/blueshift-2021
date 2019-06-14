@@ -11,6 +11,18 @@ CNTLR_PORT = 5554
 SNSR_PORT = 5553
 
 def sendMsg(sckt,data,dataType,metadata,isString=True):
+	""" Send a JSON message through a socket
+
+		Arguments:
+			sckt: socket to send data through
+			data: data to be sent
+			dataType: type of data to be sent
+			metadata: extra data to be sent
+			isString: (optiona) whether the data is a string
+
+		Returns:
+			The sent message
+	"""
 	msg = "|"
 	msg += "{"
 	msg += '"dataType":"'+str(dataType)+'",'
@@ -27,6 +39,17 @@ def sendMsg(sckt,data,dataType,metadata,isString=True):
 	return msg
 
 def recvMsg(conn,timeout=2):
+	""" Recieve a JSON message from a socket
+
+		Messages should be formatted as msgLength|messageContents
+
+		Arguments:
+			conn: the socket to receive data through
+			timeout: (optional) the maximum amount of time to wait before canceling
+
+		Returns:
+			The received message
+	"""
 	lengthMarker = b'|'
 	numChars = 2
 
@@ -49,6 +72,13 @@ def recvMsg(conn,timeout=2):
 	return str(recv.decode())
 
 def closeSocket(sckt):
+	""" Cleanly close a socket connection
+
+		Starts by sending a shutdown JSON message through the socket
+
+		Arguments:
+			sckt: socket to close
+	"""
 	try:
 		sendMsg(sckt,"closing","connInfo","None")
 		sckt.shutdown(socket.SHUT_WR)
@@ -57,5 +87,13 @@ def closeSocket(sckt):
 		pass
 
 def encode_img(image):
+	""" Encodes an image in Base64
+
+		Arguemnts:
+			image: image to encode
+
+		Returns:
+			The Base64 encoded image
+	"""
 	retval, bffr = cv2.imencode('.jpg', image)
 	return base64.b64encode(bffr).decode("utf-8")
