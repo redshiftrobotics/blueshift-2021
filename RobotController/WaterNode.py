@@ -68,16 +68,19 @@ def sendVideoStreams(debug=False):
 	logging.debug('Cam names and Objects: '+str(camNames)+', '+str(camCaps))
 
 	time.sleep(2.0)
-	while execute['streamVideo']:
-		for i in range(0,numCams):
-			_, img = camCaps[i].read()
-			try:
-				sender.send_image(camNames[i], img)
-			except:
-				logging.warning("Invalid Image: "+str(img))
-				time.sleep(1)
-			if debug:
-				logging.debug("Sent Image: "+str(img[:1][:1]))
+	try:
+		while execute['streamVideo']:
+			for i in range(0,numCams):
+				_, img = camCaps[i].read()
+				try:
+					sender.send_image(camNames[i], img)
+				except:
+					logging.warning("Invalid Image: "+str(img))
+					time.sleep(1)
+				if debug:
+					logging.debug("Sent Image: "+str(img[:1][:1]))
+	except Exception as e:
+		logging.error("VideoStream Thread Exception Occurred",exec_info=True)
 	logging.debug("Stopped VideoStream")
 
 def receiveData(debug=False):
@@ -100,17 +103,18 @@ def receiveData(debug=False):
 					try:
 						recv = CommunicationUtils.recvMsg(cntlr)
 						j = json.loads(recv)
-						print(j)
 						if j['dataType'] == "connInfo" and j['data'] == "closing":
 							stopAllThreads()
-							break
+
 						if debug:
 							logging.debug("Raw receive: "+str(recv))
 							logging.debug("TtS: "+str(time.time()-float(j['timestamp'])))
 					except Exception as e:
-						logging.debug(e)
+						logging.debug("Couldn't recieve data")
+						stopAllThreads()
+
 	except Exception as e:
-		logging.error("Receive Exception Occurred",exc_info=True)
+		logging.error("Receive Thread Exception Occurred",exc_info=True)
 	logging.debug("Stopped recvData")
 
 def sendData(debug=False):
@@ -146,22 +150,24 @@ def sendData(debug=False):
 				try:
 					sent = CommunicationUtils.sendMsg(snsr,sensors,"sensors","None")
 				except Exception as e:
-					logging.info("Couldn't send data",exc_info=True)
-					#stopAllThreads()
-					#break
+					logging.warning("Couldn't send data")
+					stopAllThreads()
 
 				if debug:
 					time.sleep(1)
 					logging.debug("Sending: "+str(sent))
 
 	except Exception as e:
-		logging.error("Send Exception Occurred",exc_info=True)
+		logging.error("Send Thread Exception Occurred",exc_info=True)
 	logging.debug("Stopped sendData")
 
 if( __name__ == "__main__"):
 	# Setup Logging preferences
 	verbose = [False,True]
-	logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+	for handler in logging.root.handlers[:]:
+		logging.root.removeHandler(handler)
+	logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
 	# Setup a callback to force stop the program
 	keyboard.on_press_key("q", stopAllThreads, suppress=False)
@@ -170,7 +176,7 @@ if( __name__ == "__main__"):
 	logging.info("Starting Water Node")
 	logging.debug("Started all Threads")
 	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose[0],),daemon=True)
-	recvDataThread = threading.Thread(target=receiveData, args=(verbose[1],))
+	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
 	sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
 	vidStreamThread.start()
 	recvDataThread.start()

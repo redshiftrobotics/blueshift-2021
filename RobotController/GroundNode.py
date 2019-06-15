@@ -18,17 +18,23 @@ import CommunicationUtils
 import simplejson as json
 import time
 import keyboard
+import websocket
 
 # Imports for Controller Communication and Processing
 import ControllerUtils
 import evdev
+
+# Imports for AirNode
+from flask import Flask, render_template, Response
 
 # Settings Dict to keep track of editable settings for data processing
 settings = {
     "numCams": 4,
     "drive": "holonomic",
     "numMotors": 6,
-    "flipMotors": [1]*6
+    "flipMotors": [1]*6,
+    "minMotorSpeed": 0,
+    "maxMotorSpeed": 180
 }
 
 # Dict to stop threads
@@ -38,6 +44,15 @@ execute = {
     "sendData": True,
     "updateSettings": True
 }
+
+# Dict to store camera streams
+camStreams = {
+    "mainCam": b''
+}
+
+#for i in range(0, settings['numCams']):
+#    camStreams.update({"bkpCam"+str(i):b''})
+
 
 def stopAllThreads(callback=0):
     """ Stops all currently running threads
@@ -53,19 +68,27 @@ def stopAllThreads(callback=0):
     logging.debug("Stopping Threads")
 
 def receiveVideoStreams(debug=False):
-    """ Recieves and processes video from the Water Node
+    """ Recieves and processes video from the Water Node then sends it to the Air Node
 
         Arguments:
-            display: (optional) display recieved images using OpenCV
             debug: (optional) log debugging data
     """
 
-    image_hub = imagezmq.ImageHub()
-    while execute['streamVideo']:
-        deviceName, image = image_hub.recv_image()
-        if debug:
-            print(image)
-        image_hub.send_reply(b'OK')
+    try:
+        airNodeThread = threading.Thread(target=startAirNode,daemon=True)
+        airNodeThread.start()
+
+        image_hub = imagezmq.ImageHub()
+        while execute['streamVideo']:
+            deviceName, image = image_hub.recv_image()
+            if debug:
+                logging.debug(image)
+            image_hub.send_reply(b'OK')
+            camStreams.update({deviceName: CommunicationUtils.encodeImage(image)})
+            logging.debug("Recieved new image from Ground Node")
+        airNodeThread.join(5)
+    except Exception as e:
+        logging.error("Video Streaming Thread Exception Occurred",exc_info=True)
     logging.debug("Stopped VideoStream")
 
 def receiveData(debug=False):
@@ -80,14 +103,18 @@ def receiveData(debug=False):
     HOST = '127.0.0.1'
     PORT = CommunicationUtils.SNSR_PORT
 
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as snsr:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as snsr:
+        try:
             try:
                 snsr.bind((HOST, PORT))
             except:
-                logging.info("Port {} is already in use".format(PORT))
-                time.sleep(10)
-                snsr.bind((HOST, PORT))
+                try:
+                    logging.error("Couldn't establish connection. Port {} is already in use".format(PORT))
+                    time.sleep(10)
+                    cntlr.bind((HOST, PORT))
+                except:
+                    logging.error("Try again in a bit. Port {} is still busy".format(PORT))
+                    stopAllThreads()
             snsr.listen()
             conn, addr = snsr.accept()
             logging.info('Sensor Socket Connected by '+str(addr))
@@ -100,15 +127,15 @@ def receiveData(debug=False):
                         logging.debug("Raw receive: "+str(recv))
                         logging.debug("TtS: "+str(time.time()-float(j['timestamp'])))
                 except Exception as e:
-                    logging.debug(e)
-    except Exception as e:
-        logging.error("Receive Exception Occurred",exc_info=True)
+                    logging.debug("Couldn't receive data",exec_info=True)
+        except Exception as e:
+            logging.error("Receive Thread Exception Occurred",exc_info=True)
     logging.debug("Stopped recvData")
 
 def sendData(debug=False):
     """ Sends JSON data to the Water Node
 
-        Data will most likel contain motor data, and settings changes
+        Data will most likely contain motor data, and settings changes
 
         Arguments:
             debug: (optional) log debugging data
@@ -116,15 +143,21 @@ def sendData(debug=False):
     HOST = '127.0.0.1'
     PORT = CommunicationUtils.CNTLR_PORT
 
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as cntlr:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as cntlr:
+        try:
+        
             # Setup socket communication
             try:
                 cntlr.bind((HOST, PORT))
             except:
-                logging.info("Port {} is already in use".format(PORT))
-                time.sleep(10)
-                cntlr.bind((HOST, PORT))
+                try:
+                    logging.error("Couldn't establish connection. Port {} is already in use".format(PORT))
+                    time.sleep(10)
+                    cntlr.bind((HOST, PORT))
+                except:
+                    logging.error("Try again in a bit. Port {} is still busy".format(PORT))
+                    stopAllThreads()
+
             cntlr.listen()
             conn, addr = cntlr.accept()
             logging.info('Motor Socket Connected by '+str(addr))
@@ -144,9 +177,9 @@ def sendData(debug=False):
                 if event:
                     if (ControllerUtils.isStopCode(event)):
                         logging.debug(CommunicationUtils.sendMsg(conn,"closing","connInfo","None",repetitions=2))
-                        time.sleep(2)
+                        time.sleep(1)
                         stopAllThreads()
-                        break
+
                     ControllerUtils.processEvent(event)
                     speeds = ControllerUtils.calcThrust()
                     sent = CommunicationUtils.sendMsg(conn,speeds,"motorSpds","None",isString=False)
@@ -156,8 +189,8 @@ def sendData(debug=False):
 
             updtSettingsThread.join()
 
-    except Exception as e:
-        logging.error("Send Exception Occurred",exc_info=True)
+        except Exception as e:
+            logging.error("Send Thread Exception Occurred",exc_info=True)
     logging.debug("Stopped sendData")
 
 def updateSettings(sckt,debug=False):
@@ -174,10 +207,35 @@ def updateSettings(sckt,debug=False):
         time.sleep(2)
     logging.debug("Stopped updateSettings")
 
+def startAirNode():
+    app = Flask(__name__)
+
+    @app.route('/')
+    def index():
+        return render_template('index.html')
+
+    def mainCamGen():
+        global counter
+        while True:
+            time.sleep(0.001)
+            tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + camStreams["mainCam"] + b'\r\n')
+            logging.debug("Sending new image to Air Node")
+            yield tosend
+
+    @app.route('/mainCam')
+    def mainCam():
+        return Response(mainCamGen(),
+                        mimetype='multipart/x-mixed-replace; boundary=frame')
+
+    app.run(host='127.0.0.1',port=5000)
+
+
 if( __name__ == "__main__"):
     # Setup Logging preferences
     verbose = [False,True]
-    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
     # Setup a callback to force stop the program
     keyboard.on_press_key("q", stopAllThreads, suppress=False)

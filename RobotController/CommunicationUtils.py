@@ -73,14 +73,14 @@ def recvMsg(conn,timeout=2):
 	recv = conn.recv(iMsgLength-1)
 	return str(recv.decode())
 
-def encode_img(image):
-	""" Encodes an image in Base64
+def encodeImage(image):
+    """ Encodes an image in Base64
 
-		Arguemnts:
-			image: image to encode
+        Arguemnts:
+            image: image to encode
 
-		Returns:
-			The Base64 encoded image
-	"""
-	retval, bffr = cv2.imencode('.jpg', image)
-	return base64.b64encode(bffr).decode("utf-8")
+        Returns:
+            The Base64 encoded image
+    """
+    retval, bffr = cv2.imencode('.jpg', image)
+    return bffr.tobytes()

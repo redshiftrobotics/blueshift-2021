@@ -98,7 +98,6 @@ def identifyControllers():
     controller_names = ["Logitech Gamepad F710", "Logitech Gamepad F310", "Microsoft X-Box One S pad", "PowerA Xbox One wired controller"]
 
     allDevices = [evdev.InputDevice(path) for path in evdev.list_devices()]
-    logging.debug(allDevices)
     controllerDevices = []
     
     for device in allDevices:
