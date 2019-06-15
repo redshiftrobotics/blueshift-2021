@@ -114,6 +114,9 @@ def identifyControllers():
 
 def processEvent(generator):
     """ Processes a gamepad event and extracts relevant values
+
+        Arguments:
+            generator: the event to extract data from
     """
     global joyForward
     global joyHorizontal
@@ -132,3 +135,14 @@ def processEvent(generator):
             joyRotation = deadzoneCorrect(value)
         if code == 4:
             joyVertical = deadzoneCorrect(value)
+
+def isStopCode(event):
+    """ Checks if the input event is a stop code
+
+        Arguments:
+            event: gamepad event to check
+
+        Returns:
+            Whether the event is a stop code
+    """
+    return event.code == 316 and event.value == 1

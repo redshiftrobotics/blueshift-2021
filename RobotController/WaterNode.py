@@ -92,24 +92,25 @@ def receiveData(debug=False):
 	HOST = '127.0.0.1'
 	PORT = CommunicationUtils.CNTLR_PORT
 
-	cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
 	try:
-		cntlr.connect((HOST, PORT))
-		while execute['receiveData']:
-				recv = "{}"
-				try:
-					recv = CommunicationUtils.recvMsg(cntlr)
-					j = json.loads(recv)
-					if debug:
-						logging.debug("Raw receive: "+str(recv))
-						logging.debug("TtS: "+str(time.time()-float(j['timestamp'])))
-				except Exception as e:
-					logging.debug(e)
-		CommunicationUtils.closeSocket(cntlr)
+		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as cntlr:
+			cntlr.connect((HOST, PORT))
+			while execute['receiveData']:
+					recv = "{}"
+					try:
+						recv = CommunicationUtils.recvMsg(cntlr)
+						j = json.loads(recv)
+						print(j)
+						if j['dataType'] == "connInfo" and j['data'] == "closing":
+							stopAllThreads()
+							break
+						if debug:
+							logging.debug("Raw receive: "+str(recv))
+							logging.debug("TtS: "+str(time.time()-float(j['timestamp'])))
+					except Exception as e:
+						logging.debug(e)
 	except Exception as e:
 		logging.error("Receive Exception Occurred",exc_info=True)
-		CommunicationUtils.closeSocket(cntlr)
 	logging.debug("Stopped recvData")
 
 def sendData(debug=False):
@@ -123,37 +124,38 @@ def sendData(debug=False):
 	HOST = '127.0.0.1'
 	PORT = CommunicationUtils.SNSR_PORT
 
-	snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	try:
-		snsr.connect((HOST, PORT))
-		while execute['sendData']:
-			# Get gyro, accel, voltage, amperage readings
-			sensors = {
-				"gyro": {
-					"x": 0,
-					"y": 0,
-					"z": 0,
-				},
-				"accel": {
-					"x": 0,
-					"y": 0,
-					"z": 0,
-				},
-				"volts": 0,
-				"amps": 0
-			}
-			try:
-				sent = CommunicationUtils.sendMsg(snsr,sensors,"sensors","None")
-			except ConnectionResetError:
-				logging.info("Socket closed by Ground Node")
+		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as snsr:
+			snsr.connect((HOST, PORT))
+			while execute['sendData']:
+				# Get gyro, accel, voltage, amperage readings
+				sensors = {
+					"gyro": {
+						"x": 0,
+						"y": 0,
+						"z": 0,
+					},
+					"accel": {
+						"x": 0,
+						"y": 0,
+						"z": 0,
+					},
+					"volts": 0,
+					"amps": 0
+				}
+				try:
+					sent = CommunicationUtils.sendMsg(snsr,sensors,"sensors","None")
+				except Exception as e:
+					logging.info("Couldn't send data",exc_info=True)
+					#stopAllThreads()
+					#break
 
-			if debug:
-				time.sleep(1)
-				logging.debug("Sending: "+str(sent))
-		CommunicationUtils.closeSocket(snsr)
+				if debug:
+					time.sleep(1)
+					logging.debug("Sending: "+str(sent))
+
 	except Exception as e:
 		logging.error("Send Exception Occurred",exc_info=True)
-		CommunicationUtils.closeSocket(snsr)
 	logging.debug("Stopped sendData")
 
 if( __name__ == "__main__"):
@@ -168,7 +170,7 @@ if( __name__ == "__main__"):
 	logging.info("Starting Water Node")
 	logging.debug("Started all Threads")
 	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose[0],),daemon=True)
-	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
+	recvDataThread = threading.Thread(target=receiveData, args=(verbose[1],))
 	sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
 	vidStreamThread.start()
 	recvDataThread.start()

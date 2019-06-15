@@ -80,24 +80,29 @@ def receiveData(debug=False):
     HOST = '127.0.0.1'
     PORT = CommunicationUtils.SNSR_PORT
 
-    snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
     try:
-        snsr.bind((HOST, PORT))
-        snsr.listen()
-        conn, addr = snsr.accept()
-        logging.info('Sensor Socket Connected by '+str(addr))
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as snsr:
+            try:
+                snsr.bind((HOST, PORT))
+            except:
+                logging.info("Port {} is already in use".format(PORT))
+                time.sleep(10)
+                snsr.bind((HOST, PORT))
+            snsr.listen()
+            conn, addr = snsr.accept()
+            logging.info('Sensor Socket Connected by '+str(addr))
 
-        while execute['receiveData']:
-                recv = CommunicationUtils.recvMsg(conn)
-                j = json.loads(recv)
-                if debug:
-                    logging.debug("Raw receive: "+str(recv))
-                    logging.debug("TtS: "+str(time.time()-float(j['timestamp'])))
-        CommunicationUtils.closeSocket(snsr)
+            while execute['receiveData']:
+                try:
+                    recv = CommunicationUtils.recvMsg(conn)
+                    j = json.loads(recv)
+                    if debug:
+                        logging.debug("Raw receive: "+str(recv))
+                        logging.debug("TtS: "+str(time.time()-float(j['timestamp'])))
+                except Exception as e:
+                    logging.debug(e)
     except Exception as e:
-        logging.error("receive Exception Occurred",exc_info=True)
-        CommunicationUtils.closeSocket(snsr)
+        logging.error("Receive Exception Occurred",exc_info=True)
     logging.debug("Stopped recvData")
 
 def sendData(debug=False):
@@ -111,37 +116,48 @@ def sendData(debug=False):
     HOST = '127.0.0.1'
     PORT = CommunicationUtils.CNTLR_PORT
 
-    cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        # Setup socket communication
-        cntlr.bind((HOST, PORT))
-        cntlr.listen()
-        conn, addr = cntlr.accept()
-        logging.info('Motor Socket Connected by '+str(addr))
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as cntlr:
+            # Setup socket communication
+            try:
+                cntlr.bind((HOST, PORT))
+            except:
+                logging.info("Port {} is already in use".format(PORT))
+                time.sleep(10)
+                cntlr.bind((HOST, PORT))
+            cntlr.listen()
+            conn, addr = cntlr.accept()
+            logging.info('Motor Socket Connected by '+str(addr))
 
-        # Start the update settings thread
-        updtSettingsThread = threading.Thread(target=updateSettings, args=(conn,debug,))
-        updtSettingsThread.start()
+            # Start the update settings thread
+            updtSettingsThread = threading.Thread(target=updateSettings, args=(conn,debug,))
+            updtSettingsThread.start()
 
-        # Start Controller
-        gamepad = ControllerUtils.identifyControllers()
-        while (not gamepad) and execute['sendData']:
-            time.sleep(5)
+            # Start Controller
             gamepad = ControllerUtils.identifyControllers()
-        while execute['sendData']:
-            event = gamepad.read_one()
-            if event:
-                ControllerUtils.processEvent(event)
-                speeds = ControllerUtils.calcThrust()
-                sent = CommunicationUtils.sendMsg(conn,speeds,"motorSpds","None",isString=False)
-                if debug:
-                    time.sleep(1)
-                    logging.debug("Sending: "+str(sent))
-        updtSettingsThread.join()
-        CommunicationUtils.closeSocket(cntlr)
+            while (not gamepad) and execute['sendData']:
+                time.sleep(5)
+                gamepad = ControllerUtils.identifyControllers()
+
+            while execute['sendData']:
+                event = gamepad.read_one()
+                if event:
+                    if (ControllerUtils.isStopCode(event)):
+                        logging.debug(CommunicationUtils.sendMsg(conn,"closing","connInfo","None",repetitions=2))
+                        time.sleep(2)
+                        stopAllThreads()
+                        break
+                    ControllerUtils.processEvent(event)
+                    speeds = ControllerUtils.calcThrust()
+                    sent = CommunicationUtils.sendMsg(conn,speeds,"motorSpds","None",isString=False)
+                    if debug:
+                        time.sleep(1)
+                        logging.debug("Sending: "+str(sent))
+
+            updtSettingsThread.join()
+
     except Exception as e:
         logging.error("Send Exception Occurred",exc_info=True)
-        CommunicationUtils.closeSocket(cntlr)
     logging.debug("Stopped sendData")
 
 def updateSettings(sckt,debug=False):

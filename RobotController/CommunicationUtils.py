@@ -10,7 +10,7 @@ CAM_PORT = 5555
 CNTLR_PORT = 5554
 SNSR_PORT = 5553
 
-def sendMsg(sckt,data,dataType,metadata,isString=True):
+def sendMsg(sckt,data,dataType,metadata,isString=True,repetitions=1):
 	""" Send a JSON message through a socket
 
 		Arguments:
@@ -18,7 +18,8 @@ def sendMsg(sckt,data,dataType,metadata,isString=True):
 			data: data to be sent
 			dataType: type of data to be sent
 			metadata: extra data to be sent
-			isString: (optiona) whether the data is a string
+			isString: (optional) whether the data is a string
+			repetitions: (optional) number of times to repeat the messge
 
 		Returns:
 			The sent message
@@ -35,7 +36,8 @@ def sendMsg(sckt,data,dataType,metadata,isString=True):
 	msg += "}"
 	msgLen = len(msg)
 	msg = str(msgLen)+msg
-	sckt.sendall(msg.encode())
+	for i in range(0,repetitions):
+		sckt.sendall(msg.encode())
 	return msg
 
 def recvMsg(conn,timeout=2):
@@ -70,21 +72,6 @@ def recvMsg(conn,timeout=2):
 	conn.recv(numChars)
 	recv = conn.recv(iMsgLength-1)
 	return str(recv.decode())
-
-def closeSocket(sckt):
-	""" Cleanly close a socket connection
-
-		Starts by sending a shutdown JSON message through the socket
-
-		Arguments:
-			sckt: socket to close
-	"""
-	try:
-		sendMsg(sckt,"closing","connInfo","None")
-		sckt.shutdown(socket.SHUT_WR)
-		sckt.close()
-	except:
-		pass
 
 def encode_img(image):
 	""" Encodes an image in Base64
