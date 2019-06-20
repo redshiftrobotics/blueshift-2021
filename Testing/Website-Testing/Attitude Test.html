@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Attitude Indicator</title>
+  <script type="text/javascript" src="svg.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+</head>
+<body>
+  Pitch: <input type="range" min="-180" max="180" value="0" class="slider" id="xR"> <br>
+  Roll: <input type="range" min="-180" max="180" value="0" class="slider" id="yR"> <br>
+  <div id="attitude"></div>
+  <script>
+	var xIn = document.getElementById("xR");
+	var yIn = document.getElementById("yR");
+
+	xIn.oninput = updateAttitude;
+	yIn.oninput = updateAttitude;
+
+	var width = 360;
+	var height = 360;
+
+	var elementWidth = width*Math.sqrt(2);
+	var draw = SVG('attitude').size(width, height);
+	var ground = draw.rect(elementWidth, height).attr({ fill: '#654321' });
+	var sky = draw.rect(elementWidth, height).attr({ fill: '#87ceeb' });
+	var xOffset = -(elementWidth-360)/2;
+	ground.move(xOffset, 180);
+	sky.move(xOffset,-180);
+
+	var origGroundLoc = [ground.x(),ground.y()]
+	var origSkyLoc = [sky.x(),sky.y()]
+
+	var mask = draw.mask();
+	mask.add(draw.circle(360).fill("#ffffff"));
+	ground.maskWith(mask);
+	sky.maskWith(mask);
+
+	function updateAttitude() {
+		var roll = Number(yIn.value);
+		var pitch = Number(xIn.value);
+		var cx = (width/2);
+		var cy = (height/2);
+		ground.rotate(roll,cx,cy);
+		sky.rotate(roll,cx,cy);
+		ground.y(pitch+180);
+		sky.y(pitch-180);
+		ground.maskWith(mask);
+		sky.maskWith(mask);
+	}
+  </script>
+</body>
+</html>
