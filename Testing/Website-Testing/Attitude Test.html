@@ -7,7 +7,7 @@
 </head>
 <body>
   Pitch: <input type="range" min="-180" max="180" value="0" class="slider" id="xR"> <br>  
-  Pitch Scale: <input type="range" min="100" max="300" value="0" class="slider" id="pS"> <br>
+  Pitch Scale: <input type="range" min="100" max="300" value="100" class="slider" id="pS"> <br>
   Roll: <input type="range" min="-180" max="180" value="0" class="slider" id="yR"> <br>
   <div id="attitude"></div>
 
@@ -107,6 +107,11 @@
 	var shadow = attitudeDisplay.circle(width-(2*outerRadius)).dmove(outerRadius,outerRadius).fill(shadowGradient).opacity(0.4);
 	var light = attitudeDisplay.circle(width).fill(lightGradient).opacity(0.5);
 	light.maskWith(maskOuter);
+
+	var markerStand = attitudeDisplay.polyline([[cx-10,height],[cx-1,cy+40],[cx+1,cy+40],[cx+10,height]]).fill("#ffff00").stroke({ color: "#ffff00", width: lineWidth });
+	var markerLine = attitudeDisplay.line(cx,cy,cx,height).stroke({ color: "#ffff00", width: lineWidth/1.5 });
+	var markerCircle = attitudeDisplay.circle(lineWidth*2).center(cx,cy).fill("#ffff00");
+	var orientationGuide = attitudeDisplay.path("M 31.427734,270.96094 H 265.25781 c -4.4e-4,65.73748 53.28987,119.02865 119.02735,119.02929 65.73824,4.4e-4 119.02973,-53.29105 119.02929,-119.02929 h 233.82813").attr({ 'fill-opacity':0, stroke: "#ffff00", 'stroke-width': lineWidth*3.33 }).center(cx,cy+18).scale(0.3);
 
 	function updateAttitude() {
 		var roll = Number(yIn.value);
