@@ -3,3 +3,4 @@
 imagezmq/
 pycache
 /Testing/ZMQ\ Video\ Test/*.zip
+*svg.js
