@@ -145,3 +145,15 @@ def isStopCode(event):
             Whether the event is a stop code
     """
     return event.code == 316 and event.value == 1
+
+
+def isZeroMotorCode(event):
+    """ Checks if the input event is a stop code
+
+        Arguments:
+            event: gamepad event to check
+
+        Returns:
+            Whether the event is a stop code
+    """
+    return event.code == 304 and event.value == 1

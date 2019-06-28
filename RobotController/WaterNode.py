@@ -1,9 +1,11 @@
 # Imports for Logging
 import logging
+from pythonjsonlogger import jsonlogger
 
 # Imports for Threading
 import threading
 import keyboard
+from queue import Queue
 
 # Imports for Video Streaming
 import sys
@@ -22,6 +24,7 @@ import keyboard
 # Settings Dict to keep track of editable settings for data processing
 settings = {
 	"numCams": 4,
+    "maxCams": 4,
 	"numMotors": 6,
 	"minMotorSpeed": 0,
 	"maxMotorSpeed": 180
@@ -34,6 +37,19 @@ execute = {
 	"receiveData": True
 }
 
+# Queue, Logger, and Class for Multithreaded Logging Communication
+groundQueue = Queue(0)
+
+class nodeHandler(logging.Handler):
+	def emit(self, record):
+		global groundQueue
+
+		logEntry = self.format(record)
+		groundQueue.put([logEntry,"log",False,False])
+
+logger = logging.getLogger("WaterNode")
+
+
 def stopAllThreads(callback=0):
 	""" Stops all currently running threads
 		
@@ -44,8 +60,7 @@ def stopAllThreads(callback=0):
 	execute['streamVideo'] = False
 	execute['receiveData'] = False
 	execute['sendData'] = False
-	execute['updateSettings'] = False
-	logging.debug("Stopping Threads")
+	logger.debug("Stopping Threads")
 	time.sleep(0.5)
 
 def sendVideoStreams(debug=False):
@@ -56,7 +71,7 @@ def sendVideoStreams(debug=False):
 	"""
 
 	sender = imagezmq.ImageSender(connect_to='tcp://127.0.0.1:'+str(CommunicationUtils.CAM_PORT))
-	logging.debug("Sending images to port: "+'tcp://127.0.0.1:'+str(CommunicationUtils.CAM_PORT))
+	logger.debug("Sending images to port: "+'tcp://127.0.0.1:'+str(CommunicationUtils.CAM_PORT))
 
 	camNames = ["mainCam"]
 	camCaps = [cv2.VideoCapture(0)]
@@ -65,7 +80,7 @@ def sendVideoStreams(debug=False):
 	#	camNames.append("bkpCam"+str(i))
 	#	camCaps.append(cv2.VideoCapture(i))
 	numCams = len(camCaps)
-	logging.debug('Cam names and Objects: '+str(camNames)+', '+str(camCaps))
+	logger.debug('Cam names and Objects: '+str(camNames)+', '+str(camCaps))
 
 	time.sleep(2.0)
 	try:
@@ -75,13 +90,13 @@ def sendVideoStreams(debug=False):
 				try:
 					sender.send_image(camNames[i], img)
 				except:
-					logging.warning("Invalid Image: "+str(img))
+					logger.warning("Invalid Image: "+str(img))
 					time.sleep(1)
 				if debug:
-					logging.debug("Sent Image: "+str(img[:1][:1]))
+					logger.debug("Sent Image: "+str(img[:1][:1]))
 	except Exception as e:
-		logging.error("VideoStream Thread Exception Occurred",exec_info=True)
-	logging.debug("Stopped VideoStream")
+		logger.error("VideoStream Thread Exception Occurred: {}".format(e), exec_info=True)
+	logger.debug("Stopped VideoStream")
 
 def receiveData(debug=False):
 	""" Recieves and processes JSON data from the Water Node
@@ -107,17 +122,16 @@ def receiveData(debug=False):
 							stopAllThreads()
 
 						if debug:
-							logging.debug("Raw receive: "+str(recv))
-							logging.debug("TtS: "+str(time.time()-float(j['timestamp'])))
+							logger.debug("Raw receive: "+str(recv))
+							logger.debug("TtS: "+str(time.time()-float(j['timestamp'])))
 					except Exception as e:
-						logging.debug("Couldn't recieve data")
-						stopAllThreads()
+						logger.debug("Couldn't recieve data: {}".format(e), exc_info=True)
 
 	except Exception as e:
-		logging.error("Receive Thread Exception Occurred",exc_info=True)
-	logging.debug("Stopped recvData")
+		logger.error("Receive Thread Exception Occurred", exc_info=True)
+	logger.debug("Stopped recvData")
 
-def sendData(debug=False):
+def sendData(sendQueue,debug=False):
 	""" Sends JSON data to the Water Node
 
 		Data will most likely be sensor data from an IMU and voltage/amperage sensor
@@ -147,47 +161,61 @@ def sendData(debug=False):
 					"volts": 0,
 					"amps": 0
 				}
-				try:
-					sent = CommunicationUtils.sendMsg(snsr,sensors,"sensors","None")
-				except Exception as e:
-					logging.warning("Couldn't send data")
-					stopAllThreads()
+				sendQueue.put([sensors,"sensors",True,True])
+				time.sleep(0.0125)
+				while not sendQueue.empty():
+					toSend = sendQueue.get()
+					try:
+						sent = CommunicationUtils.sendMsg(snsr,toSend[0],toSend[1],"None",isString=toSend[2],lowPriority=toSend[3])
+						if debug:
+							logger.debug("Sending: "+str(sent))
+					except Exception as e:
+						logger.warning("Couldn't send data: {}".format(e), exc_info=True)
 
-				if debug:
-					time.sleep(1)
-					logging.debug("Sending: "+str(sent))
-
+					sendQueue.task_done()
 	except Exception as e:
-		logging.error("Send Thread Exception Occurred",exc_info=True)
-	logging.debug("Stopped sendData")
+		logger.error("Send Thread Exception Occurred: {}".format(e), exc_info=True)
+	logger.debug("Stopped sendData")
 
 if( __name__ == "__main__"):
 	# Setup Logging preferences
 	verbose = [False,True]
 
-	for handler in logging.root.handlers[:]:
-		logging.root.removeHandler(handler)
-	logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
-
 	# Setup a callback to force stop the program
 	keyboard.on_press_key("q", stopAllThreads, suppress=False)
 
+	# Setup the logger
+	logger.setLevel(logging.DEBUG)
+
+	jsonLogHandler = nodeHandler()
+	jsonFormatter = jsonlogger.JsonFormatter("%(asctime)s %(name)s %(threadName)s %(levelname)s %(message)s")
+	jsonLogHandler.setFormatter(jsonFormatter)
+	jsonLogHandler.setLevel(logging.DEBUG)
+	logger.addHandler(jsonLogHandler)
+
+	logHandler = logging.StreamHandler()
+	logFormatter = logging.Formatter("%(asctime)s - %(name)s - %(threadName)s - %(levelname)s - %(message)s")
+	logHandler.setFormatter(logFormatter)
+	logHandler.setLevel(logging.INFO)
+	logger.addHandler(logHandler)
+
 	# Start each thread
-	logging.info("Starting Water Node")
-	logging.debug("Started all Threads")
+	logger.info("Starting Water Node")
+	logger.debug("Started all Threads")
 	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose[0],),daemon=True)
-	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
-	sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
+	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],),daemon=True)
+	sendDataThread = threading.Thread(target=sendData, args=(groundQueue,verbose[0],),daemon=True)
 	vidStreamThread.start()
 	recvDataThread.start()
 	sendDataThread.start()
 
 	# Begin the Shutdown
-		# Because there is no timeout on recvDataThread or sendDataThread, they won't join until manually stopped
-		# It's a bit of a hack, but it stops the program from shuting down instantly
-	recvDataThread.join()
-	sendDataThread.join()
+	while execute['streamVideo'] or execute['receiveData'] or execute['sendData']:
+		time.sleep(0.1)
+	recvDataThread.join(timeout=5)
+	sendDataThread.join(timeout=5)
 	vidStreamThread.join(timeout=5)
-	logging.debug("Stopped all Threads")
-	logging.info("Shutting Down Water Node")
+	logger.debug("Stopped all Threads")
+	logger.info("Shutting Down Water Node")
+	CommunicationUtils.clearQueue(groundQueue)
 	sys.exit()

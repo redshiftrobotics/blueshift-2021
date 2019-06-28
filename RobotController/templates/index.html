@@ -1,9 +1,28 @@
 <html>
   <head>
-    <title>Video Streaming Demonstration</title>
+    <title>Robot Controller</title>
+    <script src="{{ url_for('static', filename='lib/jquery-3.4.1.min.js') }}"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/main.css') }}" />
   </head>
   <body>
-    <h1>Video Streaming Demonstration</h1>
     <img src="{{ url_for('mainCam') }}">
+    <img src="{{ url_for('bkpCam1') }}">
+    <img src="{{ url_for('bkpCam2') }}">
+    <img src="{{ url_for('bkpCam3') }}">
+    <div id="logDisplay"></div>
   </body>
+  <script type="text/javascript">
+    var logDisplay = document.getElementById("logDisplay")
+    function updateLog(data) {
+      var isScrolledtoBottom =  logDisplay.scrollHeight - logDisplay.clientHeight <= logDisplay.scrollTop + 10;
+      var newLog = document.createElement("div");
+      newLog.innerHTML += data;
+      logDisplay.appendChild(newLog);
+
+      if(isScrolledtoBottom) {
+        logDisplay.scrollTop = logDisplay.scrollHeight - logDisplay.clientHeight;
+      }
+    }
+    setInterval(function(){$.getJSON("{{ url_for('getAir') }}", updateLog)}, 1);
+  </script>
 </html>

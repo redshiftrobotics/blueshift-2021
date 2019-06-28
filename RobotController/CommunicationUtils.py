@@ -4,13 +4,13 @@ import socket
 import base64
 import cv2
 import time
-import logging
 
 CAM_PORT = 5555
 CNTLR_PORT = 5554
 SNSR_PORT = 5553
+AIR_PORT = 8080
 
-def sendMsg(sckt,data,dataType,metadata,isString=True,repetitions=1):
+def sendMsg(sckt,data,dataType,metadata,isString=True,repetitions=1,lowPriority=False,send=True):
 	""" Send a JSON message through a socket
 
 		Arguments:
@@ -32,13 +32,16 @@ def sendMsg(sckt,data,dataType,metadata,isString=True,repetitions=1):
 	else:
 		msg += '"data":'+str(data)+','
 	msg += '"timestamp":'+str(time.time())+','
-	msg += '"metadata":"'+str(metadata)+'"'
+	msg += '"metadata":"'+str(metadata)+'",'
+	msg += '"lowPriority":"'+str(lowPriority)+'"'
 	msg += "}"
+	plainText = msg[1:]
 	msgLen = len(msg)
 	msg = str(msgLen)+msg
-	for i in range(0,repetitions):
-		sckt.sendall(msg.encode())
-	return msg
+	if send:
+		for i in range(0,repetitions):
+			sckt.sendall(msg.encode())
+	return plainText
 
 def recvMsg(conn,timeout=2):
 	""" Recieve a JSON message from a socket
@@ -84,3 +87,13 @@ def encodeImage(image):
     """
     retval, bffr = cv2.imencode('.jpg', image)
     return bffr.tobytes()
+
+def clearQueue(qToClear, debug=False):
+	if debug:
+		print("Left in Queue:")
+	while not qToClear.empty():
+		if debug:
+			print(qToClear.get())
+		else:
+			qToClear.get()
+		qToClear.task_done()
