@@ -8,7 +8,7 @@ import time
 CAM_PORT = 5555
 CNTLR_PORT = 5554
 SNSR_PORT = 5553
-AIR_PORT = 8080
+AIR_PORT = 5552
 
 def sendMsg(sckt,data,dataType,metadata,isString=True,repetitions=1,lowPriority=False,send=True):
 	""" Send a JSON message through a socket
@@ -30,10 +30,10 @@ def sendMsg(sckt,data,dataType,metadata,isString=True,repetitions=1,lowPriority=
 	if isString:
 		msg += '"data":"'+str(data)+'",'
 	else:
-		msg += '"data":'+str(data)+','
+		msg += '"data":'+json.dumps(data)+','
 	msg += '"timestamp":'+str(time.time())+','
 	msg += '"metadata":"'+str(metadata)+'",'
-	msg += '"lowPriority":"'+str(lowPriority)+'"'
+	msg += '"lowPriority":'+str(lowPriority).lower()
 	msg += "}"
 	plainText = msg[1:]
 	msgLen = len(msg)

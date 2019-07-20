@@ -1,3 +1,7 @@
+# Utility Imports
+import sys
+import os
+
 # Imports for Logging
 import logging
 from pythonjsonlogger import jsonlogger
@@ -8,7 +12,6 @@ import keyboard
 from queue import Queue
 
 # Imports for Video Streaming
-import sys
 sys.path.insert(0, 'imagezmq/imagezmq')
 
 import cv2
@@ -23,8 +26,8 @@ import keyboard
 
 # Settings Dict to keep track of editable settings for data processing
 settings = {
-	"numCams": 4,
-    "maxCams": 4,
+	"numCams": 3,
+    "maxCams": 3,
 	"numMotors": 6,
 	"minMotorSpeed": 0,
 	"maxMotorSpeed": 180
@@ -45,7 +48,7 @@ class nodeHandler(logging.Handler):
 		global groundQueue
 
 		logEntry = self.format(record)
-		groundQueue.put([logEntry,"log",False,False])
+		groundQueue.put([logEntry,"log",True,False])
 
 logger = logging.getLogger("WaterNode")
 
@@ -78,7 +81,7 @@ def sendVideoStreams(debug=False):
 
 	#for i in range(1,settings['numCams']):
 	#	camNames.append("bkpCam"+str(i))
-	#	camCaps.append(cv2.VideoCapture(i))
+	#	camCaps.append(cv2.VideoCapture(0))#i)) ### UPDATE LATER TO USE ADDITIONAL CAMERAS
 	numCams = len(camCaps)
 	logger.debug('Cam names and Objects: '+str(camNames)+', '+str(camCaps))
 
@@ -153,15 +156,11 @@ def sendData(sendQueue,debug=False):
 						"y": 0,
 						"z": 0,
 					},
-					"accel": {
-						"x": 0,
-						"y": 0,
-						"z": 0,
-					},
+					"speed": 0,
 					"volts": 0,
 					"amps": 0
 				}
-				sendQueue.put([sensors,"sensors",True,True])
+				sendQueue.put([sensors,"sensors",False,True])
 				time.sleep(0.0125)
 				while not sendQueue.empty():
 					toSend = sendQueue.get()
@@ -218,4 +217,5 @@ if( __name__ == "__main__"):
 	logger.debug("Stopped all Threads")
 	logger.info("Shutting Down Water Node")
 	CommunicationUtils.clearQueue(groundQueue)
+
 	sys.exit()

@@ -1,7 +1,10 @@
+# Utility Imports
+import sys
+import os
+
 # Imports for Logging
 import logging
 from pythonjsonlogger import jsonlogger
-
 
 # Imports for Threading
 import threading
@@ -9,9 +12,7 @@ import keyboard
 from queue import Queue
 
 # Imports for Video Streaming
-import sys
 sys.path.insert(0, 'imagezmq/imagezmq')
-
 import cv2
 import imagezmq
 
@@ -29,11 +30,12 @@ import evdev
 
 # Imports for AirNode
 from flask import Flask, render_template, Response
+from flask_socketio import SocketIO
 
 # Settings Dict to keep track of editable settings for data processing
 settings = {
-    "numCams": 4,
-    "maxCams": 4,
+    "numCams": 3,
+    "maxCams": 3,
     "drive": "holonomic",
     "numMotors": 6,
     "flipMotors": [1]*6,
@@ -53,6 +55,7 @@ execute = {
 camStreams = {
     "mainCam": Queue(0)
 }
+
 for i in range(0, settings['maxCams']):
     camStreams.update({"bkpCam"+str(i): Queue(0)})
 
@@ -60,9 +63,7 @@ airQueue = Queue(0)
 
 class nodeHandler(logging.Handler):
     def emit(self, record):
-        global groundQueue
-
-        logEntry = self.format(record)
+        logEntry = json.loads(self.format(record))
         airQueue.put(CommunicationUtils.sendMsg(None, logEntry, "log", None, isString=False, send=False))
 
 logger = logging.getLogger("GroundNode")
@@ -120,9 +121,14 @@ def receiveData(debug=False):
                 snsr.bind((HOST, PORT))
             except:
                 try:
-                    logger.error("Couldn't establish connection. Port {} is already in use".format(PORT))
-                    time.sleep(10)
-                    cntlr.bind((HOST, PORT))
+                    logger.error("Couldn't establish connection. Port {} is already in use".format(PORT))        
+                    # Kill any remaining processes on needed ports
+                    try:
+                        os.system("kill $(lsof -t -i tcp:{}})".format(PORT))
+                    except:
+                        pass
+                    time.sleep(2)
+                    snsr.bind((HOST, PORT))
                 except:
                     logger.error("Try again in a bit. Port {} is still busy".format(PORT))
                     stopAllThreads()
@@ -163,8 +169,13 @@ def sendData(debug=False):
                 cntlr.bind((HOST, PORT))
             except:
                 try:
-                    logger.error("Couldn't establish connection. Port {} is already in use".format(PORT))
-                    time.sleep(10)
+                    logger.error("Couldn't establish connection. Port {} is already in use".format(PORT))          
+                    # Kill any remaining processes on needed ports
+                    try:
+                        os.system("kill $(lsof -t -i tcp:{}})".format(PORT))
+                    except:
+                        pass
+                    time.sleep(2)
                     cntlr.bind((HOST, PORT))
                 except:
                     logger.error("Try again in a bit. Port {} is still busy".format(PORT))
@@ -232,17 +243,20 @@ def startAirNode(debug=False):
     log.disabled = True
     app.logger.disabled = True
 
+    socketio = SocketIO(app)
+
     @app.route('/')
     def index():
         return render_template('index.html')
 
-    @app.route('/getAir')
-    def getAir():
-        if not airQueue.empty():
-            tosend = json.dumps(airQueue.get())
-            airQueue.task_done()
-            return Response(tosend,
-                        mimetype='application/json')
+    def messageReceived(methods=['GET', 'POST']):
+        print('message was received!!!')
+
+    @socketio.on('getAirNodeUpdates')
+    def getAir(recv, methods=["GET","POST"]):
+        while not airQueue.empty():
+            tosend = airQueue.get()
+            socketio.emit("updateAirNode", tosend)
 
     def mainCamGen():
         myCamStream = camStreams["mainCam"]
@@ -260,6 +274,9 @@ def startAirNode(debug=False):
         return Response(mainCamGen(),
                         mimetype='multipart/x-mixed-replace; boundary=frame')
 
+    @app.route('/left')
+    def left():
+        return render_template('leftCam_logging.html')
 
     def bkpCam1Gen():
         myCamStream = camStreams["bkpCam2"]
@@ -278,6 +295,10 @@ def startAirNode(debug=False):
                         mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
+    @app.route('/right')
+    def right():
+        return render_template('rightCam_cv.html')
+
     def bkpCam2Gen():
         myCamStream = camStreams["bkpCam2"]
         while True:
@@ -288,30 +309,13 @@ def startAirNode(debug=False):
                     logger.debug("Sending new image to Air Node")
                 yield tosend
                 myCamStream.task_done()
-
+ 
     @app.route('/bkpCam2')
     def bkpCam2():
         return Response(bkpCam2Gen(),
                         mimetype='multipart/x-mixed-replace; boundary=frame')
 
-
-    def bkpCam3Gen():
-        myCamStream = camStreams["bkpCam3"]
-        while True:
-            time.sleep(camStreamSleep)
-            while not myCamStream.empty():
-                tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n')
-                if debug:
-                    logger.debug("Sending new image to Air Node")
-                yield tosend
-                myCamStream.task_done()
-
-    @app.route('/bkpCam3')
-    def bkpCam3():
-        return Response(bkpCam3Gen(),
-                        mimetype='multipart/x-mixed-replace; boundary=frame')
-
-    app.run(host='127.0.0.1',port=CommunicationUtils.AIR_PORT,debug=False)
+    socketio.run(app,host='127.0.0.1',port=CommunicationUtils.AIR_PORT,debug=False)
 
 
 if( __name__ == "__main__"):
@@ -335,7 +339,14 @@ if( __name__ == "__main__"):
     logHandler.setFormatter(logFormatter)
     logHandler.setLevel(logging.INFO)
     logger.addHandler(logHandler)
+         
+    # Kill any remaining processes on needed ports
+    try:
+        os.system('sudo kill $(sudo lsof -t -i tcp:5550-5560)',shell=True)
+    except:
+        pass
 
+    time.sleep(2)
     # Start each thread
     logger.info("Starting Ground Node")
     logger.debug("Started all Threads")
@@ -349,10 +360,10 @@ if( __name__ == "__main__"):
     airNodeThread.start()
 
     # Begin the Shutdown
-        # Because there is no timeout on recvDataThread or sendDataThread, they won't join until manually stopped
-        # It's a bit of a hack, but it stops the program from shuting down instantly
-    recvDataThread.join()
-    sendDataThread.join()
+    while execute['streamVideo'] or execute['receiveData'] or execute['sendData'] or execute['updateSettings']:
+        time.sleep(0.1)
+    recvDataThread.join(timeout=5)
+    sendDataThread.join(timeout=5)
     vidStreamThread.join(timeout=5)
     airNodeThread.join(timeout=5)
     logger.debug("Stopped all Threads")
@@ -360,4 +371,5 @@ if( __name__ == "__main__"):
     for camName in camStreams:
         CommunicationUtils.clearQueue(camStreams[camName])
     CommunicationUtils.clearQueue(airQueue)
+
     sys.exit()

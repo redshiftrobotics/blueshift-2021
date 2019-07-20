@@ -1,0 +1,38 @@
+<html>
+  <head>
+    <title>Robot Controller</title>
+    <script type="text/javascript" src="{{ url_for('static', filename='lib/jquery-3.4.1.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='lib/socket.io.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='lib/svg.js') }}"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/main.css') }}" />
+  </head>
+  <body>
+    <img id="bkpCam1" src="{{ url_for('bkpCam1') }}">
+    <div id="logDisplay"></div>
+  </body>
+  <script type="text/javascript">
+    var logDisplay = document.getElementById("logDisplay")
+    var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+    socket.on('updateAirNode', updateLog);
+
+    function updateLog(data) {
+      var parsed = JSON.parse(data); // Ex: {"dataType":"log","data":{"asctime": "2019-07-19 22:41:38,091", "name": "GroundNode", "threadName": "MainThread", "levelname": "INFO", "message": "Starting Ground Node"},"timestamp":1563601298.091247,"metadata":"None","lowPriority":false}
+      if(parsed.dataType == "log") {
+        var isScrolledtoBottom =  logDisplay.scrollHeight - logDisplay.clientHeight <= logDisplay.scrollTop + 10;
+        var newLog = document.createElement("div");
+
+        var log = parsed.data;
+        var logFormatted = log.asctime+" - "+log.name+" - "+log.levelname+": "+log.message; 
+        newLog.innerHTML += logFormatted;
+        logDisplay.appendChild(newLog);
+
+        if(isScrolledtoBottom) {
+          logDisplay.scrollTop = logDisplay.scrollHeight - logDisplay.clientHeight;
+        }
+      }
+    }
+
+    setInterval(function() {socket.emit("getAirNodeUpdates",Date.now())}, 16);
+  </script>
+</html>
