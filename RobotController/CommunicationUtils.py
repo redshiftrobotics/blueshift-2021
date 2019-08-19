@@ -1,4 +1,4 @@
-import json
+import simplejson as json
 import time
 import socket
 import base64
@@ -20,6 +20,7 @@ def sendMsg(sckt,data,dataType,metadata,isString=True,repetitions=1,lowPriority=
 			metadata: extra data to be sent
 			isString: (optional) whether the data is a string
 			repetitions: (optional) number of times to repeat the messge
+			send: (optional) whether a message is sent over the socket
 
 		Returns:
 			The sent message

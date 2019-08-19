@@ -48,7 +48,7 @@ class nodeHandler(logging.Handler):
 		global groundQueue
 
 		logEntry = self.format(record)
-		groundQueue.put([logEntry,"log",True,False])
+		groundQueue.put([json.loads(logEntry),"log",False,False])
 
 logger = logging.getLogger("WaterNode")
 
@@ -90,6 +90,7 @@ def sendVideoStreams(debug=False):
 		while execute['streamVideo']:
 			for i in range(0,numCams):
 				_, img = camCaps[i].read()
+				resized = cv2.resize(img, (1920, 1080), interpolation=cv2.INTER_CUBIC)
 				try:
 					sender.send_image(camNames[i], img)
 				except:

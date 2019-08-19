@@ -1,16 +1,71 @@
+@font-face { /* https://www.marksimonson.com/fonts/view/anonymous-pro */
+  font-family: 'Anonymous Pro Minus';
+  src: url('AnonymousProMinus.ttf');
+}
+
 #logDisplay {
 	height: 550px;
 	overflow: auto;
 }
 
 #mainCam {
-	width: 1920px;
-	height: 1080px;
+	background-color: #120D15;
+	width: 75vw;
+	height: 75vh;
 	display: block;
 	margin:0 auto;
 }
 
 #attitude {
-	display: block;
-	margin:0 auto;
+	position: absolute;
+	left: 50%;
+	margin-left: -180px;
+	font-size: 16px;
+}
+
+#displayContainer {
+	background-color: #232124;
+	color: #949295;
+	font-family: 'Anonymous Pro Minus';
+}
+div {
+	font-size: 80px;
+}
+
+#attitudeCell {
+	vertical-align: top;
+	height: 360px;
+}
+
+.tablewrapper {
+	position: relative;
+}
+
+.table {
+	display: table;
+	width: 100%;
+}
+
+.row {
+    display: table-row;
+}
+
+.cell {
+	display: table-cell;
+	text-align: center;
+	height: 180px;
+}
+
+.cell.empty
+{
+	border: none;
+	width: 100px;
+}
+
+.cell.rowspanned {
+	position: absolute;
+	top: 75vh;
+	bottom: 0px;
+	left: 50%;
+	margin-right: -50%;
 }

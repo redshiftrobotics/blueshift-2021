@@ -247,7 +247,7 @@ def startAirNode(debug=False):
 
     @app.route('/')
     def index():
-        return render_template('index.html')
+        return render_template('mid_sensors.html')
 
     def messageReceived(methods=['GET', 'POST']):
         print('message was received!!!')
@@ -315,6 +315,9 @@ def startAirNode(debug=False):
         return Response(bkpCam2Gen(),
                         mimetype='multipart/x-mixed-replace; boundary=frame')
 
+    app.jinja_env.auto_reload = True
+    app.config['TEMPLATES_AUTO_RELOAD'] = True
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
     socketio.run(app,host='127.0.0.1',port=CommunicationUtils.AIR_PORT,debug=False)
 
 

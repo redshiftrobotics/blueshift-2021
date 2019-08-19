@@ -19,6 +19,7 @@
     function updateLog(data) {
       var parsed = JSON.parse(data); // Ex: {"dataType":"log","data":{"asctime": "2019-07-19 22:41:38,091", "name": "GroundNode", "threadName": "MainThread", "levelname": "INFO", "message": "Starting Ground Node"},"timestamp":1563601298.091247,"metadata":"None","lowPriority":false}
       if(parsed.dataType == "log") {
+        console.log(parsed);
         var isScrolledtoBottom =  logDisplay.scrollHeight - logDisplay.clientHeight <= logDisplay.scrollTop + 10;
         var newLog = document.createElement("div");
 

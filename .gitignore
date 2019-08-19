@@ -6,3 +6,4 @@ pycache
 *svg.js
 *jquery*.js
 *socket.io*.js
+*.vscode
