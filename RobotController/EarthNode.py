@@ -8,7 +8,6 @@ from pythonjsonlogger import jsonlogger
 
 # Imports for Threading
 import threading
-import keyboard
 from queue import Queue
 
 # Imports for Video Streaming
@@ -21,8 +20,6 @@ import socket
 import CommunicationUtils
 import simplejson as json
 import time
-import keyboard
-import websocket
 
 # Imports for Controller Communication and Processing
 import ControllerUtils
@@ -66,7 +63,7 @@ class nodeHandler(logging.Handler):
         logEntry = json.loads(self.format(record))
         airQueue.put(CommunicationUtils.sendMsg(None, logEntry, "log", None, isString=False, send=False))
 
-logger = logging.getLogger("GroundNode")
+logger = logging.getLogger("EarthNode")
 
 
 def stopAllThreads(callback=0):
@@ -95,7 +92,7 @@ def receiveVideoStreams(debug=False):
         while execute['streamVideo']:
             deviceName, image = image_hub.recv_image()
             if debug:
-                logger.debug("Recieved new image from Ground Node")
+                logger.debug("Recieved new image from Earth Node")
                 logger.debug(image)
             image_hub.send_reply(b'OK')
             camStreams[deviceName].put(CommunicationUtils.encodeImage(image))
@@ -115,39 +112,44 @@ def receiveData(debug=False):
     HOST = '127.0.0.1'
     PORT = CommunicationUtils.SNSR_PORT
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as snsr:
-        try:
-            try:
-                snsr.bind((HOST, PORT))
-            except:
-                try:
-                    logger.error("Couldn't establish connection. Port {} is already in use".format(PORT))        
-                    # Kill any remaining processes on needed ports
-                    try:
-                        os.system("kill $(lsof -t -i tcp:{}})".format(PORT))
-                    except:
-                        pass
-                    time.sleep(2)
-                    snsr.bind((HOST, PORT))
-                except:
-                    logger.error("Try again in a bit. Port {} is still busy".format(PORT))
-                    stopAllThreads()
-            snsr.listen()
-            conn, addr = snsr.accept()
-            logger.info('Sensor Socket Connected by '+str(addr))
+    snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-            while execute['receiveData']:
-                try:
-                    recv = CommunicationUtils.recvMsg(conn)
-                    airQueue.put(recv)
-                    j = json.loads(recv)
-                    if debug:
-                        logger.debug("Raw receive: "+str(recv))
-                        logger.debug("TtS: "+str(time.time()-float(j['timestamp'])))
-                except Exception as e:
-                    logger.debug("Couldn't receive data: {}".format(e), exc_info=True)
+    snsr.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    snsr.bind((HOST, PORT))
+    '''
+    try:
+        snsr.bind((HOST, PORT))
+    except:
+        try:
+            logger.error("Couldn't establish connection. Port {} is already in use".format(PORT))        
+            # Kill any remaining processes on needed ports
+            try:
+                os.system("kill $(lsof -t -i tcp:{}})".format(PORT))
+            except:
+                pass
+            time.sleep(2)
+            snsr.bind((HOST, PORT))
+        except:
+            logger.error("Try again in a bit. Port {} is still busy".format(PORT))
+            stopAllThreads()
+    '''
+    snsr.listen()
+    conn, addr = snsr.accept()
+    logger.info('Sensor Socket Connected by '+str(addr))
+
+    while execute['receiveData']:
+        try:
+            recv = CommunicationUtils.recvMsg(conn)
+            airQueue.put(recv)
+            j = json.loads(recv)
+            if debug:
+                logger.debug("Raw receive: "+str(recv))
+                logger.debug("TtS: "+str(time.time()-float(j['timestamp'])))
         except Exception as e:
-            logger.error("Receive Thread Exception Occurred: {}".format(e), exc_info=True)
+            logger.debug("Couldn't receive data: {}".format(e), exc_info=True)
+    
+    conn.close()
+    snsr.close()
     logger.debug("Stopped recvData")
 
 def sendData(debug=False):
@@ -161,69 +163,72 @@ def sendData(debug=False):
     HOST = '127.0.0.1'
     PORT = CommunicationUtils.CNTLR_PORT
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as cntlr:
+    cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    cntlr.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    cntlr.bind((HOST, PORT))
+    '''
+    # Setup socket communication
+    try:
+        cntlr.bind((HOST, PORT))
+    except:
         try:
-        
-            # Setup socket communication
+            logger.error("Couldn't establish connection. Port {} is already in use".format(PORT))          
+            # Kill any remaining processes on needed ports
             try:
-                cntlr.bind((HOST, PORT))
+                os.system("kill $(lsof -t -i tcp:{}})".format(PORT))
             except:
-                try:
-                    logger.error("Couldn't establish connection. Port {} is already in use".format(PORT))          
-                    # Kill any remaining processes on needed ports
-                    try:
-                        os.system("kill $(lsof -t -i tcp:{}})".format(PORT))
-                    except:
-                        pass
-                    time.sleep(2)
-                    cntlr.bind((HOST, PORT))
-                except:
-                    logger.error("Try again in a bit. Port {} is still busy".format(PORT))
-                    stopAllThreads()
+                pass
+            time.sleep(2)
+            cntlr.bind((HOST, PORT))
+        except:
+            logger.error("Try again in a bit. Port {} is still busy".format(PORT))
+            stopAllThreads()
+    '''
 
-            cntlr.listen()
-            conn, addr = cntlr.accept()
-            logger.info('Motor Socket Connected by '+str(addr))
+    cntlr.listen()
+    conn, addr = cntlr.accept()
+    logger.info('Motor Socket Connected by '+str(addr))
 
-            # Start the update settings thread
-            updtSettingsThread = threading.Thread(target=updateSettings, args=(conn,debug,))
-            updtSettingsThread.start()
+    # Start the update settings thread
+    updtSettingsThread = threading.Thread(target=updateSettings, args=(conn,debug,))
+    updtSettingsThread.start()
 
-            # Start Controller
-            gamepad = ControllerUtils.identifyControllers()
-            while (not gamepad) and execute['sendData']:
-                time.sleep(5)
-                gamepad = ControllerUtils.identifyControllers()
+    # Start Controller
+    gamepad = ControllerUtils.identifyControllers()
+    while (not gamepad) and execute['sendData']:
+        time.sleep(5)
+        gamepad = ControllerUtils.identifyControllers()
 
-            while execute['sendData']:
-                event = gamepad.read_one()
-                if event:
-                    if (ControllerUtils.isStopCode(event)):
-                        CommunicationUtils.sendMsg(conn, "closing", "connInfo", "None", repetitions=2)
-                        logger.debug("Sending shutdown signal to Water Node")
-                        time.sleep(1)
-                        stopAllThreads()
-                    elif (ControllerUtils.isZeroMotorCode(event)):
-                        CommunicationUtils.sendMsg(conn, [90]*settings['numMotors'], "motorSpds", "zeroMotors", isString=False)
-                        logger.debug("Zeroed Motors Manually")
-                    else:
-                        ControllerUtils.processEvent(event)
-                        speeds = ControllerUtils.calcThrust()
-                        sent = CommunicationUtils.sendMsg(conn, speeds, "motorSpds", "None", isString=False, lowPriority=True)
-                        airQueue.put(sent)
-                    if debug:
-                        logger.debug("Sending: "+str(sent),extra={"rawData":"true"})
+    while execute['sendData']:
+        event = gamepad.read_one()
+        if event:
+            if (ControllerUtils.isStopCode(event)):
+                CommunicationUtils.sendMsg(conn, "closing", "connInfo", "None", repetitions=2)
+                logger.debug("Sending shutdown signal to Water Node")
+                time.sleep(1)
+                stopAllThreads()
+            elif (ControllerUtils.isZeroMotorCode(event)):
+                CommunicationUtils.sendMsg(conn, [90]*settings['numMotors'], "motorSpds", "zeroMotors", isString=False)
+                logger.debug("Zeroed Motors Manually")
+            else:
+                ControllerUtils.processEvent(event)
+                speeds = ControllerUtils.calcThrust()
+                sent = CommunicationUtils.sendMsg(conn, speeds, "motorSpds", "None", isString=False, lowPriority=True)
+                airQueue.put(sent)
+            if debug:
+                logger.debug("Sending: "+str(sent),extra={"rawData":"true"})
 
-            updtSettingsThread.join()
-
-        except Exception as e:
-            logger.error("Send Thread Exception Occurred: {}".format(e), exc_info=True)
+    updtSettingsThread.join()
+    
+    conn.close()
+    cntlr.close()
     logger.debug("Stopped sendData")
 
 def updateSettings(sckt,debug=False):
     """ Receives setting updates from the Air Node and makes edits
 
-        Most changes will be made to settings in the Ground Node, but some will be sent to the Water Node
+        Most changes will be made to settings in the Earth Node, but some will be sent to the Water Node
 
         Arguments:
             sckt: socket to communicate with the Water Node
@@ -325,9 +330,6 @@ if( __name__ == "__main__"):
     # Setup Logging preferences
     verbose = [False,True]
 
-    # Setup a callback to force stop the program
-    keyboard.on_press_key("q", stopAllThreads, suppress=False)
-
     # Setup the logger
     logger.setLevel(logging.DEBUG)
 
@@ -342,16 +344,18 @@ if( __name__ == "__main__"):
     logHandler.setFormatter(logFormatter)
     logHandler.setLevel(logging.INFO)
     logger.addHandler(logHandler)
-         
+
+    '''    
     # Kill any remaining processes on needed ports
     try:
         os.system('sudo kill $(sudo lsof -t -i tcp:5550-5560)',shell=True)
     except:
         pass
-
+    '''
+    
     time.sleep(2)
     # Start each thread
-    logger.info("Starting Ground Node")
+    logger.info("Starting Earth Node")
     logger.debug("Started all Threads")
     vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(verbose[0],), daemon=True)
     recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))

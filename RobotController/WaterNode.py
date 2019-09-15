@@ -8,7 +8,6 @@ from pythonjsonlogger import jsonlogger
 
 # Imports for Threading
 import threading
-import keyboard
 from queue import Queue
 
 # Imports for Video Streaming
@@ -22,7 +21,6 @@ import socket
 import CommunicationUtils
 import simplejson as json
 import time
-import keyboard
 
 # Settings Dict to keep track of editable settings for data processing
 settings = {
@@ -41,14 +39,14 @@ execute = {
 }
 
 # Queue, Logger, and Class for Multithreaded Logging Communication
-groundQueue = Queue(0)
+earthQueue = Queue(0)
 
 class nodeHandler(logging.Handler):
 	def emit(self, record):
-		global groundQueue
+		global earthQueue
 
 		logEntry = self.format(record)
-		groundQueue.put([json.loads(logEntry),"log",False,False])
+		earthQueue.put([json.loads(logEntry),"log",False,False])
 
 logger = logging.getLogger("WaterNode")
 
@@ -67,7 +65,7 @@ def stopAllThreads(callback=0):
 	time.sleep(0.5)
 
 def sendVideoStreams(debug=False):
-	""" Sends video from each camera to the Ground Node
+	""" Sends video from each camera to the Earth Node
 
 		Arguments:
 			debug: (optional) log debugging data
@@ -181,9 +179,6 @@ if( __name__ == "__main__"):
 	# Setup Logging preferences
 	verbose = [False,True]
 
-	# Setup a callback to force stop the program
-	keyboard.on_press_key("q", stopAllThreads, suppress=False)
-
 	# Setup the logger
 	logger.setLevel(logging.DEBUG)
 
@@ -204,7 +199,7 @@ if( __name__ == "__main__"):
 	logger.debug("Started all Threads")
 	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose[0],),daemon=True)
 	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],),daemon=True)
-	sendDataThread = threading.Thread(target=sendData, args=(groundQueue,verbose[0],),daemon=True)
+	sendDataThread = threading.Thread(target=sendData, args=(earthQueue,verbose[0],),daemon=True)
 	vidStreamThread.start()
 	recvDataThread.start()
 	sendDataThread.start()
@@ -217,6 +212,6 @@ if( __name__ == "__main__"):
 	vidStreamThread.join(timeout=5)
 	logger.debug("Stopped all Threads")
 	logger.info("Shutting Down Water Node")
-	CommunicationUtils.clearQueue(groundQueue)
+	CommunicationUtils.clearQueue(earthQueue)
 
 	sys.exit()
