@@ -71,8 +71,8 @@ def sendVideoStreams(debug=False):
 			debug: (optional) log debugging data
 	"""
 
-	sender = imagezmq.ImageSender(connect_to='tcp://127.0.0.1:'+str(CommunicationUtils.CAM_PORT))
-	logger.debug("Sending images to port: "+'tcp://127.0.0.1:'+str(CommunicationUtils.CAM_PORT))
+	sender = imagezmq.ImageSender(connect_to='tcp://'+CommunicationUtils.EARTH_IP+':'+str(CommunicationUtils.CAM_PORT))
+	logger.debug("Sending images to port: "+'tcp://'+CommunicationUtils.EARTH_IP+':'+str(CommunicationUtils.CAM_PORT))
 
 	camNames = ["mainCam"]
 	camCaps = [cv2.VideoCapture(0)]
@@ -109,7 +109,7 @@ def receiveData(debug=False):
 			debug: (optional) log debugging data
 	"""
 
-	HOST = '127.0.0.1'
+	HOST = CommunicationUtils.EARTH_IP
 	PORT = CommunicationUtils.CNTLR_PORT
 
 	try:
@@ -141,7 +141,7 @@ def sendData(sendQueue,debug=False):
 		Arguments:
 			debug: (optional) log debugging data
 	"""
-	HOST = '127.0.0.1'
+	HOST = CommunicationUtils.EARTH_IP
 	PORT = CommunicationUtils.SNSR_PORT
 
 	try:

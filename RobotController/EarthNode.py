@@ -109,32 +109,16 @@ def receiveData(debug=False):
             debug: (optional) log debugging data
     """
 
-    HOST = '127.0.0.1'
+    HOST = CommunicationUtils.EARTH_IP
     PORT = CommunicationUtils.SNSR_PORT
 
     snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     snsr.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     snsr.bind((HOST, PORT))
-    '''
-    try:
-        snsr.bind((HOST, PORT))
-    except:
-        try:
-            logger.error("Couldn't establish connection. Port {} is already in use".format(PORT))        
-            # Kill any remaining processes on needed ports
-            try:
-                os.system("kill $(lsof -t -i tcp:{}})".format(PORT))
-            except:
-                pass
-            time.sleep(2)
-            snsr.bind((HOST, PORT))
-        except:
-            logger.error("Try again in a bit. Port {} is still busy".format(PORT))
-            stopAllThreads()
-    '''
     snsr.listen()
     conn, addr = snsr.accept()
+    
     logger.info('Sensor Socket Connected by '+str(addr))
 
     while execute['receiveData']:
@@ -160,34 +144,16 @@ def sendData(debug=False):
         Arguments:
             debug: (optional) log debugging data
     """
-    HOST = '127.0.0.1'
+    HOST = CommunicationUtils.EARTH_IP
     PORT = CommunicationUtils.CNTLR_PORT
 
     cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     cntlr.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     cntlr.bind((HOST, PORT))
-    '''
-    # Setup socket communication
-    try:
-        cntlr.bind((HOST, PORT))
-    except:
-        try:
-            logger.error("Couldn't establish connection. Port {} is already in use".format(PORT))          
-            # Kill any remaining processes on needed ports
-            try:
-                os.system("kill $(lsof -t -i tcp:{}})".format(PORT))
-            except:
-                pass
-            time.sleep(2)
-            cntlr.bind((HOST, PORT))
-        except:
-            logger.error("Try again in a bit. Port {} is still busy".format(PORT))
-            stopAllThreads()
-    '''
-
     cntlr.listen()
     conn, addr = cntlr.accept()
+
     logger.info('Motor Socket Connected by '+str(addr))
 
     # Start the update settings thread
@@ -323,7 +289,7 @@ def startAirNode(debug=False):
     app.jinja_env.auto_reload = True
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
-    socketio.run(app,host='127.0.0.1',port=CommunicationUtils.AIR_PORT,debug=False)
+    socketio.run(app,host=CommunicationUtils.EARTH_IP,port=CommunicationUtils.AIR_PORT,debug=False)
 
 
 if( __name__ == "__main__"):

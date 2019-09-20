@@ -87,7 +87,7 @@ def checkArrayValue(arry,val):
             True if each item in the array was equal to the val
             Otherwise False
     """
-    return all(item==val for item in array)
+    return all(item==val for item in arry)
 
 def identifyControllers():
     """ Searches the available devices for a controller and returns it

@@ -1,6 +1,8 @@
 import simplejson as json
 import time
 import socket
+import fcntl
+import struct
 import base64
 import cv2
 import time
@@ -9,6 +11,8 @@ CAM_PORT = 5555
 CNTLR_PORT = 5554
 SNSR_PORT = 5553
 AIR_PORT = 5552
+
+EARTH_IP = '169.254.92.141'
 
 def sendMsg(sckt,data,dataType,metadata,isString=True,repetitions=1,lowPriority=False,send=True):
 	""" Send a JSON message through a socket
@@ -98,3 +102,19 @@ def clearQueue(qToClear, debug=False):
 		else:
 			qToClear.get()
 		qToClear.task_done()
+
+def getIPAddress(ifname):
+	""" Gets the IP Address of a NIC
+
+		Arguments:
+			ifname: the name of the network interface to get the ip address of
+
+		Returns:
+			The IP Address corresponding with ifname
+	"""
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	return socket.inet_ntoa(fcntl.ioctl(
+        s.fileno(),
+        0x8915,  # SIOCGIFADDR
+        struct.pack('256s', ifname[:15])
+			)[20:24])
