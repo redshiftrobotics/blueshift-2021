@@ -14,6 +14,7 @@ from queue import Queue
 sys.path.insert(0, 'imagezmq/imagezmq')
 import cv2
 import imagezmq
+import numpy as np
 
 # Imports for Socket Communication
 import socket
@@ -90,11 +91,12 @@ def receiveVideoStreams(debug=False):
 
         image_hub = imagezmq.ImageHub()
         while execute['streamVideo']:
-            deviceName, image = image_hub.recv_image()
+            deviceName, jpg_buffer = image_hub.recv_jpg()
             if debug:
                 logger.debug("Recieved new image from Earth Node")
-                logger.debug(image)
+                logger.debug(jpg_buffer)
             image_hub.send_reply(b'OK')
+            image = cv2.imdecode(np.frombuffer(jpg_buffer, dtype='uint8'), -1)
             camStreams[deviceName].put(CommunicationUtils.encodeImage(image))
     except Exception as e:
         logger.error("Video Streaming Thread Exception Occurred: {}".format(e), exc_info=True)

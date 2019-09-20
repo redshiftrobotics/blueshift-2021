@@ -28,7 +28,10 @@ settings = {
     "maxCams": 3,
 	"numMotors": 6,
 	"minMotorSpeed": 0,
-	"maxMotorSpeed": 180
+	"maxMotorSpeed": 180,
+	"streamingQuality": 10,
+	"mainCameraResolution": (1280, 720),
+	"backupCameraResolution": (480,270)
 }
 
 # Dict to stop threads
@@ -88,14 +91,15 @@ def sendVideoStreams(debug=False):
 		while execute['streamVideo']:
 			for i in range(0,numCams):
 				_, img = camCaps[i].read()
-				resized = cv2.resize(img, (1920, 1080), interpolation=cv2.INTER_CUBIC)
+				resized = cv2.resize(img, settings["mainCameraResolution"], interpolation=cv2.INTER_CUBIC)
+				ret_code, jpg_buffer = cv2.imencode(".jpg", resized, [int(cv2.IMWRITE_JPEG_QUALITY), settings['streamingQuality']])
 				try:
-					sender.send_image(camNames[i], img)
+					sender.send_jpg(camNames[i], jpg_buffer)
 				except:
-					logger.warning("Invalid Image: "+str(img))
+					logger.warning("Invalid Image: "+str(jpg_buffer))
 					time.sleep(1)
 				if debug:
-					logger.debug("Sent Image: "+str(img[:1][:1]))
+					logger.debug("Sent Image: "+str(jpg_buffer[:1][:1]))
 	except Exception as e:
 		logger.error("VideoStream Thread Exception Occurred: {}".format(e), exec_info=True)
 	logger.debug("Stopped VideoStream")

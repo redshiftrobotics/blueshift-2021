@@ -7,3 +7,4 @@ pycache
 *jquery*.js
 *socket.io*.js
 *.vscode
+RobotController/__pycache__/*
