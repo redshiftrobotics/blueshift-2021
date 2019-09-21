@@ -35,8 +35,8 @@ settings = {
     "numCams": 3,
     "maxCams": 3,
     "drive": "holonomic",
-    "numMotors": 6,
-    "flipMotors": [1]*6,
+    "numMotors": 8,
+    "flipMotors": [1]*8,
     "minMotorSpeed": 0,
     "maxMotorSpeed": 180
 }
@@ -163,10 +163,15 @@ def sendData(debug=False):
     updtSettingsThread.start()
 
     # Start Controller
-    gamepad = ControllerUtils.identifyControllers()
+    gamepad = None
     while (not gamepad) and execute['sendData']:
         time.sleep(5)
-        gamepad = ControllerUtils.identifyControllers()
+        try:
+            gamepad = ControllerUtils.identifyControllers()
+        except Exception as e:
+            print(e)
+
+    DC = ControllerUtils.DriveController()
 
     while execute['sendData']:
         event = gamepad.read_one()
@@ -180,9 +185,9 @@ def sendData(debug=False):
                 CommunicationUtils.sendMsg(conn, [90]*settings['numMotors'], "motorSpds", "zeroMotors", isString=False)
                 logger.debug("Zeroed Motors Manually")
             else:
-                ControllerUtils.processEvent(event)
-                speeds = ControllerUtils.calcThrust()
-                sent = CommunicationUtils.sendMsg(conn, speeds, "motorSpds", "None", isString=False, lowPriority=True)
+                DC.updateState(event)
+                speeds = DC.calcThrust(event)
+                sent = CommunicationUtils.sendMsg(conn, speeds, "thrustSpds", "None", isString=False, lowPriority=True)
                 airQueue.put(sent)
             if debug:
                 logger.debug("Sending: "+str(sent),extra={"rawData":"true"})

@@ -22,11 +22,14 @@ import CommunicationUtils
 import simplejson as json
 import time
 
+# Imports for Hardware Interfacing
+import HardwareUtils
+
 # Settings Dict to keep track of editable settings for data processing
 settings = {
 	"numCams": 3,
     "maxCams": 3,
-	"numMotors": 6,
+	"numMotors": 8,
 	"minMotorSpeed": 0,
 	"maxMotorSpeed": 180,
 	"streamingQuality": 10,
@@ -80,9 +83,9 @@ def sendVideoStreams(debug=False):
 	camNames = ["mainCam"]
 	camCaps = [cv2.VideoCapture(0)]
 
-	#for i in range(1,settings['numCams']):
-	#	camNames.append("bkpCam"+str(i))
-	#	camCaps.append(cv2.VideoCapture(0))#i)) ### UPDATE LATER TO USE ADDITIONAL CAMERAS
+	for i in range(1,settings['numCams']):
+		camNames.append("bkpCam"+str(i))
+		camCaps.append(cv2.VideoCapture(0))#i)) ### UPDATE LATER TO USE ADDITIONAL CAMERAS
 	numCams = len(camCaps)
 	logger.debug('Cam names and Objects: '+str(camNames)+', '+str(camCaps))
 
@@ -115,6 +118,8 @@ def receiveData(debug=False):
 
 	HOST = CommunicationUtils.EARTH_IP
 	PORT = CommunicationUtils.CNTLR_PORT
+	
+	SD = HardwareUtils.ServoDriver(enumerate(["T100"]*8))
 
 	try:
 		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as cntlr:
@@ -126,6 +131,10 @@ def receiveData(debug=False):
 						j = json.loads(recv)
 						if j['dataType'] == "connInfo" and j['data'] == "closing":
 							stopAllThreads()
+						
+						elif j['dataType'] == "thrustSpds":
+							for loc,spd in enumerate(j['data']):
+								SD.set_servo(loc,spd)
 
 						if debug:
 							logger.debug("Raw receive: "+str(recv))
@@ -171,10 +180,12 @@ def sendData(sendQueue,debug=False):
 						sent = CommunicationUtils.sendMsg(snsr,toSend[0],toSend[1],"None",isString=toSend[2],lowPriority=toSend[3])
 						if debug:
 							logger.debug("Sending: "+str(sent))
+
 					except Exception as e:
 						logger.warning("Couldn't send data: {}".format(e), exc_info=True)
 
 					sendQueue.task_done()
+
 	except Exception as e:
 		logger.error("Send Thread Exception Occurred: {}".format(e), exc_info=True)
 	logger.debug("Stopped sendData")
