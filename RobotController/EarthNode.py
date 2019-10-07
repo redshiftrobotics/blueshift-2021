@@ -89,7 +89,7 @@ def receiveVideoStreams(debug=False):
 
     try:
 
-        image_hub = imagezmq.ImageHub(open_port='tcp://*:'+CommunicationUtils.CAM_PORT)
+        image_hub = imagezmq.ImageHub(open_port='tcp://*:'+str(CommunicationUtils.CAM_PORT))
         while execute['streamVideo']:
             deviceName, jpg_buffer = image_hub.recv_jpg()
             if debug:
@@ -315,7 +315,7 @@ if( __name__ == "__main__"):
     logHandler = logging.StreamHandler()
     logFormatter = logging.Formatter("%(asctime)s - %(name)s - %(threadName)s - %(levelname)s - %(message)s")
     logHandler.setFormatter(logFormatter)
-    logHandler.setLevel(logging.DEBUG)
+    logHandler.setLevel(logging.INFO)
     logger.addHandler(logHandler)
     
     time.sleep(2)
