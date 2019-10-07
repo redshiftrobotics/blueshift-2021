@@ -12,7 +12,8 @@ CNTLR_PORT = 6665
 SNSR_PORT = 6664
 AIR_PORT = 6663
 
-EARTH_IP = '169.254.92.141'
+EARTH_IP = '169.254.219.238'
+WATER_IP = '169.254.210.218'
 
 def sendMsg(sckt,data,dataType,metadata,isString=True,repetitions=1,lowPriority=False,send=True):
 	""" Send a JSON message through a socket

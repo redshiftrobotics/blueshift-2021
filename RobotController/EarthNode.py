@@ -89,7 +89,7 @@ def receiveVideoStreams(debug=False):
 
     try:
 
-        image_hub = imagezmq.ImageHub()
+        image_hub = imagezmq.ImageHub(open_port='tcp://*:'+CommunicationUtils.CAM_PORT)
         while execute['streamVideo']:
             deviceName, jpg_buffer = image_hub.recv_jpg()
             if debug:
@@ -171,7 +171,7 @@ def sendData(debug=False):
         except Exception as e:
             print(e)
 
-    DC = ControllerUtils.DriveController()
+    #DC = ControllerUtils.DriveController()
 
     while execute['sendData']:
         event = gamepad.read_one()
@@ -186,7 +186,7 @@ def sendData(debug=False):
                 logger.debug("Zeroed Motors Manually")
             else:
                 DC.updateState(event)
-                speeds = DC.calcThrust(event)
+                #speeds = DC.calcThrust(event)
                 sent = CommunicationUtils.sendMsg(conn, speeds, "thrustSpds", "None", isString=False, lowPriority=True)
                 airQueue.put(sent)
             if debug:
@@ -296,7 +296,7 @@ def startAirNode(debug=False):
     app.jinja_env.auto_reload = True
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
-    socketio.run(app,host=CommunicationUtils.EARTH_IP,port=CommunicationUtils.AIR_PORT,debug=False)
+    socketio.run(app,host='10.0.0.207',port=CommunicationUtils.AIR_PORT,debug=False)
 
 
 if( __name__ == "__main__"):
@@ -315,16 +315,8 @@ if( __name__ == "__main__"):
     logHandler = logging.StreamHandler()
     logFormatter = logging.Formatter("%(asctime)s - %(name)s - %(threadName)s - %(levelname)s - %(message)s")
     logHandler.setFormatter(logFormatter)
-    logHandler.setLevel(logging.INFO)
+    logHandler.setLevel(logging.DEBUG)
     logger.addHandler(logHandler)
-
-    '''    
-    # Kill any remaining processes on needed ports
-    try:
-        os.system('sudo kill $(sudo lsof -t -i tcp:5550-5560)',shell=True)
-    except:
-        pass
-    '''
     
     time.sleep(2)
     # Start each thread
@@ -351,5 +343,3 @@ if( __name__ == "__main__"):
     for camName in camStreams:
         CommunicationUtils.clearQueue(camStreams[camName])
     CommunicationUtils.clearQueue(airQueue)
-
-    sys.exit()

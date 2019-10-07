@@ -2,7 +2,7 @@
   <head>
     <title>Robot Controller</title>
     <script type="text/javascript" src="{{ url_for('static', filename='lib/jquery-3.4.1.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='lib/svg.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='lib/svg.min.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='lib/socket.io.min.js') }}"></script>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/main.css') }}" />
   </head>
@@ -39,7 +39,7 @@
       console.log(parsed);
       switch (parsed.dataType) {
         case "log":
-          //console.log(JSON.stringify(parsed.data));
+          console.log(JSON.stringify(parsed.data));
         case "sensors":
           var sensorData = parsed.data;
           console.log(JSON.stringify(sensorData));
@@ -60,9 +60,14 @@
     var xOffset = -(elementWidth-360)/2;
     var lineWidth = 5;
     var pitchScaleFactor = (width-(2*outerRadius))/width;
-
+    
+    /* SVG.js 2.7
     var attitudeDisplay = SVG('attitude').size(width, height);
     $("#SvgjsSvg1003").appendTo($("#attitude"));
+    */
+
+    /* SVG.js 3.0 */
+    var attitudeDisplay = SVG().addTo("#attitude").size(width, height);
 
     var groundInner = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#654321' }).stroke({ color: "#ffffff", width: lineWidth/2 });
     var skyInner = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#87ceeb' }).stroke({ color: "#ffffff", width: lineWidth/2 });
@@ -123,17 +128,17 @@
     groundInner.maskWith(maskInner);
     skyInner.maskWith(maskInner);
 
-    var shadowGradient = attitudeDisplay.gradient('radial', function(stop) {
-        stop.at({offset: 0, color: "#000000", opacity: 0})
-        stop.at({offset: 0.5, color: "#000000", opacity: 0.1})
-        stop.at({offset: 0.75, color: "#000000", opacity: 0.3})
-        stop.at({offset: 1, color: "#000000", opacity: 1})
+    var shadowGradient = attitudeDisplay.gradient('radial', function(add) {
+        add.stop({offset: 0, color: "#000000", opacity: 0})
+        add.stop({offset: 0.5, color: "#000000", opacity: 0.1})
+        add.stop({offset: 0.75, color: "#000000", opacity: 0.3})
+        add.stop({offset: 1, color: "#000000", opacity: 1})
     })
 
-    var lightGradient = attitudeDisplay.gradient('radial', function(stop) {
-        stop.at({offset: 1-(2*outerRadius/width), color: "#ffffff", opacity: 1})
-        stop.at({offset: (1-(2*outerRadius/width))*1.07, color: "#ffffff", opacity: 0.3})
-        stop.at({offset: 1, color: "#ffffff", opacity: 0})
+    var lightGradient = attitudeDisplay.gradient('radial', function(add) {
+      add.stop({offset: 1-(2*outerRadius/width), color: "#ffffff", opacity: 1})
+      add.stop({offset: (1-(2*outerRadius/width))*1.07, color: "#ffffff", opacity: 0.3})
+      add.stop({offset: 1, color: "#ffffff", opacity: 0})
     })
 
     var shadow = attitudeDisplay.circle(width-(2*outerRadius)).dmove(outerRadius,outerRadius).fill(shadowGradient).opacity(0.4);
