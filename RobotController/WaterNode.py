@@ -85,7 +85,7 @@ def sendVideoStreams(debug=False):
 
 	for i in range(1,settings['numCams']):
 		camNames.append("bkpCam"+str(i))
-		camCaps.append(cv2.VideoCapture(0))#i)) ### UPDATE LATER TO USE ADDITIONAL CAMERAS
+		camCaps.append(camCaps[0] #cv2.VideoCapture(i)) ### UPDATE LATER TO USE ADDITIONAL CAMERAS
 	numCams = len(camCaps)
 	logger.debug('Cam names and Objects: '+str(camNames)+', '+str(camCaps))
 
