@@ -85,7 +85,7 @@ def sendVideoStreams(debug=False):
 
 	for i in range(1,settings['numCams']):
 		camNames.append("bkpCam"+str(i))
-		camCaps.append(camCaps[0] #cv2.VideoCapture(i)) ### UPDATE LATER TO USE ADDITIONAL CAMERAS
+		camCaps.append(camCaps[0]) #cv2.VideoCapture(i)) ### UPDATE LATER TO USE ADDITIONAL CAMERAS
 	numCams = len(camCaps)
 	logger.debug('Cam names and Objects: '+str(camNames)+', '+str(camCaps))
 
@@ -206,7 +206,7 @@ if( __name__ == "__main__"):
 	logHandler = logging.StreamHandler()
 	logFormatter = logging.Formatter("%(asctime)s - %(name)s - %(threadName)s - %(levelname)s - %(message)s")
 	logHandler.setFormatter(logFormatter)
-	logHandler.setLevel(logging.INFO)
+	logHandler.setLevel(logging.DEBUG)
 	logger.addHandler(logHandler)
 
 	# Start each thread
