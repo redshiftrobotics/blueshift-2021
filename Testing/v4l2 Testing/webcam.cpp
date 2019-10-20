@@ -126,7 +126,7 @@ Webcam::~Webcam()
       free(rgb_frame.data);
 }
 
-py::array_t<unsigned char> Webcam::frame(int timeout)
+py::bytes Webcam::frame(int timeout)
 {
     for (;;) {
         fd_set fds;
@@ -163,9 +163,9 @@ py::array_t<unsigned char> Webcam::frame(int timeout)
     //printf(buff_index);
     //printf(img);
 	//return &img;
-    unsigned char image [buf.size];
-    unsigned char * ptr = (unsigned char*) buf.data;
-    memcpy(image, (unsigned char**)ptr, buf.size);
+    char image [buf.size];
+    char * ptr = (char*) buf.data;
+    memcpy(image, (char**)ptr, buf.size);
     /*
     for(int i=0; i<buf.size; i++){
         unsigned char * ptr = (unsigned char*) buf.data;
@@ -175,7 +175,7 @@ py::array_t<unsigned char> Webcam::frame(int timeout)
     }
     //cout << image << endl;
     */
-    return (py::array_t<unsigned char>) *ptr;//buffers[buf_index].data;
+    return (py::bytes) ptr;//buffers[buf_index].data;
       /* EAGAIN - continue select loop. */
     }
 
@@ -359,16 +359,16 @@ void Webcam::init_device(void)
     if (force_format) {
         fmt.fmt.pix.width       = xres;
         fmt.fmt.pix.height      = yres;
-        fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
-        fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
+        fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
+        fmt.fmt.pix.field       = V4L2_FIELD_NONE;
 
         if (-1 == xioctl(fd, VIDIOC_S_FMT, &fmt))
             throw runtime_error("VIDIOC_S_FMT");
 
-        if (fmt.fmt.pix.pixelformat != V4L2_PIX_FMT_YUYV)
+        if (fmt.fmt.pix.pixelformat != V4L2_PIX_FMT_MJPEG)
             // note that libv4l2 (look for 'v4l-utils') provides helpers
             // to manage conversions
-            throw runtime_error("Webcam does not support YUYV format. Support for more format need to be added!");
+            throw runtime_error("Webcam does not support MJPEG format. Support for more format need to be added!");
 
         /* Note VIDIOC_S_FMT may change width and height. */
         xres = fmt.fmt.pix.width;

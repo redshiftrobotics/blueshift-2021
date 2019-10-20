@@ -41,7 +41,7 @@ public:
      *
      * Throws a runtime_error if the timeout is reached.
      */
-    py::array_t<unsigned char> frame(int timeout = 1);
+    py::bytes frame(int timeout = 1);
 
 private:
     void init_mmap();
