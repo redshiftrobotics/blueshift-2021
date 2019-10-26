@@ -103,19 +103,3 @@ def clearQueue(qToClear, debug=False):
 		else:
 			qToClear.get()
 		qToClear.task_done()
-
-def getIPAddress(ifname):
-	""" Gets the IP Address of a NIC
-
-		Arguments:
-			ifname: the name of the network interface to get the ip address of
-
-		Returns:
-			The IP Address corresponding with ifname
-	"""
-	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	return socket.inet_ntoa(fcntl.ioctl(
-        s.fileno(),
-        0x8915,  # SIOCGIFADDR
-        struct.pack('256s', ifname[:15])
-			)[20:24])

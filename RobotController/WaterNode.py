@@ -13,7 +13,8 @@ from queue import Queue
 # Imports for Video Streaming
 sys.path.insert(0, 'imagezmq/imagezmq')
 
-import cv2
+# import cv2 ## NO LONGER NEEDED ##
+import v4l2_camera
 import imagezmq
 
 # Imports for Socket Communication
@@ -32,9 +33,15 @@ settings = {
 	"numMotors": 8,
 	"minMotorSpeed": 0,
 	"maxMotorSpeed": 180,
-	"streamingQuality": 10,
-	"mainCameraResolution": (1280, 720),
-	"backupCameraResolution": (480,270)
+	"mainCameraResolution": {
+		"x": 1280,
+		"y": 720
+	},
+	"bkpCameraResolution": {
+		"x": 640,
+		"y": 480
+	},
+	"v4l2QueueNum": 4
 }
 
 # Dict to stop threads
@@ -81,11 +88,11 @@ def sendVideoStreams(debug=False):
 	logger.debug("Sending images to port: "+'tcp://'+CommunicationUtils.EARTH_IP+':'+str(CommunicationUtils.CAM_PORT))
 
 	camNames = ["mainCam"]
-	camCaps = [cv2.VideoCapture(0)]
+	camCaps = [v4l2_camera.Camera("/dev/video0", settings["mainCameraResolution"]["x"], settings["mainCameraResolution"]["y"], settings["v4l2QueueNum"])]
 
 	for i in range(1,settings['numCams']):
 		camNames.append("bkpCam"+str(i))
-		camCaps.append(camCaps[0]) #cv2.VideoCapture(i)) ### UPDATE LATER TO USE ADDITIONAL CAMERAS
+		camCaps.append(camCaps[0]) #v4l2_camera.Camera("/dev/video"+str(i), settings["bkpCameraResolution"]["x"],settings["bkpCameraResolution"]["y"], settings["v4l2QueueNum"])) ### UPDATE LATER TO USE ADDITIONAL CAMERAS
 	numCams = len(camCaps)
 	logger.debug('Cam names and Objects: '+str(camNames)+', '+str(camCaps))
 
@@ -93,16 +100,15 @@ def sendVideoStreams(debug=False):
 	try:
 		while execute['streamVideo']:
 			for i in range(0,numCams):
-				_, img = camCaps[i].read()
-				resized = cv2.resize(img, settings["mainCameraResolution"], interpolation=cv2.INTER_CUBIC)
-				ret_code, jpg_buffer = cv2.imencode(".jpg", resized, [int(cv2.IMWRITE_JPEG_QUALITY), settings['streamingQuality']])
+				jpg_img = camCaps[i].get_frame()
 				try:
-					sender.send_jpg(camNames[i], jpg_buffer)
+					sender.send_jpg(camNames[i], jpg_img)
+					#sender.send_image(camNames[i], resized)
 				except:
-					logger.warning("Invalid Image: "+str(jpg_buffer))
+					logger.warning("Invalid Image: "+str(jpg_img))
 					time.sleep(1)
 				if debug:
-					logger.debug("Sent Image: "+str(jpg_buffer[:1][:1]))
+					logger.debug("Sent Image: "+str(jpg_img))
 	except Exception as e:
 		logger.error("VideoStream Thread Exception Occurred: {}".format(e), exec_info=True)
 	logger.debug("Stopped VideoStream")
@@ -206,7 +212,7 @@ if( __name__ == "__main__"):
 	logHandler = logging.StreamHandler()
 	logFormatter = logging.Formatter("%(asctime)s - %(name)s - %(threadName)s - %(levelname)s - %(message)s")
 	logHandler.setFormatter(logFormatter)
-	logHandler.setLevel(logging.DEBUG)
+	logHandler.setLevel(logging.INFO)
 	logger.addHandler(logHandler)
 
 	# Start each thread
