@@ -92,6 +92,7 @@ def receiveVideoStreams(debug=False):
         image_hub = imagezmq.ImageHub(open_port='tcp://*:'+str(CommunicationUtils.CAM_PORT))
         while execute['streamVideo']:
             deviceName, jpg_buffer = image_hub.recv_jpg()
+            #deviceName, image = image_hub.recv_image()
             if debug:
                 logger.debug("Recieved new image from Earth Node")
                 logger.debug(jpg_buffer)
@@ -296,7 +297,7 @@ def startAirNode(debug=False):
     app.jinja_env.auto_reload = True
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
-    socketio.run(app,host='10.0.0.207',port=CommunicationUtils.AIR_PORT,debug=False)
+    socketio.run(app,host='localhost',port=CommunicationUtils.AIR_PORT,debug=False)
 
 
 if( __name__ == "__main__"):

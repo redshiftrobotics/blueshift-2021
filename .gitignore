@@ -8,3 +8,4 @@ pycache
 *socket.io*.js
 *.vscode
 RobotController/__pycache__/*
+RobotController/static/lib/svg.min.js
