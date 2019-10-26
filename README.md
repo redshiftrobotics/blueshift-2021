@@ -22,3 +22,5 @@ The `water` node interfaces with all of the hardware on the robot itself. That i
 
 The `air` node is a front end to display the information captured and processed by the `water` and `earth` nodes. It displays sensor measurments, camera feeds, logs, and computer vision results.
 
+## How to start on Udoo
+After connecting the Udoo to the Pi, start two terminal instances on the Udoo. First, run start-earthnode.sh. In the other instance, run start-waternode.sh. This will open an ssh connection to the Pi (so long as you have setup keygens) and start the waternode.
