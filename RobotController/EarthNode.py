@@ -2,9 +2,11 @@
 import sys
 import os
 
+'''
 # Imports for Logging
 import logging
 from pythonjsonlogger import jsonlogger
+'''
 
 # Imports for Threading
 import threading
@@ -59,13 +61,14 @@ for i in range(0, settings['maxCams']):
 
 airQueue = Queue(0)
 
+'''
 class nodeHandler(logging.Handler):
     def emit(self, record):
         logEntry = json.loads(self.format(record))
         airQueue.put(CommunicationUtils.sendMsg(None, logEntry, "log", None, isString=False, send=False))
 
 logger = logging.getLogger("EarthNode")
-
+'''
 
 def stopAllThreads(callback=0):
     """ Stops all currently running threads
@@ -78,7 +81,9 @@ def stopAllThreads(callback=0):
     execute['receiveData'] = False
     execute['sendData'] = False
     execute['updateSettings'] = False
+    '''
     logger.debug("Stopping Threads")
+    '''
 
 def receiveVideoStreams(debug=False):
     """ Recieves and processes video from the Water Node then sends it to the Air Node
@@ -93,15 +98,20 @@ def receiveVideoStreams(debug=False):
         while execute['streamVideo']:
             deviceName, jpg_buffer = image_hub.recv_jpg()
             #deviceName, image = image_hub.recv_image()
+            '''
             if debug:
                 logger.debug("Recieved new image from Earth Node")
                 logger.debug(jpg_buffer)
+            '''
             image_hub.send_reply(b'OK')
             image = cv2.imdecode(np.frombuffer(jpg_buffer, dtype='uint8'), -1)
             camStreams[deviceName].put(CommunicationUtils.encodeImage(image))
     except Exception as e:
+        pass
+    '''
         logger.error("Video Streaming Thread Exception Occurred: {}".format(e), exc_info=True)
     logger.debug("Stopped VideoStream")
+    '''
 
 def receiveData(debug=False):
     """ Recieves and processes JSON data from the Water Node
@@ -122,22 +132,30 @@ def receiveData(debug=False):
     snsr.listen()
     conn, addr = snsr.accept()
     
+    '''
     logger.info('Sensor Socket Connected by '+str(addr))
+    '''
 
     while execute['receiveData']:
         try:
             recv = CommunicationUtils.recvMsg(conn)
             airQueue.put(recv)
             j = json.loads(recv)
+            '''
             if debug:
                 logger.debug("Raw receive: "+str(recv))
                 logger.debug("TtS: "+str(time.time()-float(j['timestamp'])))
+            '''
         except Exception as e:
+            '''
             logger.debug("Couldn't receive data: {}".format(e), exc_info=True)
+            '''
     
     conn.close()
     snsr.close()
+    '''
     logger.debug("Stopped recvData")
+    '''
 
 def sendData(debug=False):
     """ Sends JSON data to the Water Node
@@ -157,7 +175,9 @@ def sendData(debug=False):
     cntlr.listen()
     conn, addr = cntlr.accept()
 
+    '''
     logger.info('Motor Socket Connected by '+str(addr))
+    '''
 
     # Start the update settings thread
     updtSettingsThread = threading.Thread(target=updateSettings, args=(conn,debug,))
@@ -179,25 +199,33 @@ def sendData(debug=False):
         if event:
             if (ControllerUtils.isStopCode(event)):
                 CommunicationUtils.sendMsg(conn, "closing", "connInfo", "None", repetitions=2)
+                '''
                 logger.debug("Sending shutdown signal to Water Node")
+                '''
                 time.sleep(1)
                 stopAllThreads()
             elif (ControllerUtils.isZeroMotorCode(event)):
                 CommunicationUtils.sendMsg(conn, [90]*settings['numMotors'], "motorSpds", "zeroMotors", isString=False)
+                '''
                 logger.debug("Zeroed Motors Manually")
+                '''
             else:
                 DC.updateState(event)
                 #speeds = DC.calcThrust(event)
                 sent = CommunicationUtils.sendMsg(conn, speeds, "thrustSpds", "None", isString=False, lowPriority=True)
                 airQueue.put(sent)
             if debug:
+                '''
                 logger.debug("Sending: "+str(sent),extra={"rawData":"true"})
+                '''
 
     updtSettingsThread.join()
     
     conn.close()
     cntlr.close()
+    '''
     logger.debug("Stopped sendData")
+    '''
 
 def updateSettings(sckt,debug=False):
     """ Receives setting updates from the Air Node and makes edits
@@ -211,16 +239,21 @@ def updateSettings(sckt,debug=False):
     # Wait until a setting is updated, then make the change and or sent data to the water node
     while execute['updateSettings']:
         time.sleep(2)
+    '''
     logger.debug("Stopped updateSettings")
+    '''
 
 def startAirNode(debug=False):
     camStreamSleep = 0.03
 
     app = Flask(__name__)
+
+    '''
     # Disable Logging
     log = logging.getLogger('werkzeug')
     log.disabled = True
     app.logger.disabled = True
+    '''
 
     socketio = SocketIO(app)
 
@@ -243,8 +276,10 @@ def startAirNode(debug=False):
             time.sleep(camStreamSleep)
             while not myCamStream.empty():
                 tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n')
+                '''
                 if debug:
                     logger.debug("Sending new image to Air Node")
+                '''
                 yield tosend
                 myCamStream.task_done()
 
@@ -263,8 +298,10 @@ def startAirNode(debug=False):
             time.sleep(camStreamSleep)
             while not myCamStream.empty():
                 tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n')
+                '''
                 if debug:
                     logger.debug("Sending new image to Air Node")
+                '''
                 yield tosend
                 myCamStream.task_done()
 
@@ -284,8 +321,10 @@ def startAirNode(debug=False):
             time.sleep(camStreamSleep)
             while not myCamStream.empty():
                 tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n')
+                '''
                 if debug:
                     logger.debug("Sending new image to Air Node")
+                '''
                 yield tosend
                 myCamStream.task_done()
  
@@ -304,6 +343,7 @@ if( __name__ == "__main__"):
     # Setup Logging preferences
     verbose = [False,True]
 
+    '''
     # Setup the logger
     logger.setLevel(logging.DEBUG)
 
@@ -323,6 +363,8 @@ if( __name__ == "__main__"):
     # Start each thread
     logger.info("Starting Earth Node")
     logger.debug("Started all Threads")
+    '''
+
     vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(verbose[0],), daemon=True)
     recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
     sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
@@ -339,8 +381,10 @@ if( __name__ == "__main__"):
     sendDataThread.join(timeout=5)
     vidStreamThread.join(timeout=5)
     airNodeThread.join(timeout=5)
+    '''
     logger.debug("Stopped all Threads")
     logger.info("Shutting Down Ground Node")
+    '''
     for camName in camStreams:
         CommunicationUtils.clearQueue(camStreams[camName])
     CommunicationUtils.clearQueue(airQueue)
