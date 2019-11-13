@@ -38,7 +38,8 @@ settings = {
     "numMotors": 8,
     "flipMotors": [1]*8,
     "minMotorSpeed": 0,
-    "maxMotorSpeed": 180
+    "maxMotorSpeed": 180,
+    "camStreamSleep": 1.0/30.0
 }
 
 # Dict to stop threads
@@ -99,6 +100,7 @@ def receiveVideoStreams(debug=False):
             image_hub.send_reply(b'OK')
             image = cv2.imdecode(np.frombuffer(jpg_buffer, dtype='uint8'), -1)
             camStreams[deviceName].put(CommunicationUtils.encodeImage(image))
+
     except Exception as e:
         logger.error("Video Streaming Thread Exception Occurred: {}".format(e), exc_info=True)
     logger.debug("Stopped VideoStream")
@@ -172,7 +174,7 @@ def sendData(debug=False):
         except Exception as e:
             print(e)
 
-    #DC = ControllerUtils.DriveController()
+    DC = ControllerUtils.DriveController()
 
     while execute['sendData']:
         event = gamepad.read_one()
@@ -187,7 +189,7 @@ def sendData(debug=False):
                 logger.debug("Zeroed Motors Manually")
             else:
                 DC.updateState(event)
-                #speeds = DC.calcThrust(event)
+                speeds = DC.calcThrust(event)
                 sent = CommunicationUtils.sendMsg(conn, speeds, "thrustSpds", "None", isString=False, lowPriority=True)
                 airQueue.put(sent)
             if debug:
@@ -214,8 +216,6 @@ def updateSettings(sckt,debug=False):
     logger.debug("Stopped updateSettings")
 
 def startAirNode(debug=False):
-    camStreamSleep = 0.03
-
     app = Flask(__name__)
     # Disable Logging
     log = logging.getLogger('werkzeug')
@@ -237,62 +237,29 @@ def startAirNode(debug=False):
             tosend = airQueue.get()
             socketio.emit("updateAirNode", tosend)
 
-    def mainCamGen():
-        myCamStream = camStreams["mainCam"]
+    def camGen(camName):
+        myCamStream = camStreams[camName]
         while True:
-            time.sleep(camStreamSleep)
+            time.sleep(settings["camStreamSleep"])
             while not myCamStream.empty():
-                tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n')
+                tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n\r\n')
                 if debug:
                     logger.debug("Sending new image to Air Node")
                 yield tosend
                 myCamStream.task_done()
 
-    @app.route('/mainCam')
-    def mainCam():
-        return Response(mainCamGen(),
+    @app.route('/videoFeed/<camName>')
+    def mainCam(camName):
+        return Response(camGen(camName),
                         mimetype='multipart/x-mixed-replace; boundary=frame')
 
     @app.route('/left')
     def left():
         return render_template('leftCam_logging.html')
 
-    def bkpCam1Gen():
-        myCamStream = camStreams["bkpCam2"]
-        while True:
-            time.sleep(camStreamSleep)
-            while not myCamStream.empty():
-                tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n')
-                if debug:
-                    logger.debug("Sending new image to Air Node")
-                yield tosend
-                myCamStream.task_done()
-
-    @app.route('/bkpCam1')
-    def bkpCam1():
-        return Response(bkpCam1Gen(),
-                        mimetype='multipart/x-mixed-replace; boundary=frame')
-
-
     @app.route('/right')
     def right():
         return render_template('rightCam_cv.html')
-
-    def bkpCam2Gen():
-        myCamStream = camStreams["bkpCam2"]
-        while True:
-            time.sleep(camStreamSleep)
-            while not myCamStream.empty():
-                tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n')
-                if debug:
-                    logger.debug("Sending new image to Air Node")
-                yield tosend
-                myCamStream.task_done()
- 
-    @app.route('/bkpCam2')
-    def bkpCam2():
-        return Response(bkpCam2Gen(),
-                        mimetype='multipart/x-mixed-replace; boundary=frame')
 
     app.jinja_env.auto_reload = True
     app.config['TEMPLATES_AUTO_RELOAD'] = True

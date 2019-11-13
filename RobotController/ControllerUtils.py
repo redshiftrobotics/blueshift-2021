@@ -2,28 +2,29 @@ import evdev
 import logging
 
 class DriveController():
-    def __init__(motor_order=[0,1,2,3,4,5,6,7]):
+    def __init__(self, order=[0,1,2,3,4,5,6,7]):
         self.settings = {
             "motor_order": {
-                "frontLeft": 0,
-                "frontRight": 1,
-                "backLeft": 2,
-                "backRight": 3,
-                "verticalLeft": 4,
-                "verticalRight": 5,
-                "verticalFront": 6,
-                "verticalBack": 7
-            }
+                "frontLeft": order[0],
+                "frontRight": order[1],
+                "backLeft": order[2],
+                "backRight": order[3],
+                "verticalLeft": order[4],
+                "verticalRight": order[5],
+                "verticalFront": order[6],
+                "verticalBack": order[7]
+            },
+            "style": "holonomic"
         }
         self.joyHorizontal = 0
         self.joyForward = 0
         self.joyRotation = 0
         self.joyVertical = 0
-        self.mtrSpeeds = [0]*len(motor_order)
+        self.mtrSpeeds = [0]*len(order)
     
-    def updateState(event):
-        code = generator.code
-        value = generator.value
+    def updateState(self, event):
+        code = event.code
+        value = event.value
         
         if ((value <= -50 or value >= 50) and (code == 0 or code == 1 or code == 3 or code == 4) and generator.type !=0):
             if code == 0:
@@ -35,21 +36,21 @@ class DriveController():
             if code == 4:
                 self.joyVertical = deadzoneCorrect(value)
 
-    def calcThrust(style="holonomic"):
+    def calcThrust(self, style="holonomic"):
         """ Calculates the speed for each motor based on stored controller inputs
 
             Returns:
                 An array of calculated motors speed values
         """
-        if style == "holonomic":
-            self.mtrSpeeds[frontLeft] = 180-self.clamp(self.remapDeg(self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[frontRight] = self.clamp(self.remapDeg(-self.joyForward + self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[backLeft] = 180-self.clamp(self.remapDeg(self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[backRight] = self.clamp(self.remapDeg(-self.joyForward + self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[verticalLeft] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
-            self.mtrSpeeds[verticalRight] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
-            self.mtrSpeeds[verticalFront] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
-            self.mtrSpeeds[verticalBack] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
+        if settings["style"] == "holonomic":
+            self.mtrSpeeds[settings["motor_order"]["frontLeft"]] = 180-self.clamp(self.remapDeg(self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
+            self.mtrSpeeds[settings["motor_order"]["frontRight"]] = self.clamp(self.remapDeg(-self.joyForward + self.joyHorizontal + self.joyRotation), 0, 180)
+            self.mtrSpeeds[settings["motor_order"]["backLeft"]] = 180-self.clamp(self.remapDeg(self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
+            self.mtrSpeeds[settings["motor_order"]["backRight"]] = self.clamp(self.remapDeg(-self.joyForward + self.joyHorizontal + self.joyRotation), 0, 180)
+            self.mtrSpeeds[settings["motor_order"]["verticalLeft"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
+            self.mtrSpeeds[settings["motor_order"]["verticalRight"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
+            self.mtrSpeeds[settings["motor_order"]["verticalFront"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
+            self.mtrSpeeds[settings["motor_order"]["verticalBack"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
         return self.mtrSpeeds
     
     def remapDeg(val):
@@ -127,7 +128,7 @@ def isZeroMotorCode(event):
     """
     return event.code == 304 and event.value == 1
 
-def identifyControllers():
+def identifyController():
         """ Searches the available devices for a controller and returns it
 
             Returns:
