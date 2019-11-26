@@ -15,6 +15,15 @@ AIR_PORT = 6663
 EARTH_IP = '169.254.219.238'
 WATER_IP = '169.254.210.218'
 
+def packet(tag,data,timestamp,metadata="",highPriority=False):
+	dataPacket = {
+		"tag": tag,
+		"data": data,
+		"timestamp": timestamp,
+		"highPriority": highPriority
+	}
+	return dataPacket
+
 def sendMsg(sckt,data,dataType,metadata,isString=True,repetitions=1,lowPriority=False,send=True):
 	""" Send a JSON message through a socket
 
@@ -102,4 +111,3 @@ def clearQueue(qToClear, debug=False):
 			print(qToClear.get())
 		else:
 			qToClear.get()
-		qToClear.task_done()

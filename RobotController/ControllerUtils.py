@@ -2,7 +2,7 @@ import evdev
 import logging
 
 class DriveController():
-    def __init__(motor_order=[0,1,2,3,4,5,6,7]):
+    def __init__(self, motor_order=[0,1,2,3,4,5,6,7]):
         self.settings = {
             "motor_order": {
                 "frontLeft": 0,
@@ -21,9 +21,9 @@ class DriveController():
         self.joyVertical = 0
         self.mtrSpeeds = [0]*len(motor_order)
     
-    def updateState(event):
-        code = generator.code
-        value = generator.value
+    def updateState(self, event):
+        code = event.code
+        value = event.value
         
         if ((value <= -50 or value >= 50) and (code == 0 or code == 1 or code == 3 or code == 4) and generator.type !=0):
             if code == 0:

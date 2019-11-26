@@ -48,25 +48,42 @@ execute = {
     "streamVideo": True,
     "receiveData": True,
     "sendData": True,
-    "updateSettings": True
+    "updateSettings": True,
+    "communication": True
 }
 
-# Dict to store camera stream queues
-camStreams = {
-    "mainCam": Queue(0)
-}
-
-for i in range(0, settings['maxCams']):
-    camStreams.update({"bkpCam"+str(i): Queue(0)})
-
+# Queues to send data to specific Threads
 airQueue = Queue(0)
+airCamQueues = {
+    "mainCam": Queue(0),
+    "bkpCam1": Queue(0),
+    "bkpCam2": Queue(0)
+}
+recvDataQueue = Queue(0)
+sendDataQueue = Queue(0)
+recvImageQueue = Queue(0)
+communicationHandlerQueue = Queue(0)
+mainQueue = Queue(0)
+
+# Dict that stores message tags and the threads the go to
+tags = {
+    "sensor": [airQueue, mainQueue],
+    "cam": {
+        "mainCam": [airCamQueues["mainCam"],mainQueue],
+        "bkpCam1": [airCamQueues["bkpCam1"]],
+        "bkpCam2": [airCamQueues["bkpCam2"]],
+        },
+    "bkpCams": [airQueue],
+    "motorData": [sendDataQueue],
+    "log": [airQueue],
+    "stateChange": [airQueue,recvDataQueue,sendDataQueue,recvImageQueue,mainQueue]
+}
 
 '''
 class nodeHandler(logging.Handler):
     def emit(self, record):
         logEntry = json.loads(self.format(record))
         airQueue.put(CommunicationUtils.sendMsg(None, logEntry, "log", None, isString=False, send=False))
-
 logger = logging.getLogger("EarthNode")
 '''
 
@@ -81,33 +98,55 @@ def stopAllThreads(callback=0):
     execute['receiveData'] = False
     execute['sendData'] = False
     execute['updateSettings'] = False
+    execute['communicationHandler'] = False
     '''
     logger.debug("Stopping Threads")
     '''
 
+def communicationHandler(debug=False):
+    """ Handles communication between all of the other threads
+
+        Arguments:
+            debug: (optional) log debugging data
+    """
+    while execute['communicationHandler']:
+        while not communicationHandlerQueue.empty():
+            qData = communicationHandlerQueue.get()
+            if qData['tag'] in tags:
+                if qData['tag'] ==  "cam":
+                    for threadQueue in tags[qData['tag']][qData['metadata']]:
+                        threadQueue.put(qData)
+                else:
+                    for threadQueue in tags[qData['tag']]:
+                        threadQueue.put(qData)
+
 def receiveVideoStreams(debug=False):
     """ Recieves and processes video from the Water Node then sends it to the Air Node
-
+    
         Arguments:
             debug: (optional) log debugging data
     """
 
     try:
-
         image_hub = imagezmq.ImageHub(open_port='tcp://*:'+str(CommunicationUtils.CAM_PORT))
         while execute['streamVideo']:
-            deviceName, jpg_buffer = image_hub.recv_jpg()
-            #deviceName, image = image_hub.recv_image()
+            imgInfo, jpg_buffer = image_hub.recv_jpg()
+            deviceName,timestamp = imgInfo.split(".")
             '''
             if debug:
                 logger.debug("Recieved new image from Earth Node")
                 logger.debug(jpg_buffer)
             '''
             image_hub.send_reply(b'OK')
-            image = cv2.imdecode(np.frombuffer(jpg_buffer, dtype='uint8'), -1)
-            camStreams[deviceName].put(CommunicationUtils.encodeImage(image))
+            image_raw = cv2.imdecode(np.frombuffer(jpg_buffer, dtype='uint8'), -1)
+            image_b64 = CommunicationUtils.encodeImage(image_raw)
+            
+            imgPacket = CommunicationUtils.packet("img", image_b64, timestamp, deviceName)
+            communicationHandlerQueue.put(imgPacket)
+
     except Exception as e:
-        pass
+        print(e)
+        
     '''
         logger.error("Video Streaming Thread Exception Occurred: {}".format(e), exc_info=True)
     logger.debug("Stopped VideoStream")
@@ -115,8 +154,6 @@ def receiveVideoStreams(debug=False):
 
 def receiveData(debug=False):
     """ Recieves and processes JSON data from the Water Node
-
-        Data will most likely be sensor data from an IMU and voltage/amperage sensor
 
         Arguments:
             debug: (optional) log debugging data
@@ -138,15 +175,15 @@ def receiveData(debug=False):
 
     while execute['receiveData']:
         try:
-            recv = CommunicationUtils.recvMsg(conn)
-            airQueue.put(recv)
-            j = json.loads(recv)
+            recvPacket = CommunicationUtils.recvMsg(conn)
+            communicationHandlerQueue.put(recvPacket)
             '''
             if debug:
                 logger.debug("Raw receive: "+str(recv))
                 logger.debug("TtS: "+str(time.time()-float(j['timestamp'])))
             '''
         except Exception as e:
+            print(e)
             '''
             logger.debug("Couldn't receive data: {}".format(e), exc_info=True)
             '''
@@ -159,8 +196,6 @@ def receiveData(debug=False):
 
 def sendData(debug=False):
     """ Sends JSON data to the Water Node
-
-        Data will most likely contain motor data, and settings changes
 
         Arguments:
             debug: (optional) log debugging data
@@ -183,38 +218,13 @@ def sendData(debug=False):
     updtSettingsThread = threading.Thread(target=updateSettings, args=(conn,debug,))
     updtSettingsThread.start()
 
-    # Start Controller
-    gamepad = None
-    while (not gamepad) and execute['sendData']:
-        time.sleep(5)
-        try:
-            gamepad = ControllerUtils.identifyControllers()
-        except Exception as e:
-            print(e)
-
-    #DC = ControllerUtils.DriveController()
-
     while execute['sendData']:
-        event = gamepad.read_one()
-        if event:
-            if (ControllerUtils.isStopCode(event)):
-                CommunicationUtils.sendMsg(conn, "closing", "connInfo", "None", repetitions=2)
-                '''
-                logger.debug("Sending shutdown signal to Water Node")
-                '''
-                time.sleep(1)
-                stopAllThreads()
-            elif (ControllerUtils.isZeroMotorCode(event)):
-                CommunicationUtils.sendMsg(conn, [90]*settings['numMotors'], "motorSpds", "zeroMotors", isString=False)
-                '''
-                logger.debug("Zeroed Motors Manually")
-                '''
-            else:
-                DC.updateState(event)
-                #speeds = DC.calcThrust(event)
-                sent = CommunicationUtils.sendMsg(conn, speeds, "thrustSpds", "None", isString=False, lowPriority=True)
-                airQueue.put(sent)
+        while not sendDataQueue.empty():
+            sendPacket = sendDataQueue.get()
+            if sendPacket["tag"] == "motor":
+                sent = CommunicationUtils.sendMsg(conn, sendPacket["tag"]["data"]["speed"], "thrustSpds", "None", isString=False, lowPriority=True)
             if debug:
+                print(sendPacket)
                 '''
                 logger.debug("Sending: "+str(sent),extra={"rawData":"true"})
                 '''
@@ -229,9 +239,7 @@ def sendData(debug=False):
 
 def updateSettings(sckt,debug=False):
     """ Receives setting updates from the Air Node and makes edits
-
         Most changes will be made to settings in the Earth Node, but some will be sent to the Water Node
-
         Arguments:
             sckt: socket to communicate with the Water Node
             debug: (optional) log debugging data
@@ -270,12 +278,12 @@ def startAirNode(debug=False):
             tosend = airQueue.get()
             socketio.emit("updateAirNode", tosend)
 
-    def mainCamGen():
-        myCamStream = camStreams["mainCam"]
+    def camGen(camName):
+        myCamStream = airCamQueues[camName]
         while True:
-            time.sleep(camStreamSleep)
+            time.sleep(settings["camStreamSleep"])
             while not myCamStream.empty():
-                tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n')
+                tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n\r\n')
                 '''
                 if debug:
                     logger.debug("Sending new image to Air Node")
@@ -283,60 +291,24 @@ def startAirNode(debug=False):
                 yield tosend
                 myCamStream.task_done()
 
-    @app.route('/mainCam')
-    def mainCam():
-        return Response(mainCamGen(),
+    @app.route('/videoFeed/<camName>')
+    def mainCam(camName):
+        return Response(camGen(camName),
                         mimetype='multipart/x-mixed-replace; boundary=frame')
 
     @app.route('/left')
     def left():
         return render_template('leftCam_logging.html')
 
-    def bkpCam1Gen():
-        myCamStream = camStreams["bkpCam2"]
-        while True:
-            time.sleep(camStreamSleep)
-            while not myCamStream.empty():
-                tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n')
-                '''
-                if debug:
-                    logger.debug("Sending new image to Air Node")
-                '''
-                yield tosend
-                myCamStream.task_done()
-
-    @app.route('/bkpCam1')
-    def bkpCam1():
-        return Response(bkpCam1Gen(),
-                        mimetype='multipart/x-mixed-replace; boundary=frame')
-
-
     @app.route('/right')
     def right():
         return render_template('rightCam_cv.html')
-
-    def bkpCam2Gen():
-        myCamStream = camStreams["bkpCam2"]
-        while True:
-            time.sleep(camStreamSleep)
-            while not myCamStream.empty():
-                tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n')
-                '''
-                if debug:
-                    logger.debug("Sending new image to Air Node")
-                '''
-                yield tosend
-                myCamStream.task_done()
- 
-    @app.route('/bkpCam2')
-    def bkpCam2():
-        return Response(bkpCam2Gen(),
-                        mimetype='multipart/x-mixed-replace; boundary=frame')
 
     app.jinja_env.auto_reload = True
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
     socketio.run(app,host='localhost',port=CommunicationUtils.AIR_PORT,debug=False)
+
 
 
 if( __name__ == "__main__"):
@@ -346,13 +318,11 @@ if( __name__ == "__main__"):
     '''
     # Setup the logger
     logger.setLevel(logging.DEBUG)
-
     jsonLogHandler = nodeHandler()
     jsonFormatter = jsonlogger.JsonFormatter("%(asctime)s %(name)s %(threadName)s %(levelname)s %(message)s")
     jsonLogHandler.setFormatter(jsonFormatter)
     jsonLogHandler.setLevel(logging.DEBUG)
     logger.addHandler(jsonLogHandler)
-
     logHandler = logging.StreamHandler()
     logFormatter = logging.Formatter("%(asctime)s - %(name)s - %(threadName)s - %(levelname)s - %(message)s")
     logHandler.setFormatter(logFormatter)
@@ -385,6 +355,4 @@ if( __name__ == "__main__"):
     logger.debug("Stopped all Threads")
     logger.info("Shutting Down Ground Node")
     '''
-    for camName in camStreams:
-        CommunicationUtils.clearQueue(camStreams[camName])
     CommunicationUtils.clearQueue(airQueue)

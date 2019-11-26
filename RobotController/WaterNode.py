@@ -112,7 +112,7 @@ def sendVideoStreams(debug=False):
 			for i in range(0,numCams):
 				jpg_img = camCaps[i].get_frame()
 				try:
-					sender.send_jpg(camNames[i], jpg_img)
+					sender.send_jpg(camNames[i]+"."+str(time.time()), jpg_img)
 					#sender.send_image(camNames[i], resized)
 				except:
 					'''
@@ -219,8 +219,6 @@ def sendData(sendQueue,debug=False):
 					'''
 						logger.warning("Couldn't send data: {}".format(e), exc_info=True)
 					'''
-
-					sendQueue.task_done()
 
 	except Exception as e:
 		pass
