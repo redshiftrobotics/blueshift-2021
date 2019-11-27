@@ -1,5 +1,12 @@
-import evdev
+simpleMode = False
+try:
+    import evdev
+except:
+    simpleMode = True
+
+'''
 import logging
+'''
 
 class DriveController():
     def __init__(self, motor_order=[0,1,2,3,4,5,6,7]):
@@ -133,17 +140,20 @@ def identifyControllers():
             Returns:
                 A controller device if it can find any
         """
-        controller_names = ["Logitech Gamepad F710", "Logitech Gamepad F310", "Microsoft X-Box One S pad", "PowerA Xbox One wired controller"]
+        if not simpleMode:
+            controller_names = ["Logitech Gamepad F710", "Logitech Gamepad F310", "Microsoft X-Box One S pad", "PowerA Xbox One wired controller"]
 
-        allDevices = [evdev.InputDevice(path) for path in evdev.list_devices()]
-        controllerDevices = []
-        
-        for device in allDevices:
-            for controllerName in controller_names:
-                if device.name == controllerName:
-                    controllerDevices.append(device)
-        
-        if len(controllerDevices) > 0:
-            return controllerDevices[0]
+            allDevices = [evdev.InputDevice(path) for path in evdev.list_devices()]
+            controllerDevices = []
+            
+            for device in allDevices:
+                for controllerName in controller_names:
+                    if device.name == controllerName:
+                        controllerDevices.append(device)
+            
+            if len(controllerDevices) > 0:
+                return controllerDevices[0]
+            else:
+                raise Exception("Could not find valid controller device")
         else:
-            raise Exception("Could not find valid controller device")
+            return None

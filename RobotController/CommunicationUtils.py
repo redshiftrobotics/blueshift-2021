@@ -1,8 +1,6 @@
 import simplejson as json
 import time
 import socket
-import fcntl
-import struct
 import base64
 import cv2
 import time
@@ -14,6 +12,8 @@ AIR_PORT = 6663
 
 EARTH_IP = '169.254.219.238'
 WATER_IP = '169.254.210.218'
+
+SIMPLE_EARTH_IP = "localhost"
 
 def packet(tag,data,timestamp,metadata="",highPriority=False):
 	dataPacket = {

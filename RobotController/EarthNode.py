@@ -1,6 +1,17 @@
 # Utility Imports
 import sys
 import os
+import argparse
+
+# Stores if the program is in testing mode or not
+simpleMode = False
+
+# Check if the program is in testing mode and enable it if so
+parser = argparse.ArgumentParser()
+parser.add_argument("-s", "--simple", help="run the program in simple mode (fake data and no special libraries). Useful for running on any device not in the robot", action="store_true")
+args = parser.parse_args()
+
+simpleMode = args.simple
 
 '''
 # Imports for Logging
@@ -26,7 +37,10 @@ import time
 
 # Imports for Controller Communication and Processing
 import ControllerUtils
-import evdev
+
+if not simpleMode:
+    import evdev
+
 
 # Imports for AirNode
 from flask import Flask, render_template, Response
@@ -159,7 +173,7 @@ def receiveData(debug=False):
             debug: (optional) log debugging data
     """
 
-    HOST = CommunicationUtils.EARTH_IP
+    HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
     PORT = CommunicationUtils.SNSR_PORT
 
     snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -200,7 +214,7 @@ def sendData(debug=False):
         Arguments:
             debug: (optional) log debugging data
     """
-    HOST = CommunicationUtils.EARTH_IP
+    HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
     PORT = CommunicationUtils.CNTLR_PORT
 
     cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
