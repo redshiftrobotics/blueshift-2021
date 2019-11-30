@@ -141,30 +141,23 @@ def receiveVideoStreams(debug=False):
             debug: (optional) log debugging data
     """
 
-    try:
-        image_hub = imagezmq.ImageHub(open_port='tcp://*:'+str(CommunicationUtils.CAM_PORT))
-        while execute['streamVideo']:
+    image_hub = imagezmq.ImageHub(open_port='tcp://*:'+str(CommunicationUtils.CAM_PORT))
+    print(simpleMode)
+    while execute['streamVideo']:
+        image_raw = ""
+        imgInfo = ""
+        if not simpleMode:
             imgInfo, jpg_buffer = image_hub.recv_jpg()
-            deviceName,timestamp = imgInfo.split(".")
-            '''
-            if debug:
-                logger.debug("Recieved new image from Earth Node")
-                logger.debug(jpg_buffer)
-            '''
-            image_hub.send_reply(b'OK')
             image_raw = cv2.imdecode(np.frombuffer(jpg_buffer, dtype='uint8'), -1)
-            image_b64 = CommunicationUtils.encodeImage(image_raw)
-            
-            imgPacket = CommunicationUtils.packet("img", image_b64, timestamp, deviceName)
-            communicationHandlerQueue.put(imgPacket)
+        else:
+            imgInfo, image_raw = image_hub.recv_image()
 
-    except Exception as e:
-        print(e)
+        deviceName,timestamp = imgInfo.split("|")
+        image_hub.send_reply(b'OK')
+        image_b64 = CommunicationUtils.encodeImage(image_raw)
         
-    '''
-        logger.error("Video Streaming Thread Exception Occurred: {}".format(e), exc_info=True)
-    logger.debug("Stopped VideoStream")
-    '''
+        imgPacket = CommunicationUtils.packet("img", image_b64, timestamp, deviceName)
+        communicationHandlerQueue.put(imgPacket)
 
 def receiveData(debug=False):
     """ Recieves and processes JSON data from the Water Node
@@ -236,7 +229,7 @@ def sendData(debug=False):
         while not sendDataQueue.empty():
             sendPacket = sendDataQueue.get()
             if sendPacket["tag"] == "motor":
-                sent = CommunicationUtils.sendMsg(conn, sendPacket["tag"]["data"]["speed"], "thrustSpds", "None", isString=False, lowPriority=True)
+                sent = CommunicationUtils.sendMsg(conn, sendPacket)
             if debug:
                 print(sendPacket)
                 '''
@@ -274,8 +267,8 @@ def startAirNode(debug=False):
     # Disable Logging
     log = logging.getLogger('werkzeug')
     log.disabled = True
-    app.logger.disabled = True
     '''
+    app.logger.disabled = True
 
     socketio = SocketIO(app)
 
@@ -295,7 +288,7 @@ def startAirNode(debug=False):
     def camGen(camName):
         myCamStream = airCamQueues[camName]
         while True:
-            time.sleep(settings["camStreamSleep"])
+            time.sleep(camStreamSleep)
             while not myCamStream.empty():
                 tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n\r\n')
                 '''
@@ -306,7 +299,7 @@ def startAirNode(debug=False):
                 myCamStream.task_done()
 
     @app.route('/videoFeed/<camName>')
-    def mainCam(camName):
+    def videoFeed(camName):
         return Response(camGen(camName),
                         mimetype='multipart/x-mixed-replace; boundary=frame')
 
@@ -352,19 +345,20 @@ if( __name__ == "__main__"):
     vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(verbose[0],), daemon=True)
     recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
     sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
-    airNodeThread = threading.Thread(target=startAirNode, args=(False,), daemon=True)
+    #airNodeThread = threading.Thread(target=startAirNode, args=(verbose[0],), daemon=True)
+    commHandlerThread = threading.Thread(target=communicationHandler, args=(verbose[0],))
     vidStreamThread.start()
     recvDataThread.start()
     sendDataThread.start()
-    airNodeThread.start()
+    #airNodeThread.start()
 
     # Begin the Shutdown
     while execute['streamVideo'] or execute['receiveData'] or execute['sendData'] or execute['updateSettings']:
         time.sleep(0.1)
-    recvDataThread.join(timeout=5)
-    sendDataThread.join(timeout=5)
-    vidStreamThread.join(timeout=5)
-    airNodeThread.join(timeout=5)
+    recvDataThread.join()
+    sendDataThread.join()
+    vidStreamThread.join()
+    #airNodeThread.join()
     '''
     logger.debug("Stopped all Threads")
     logger.info("Shutting Down Ground Node")
