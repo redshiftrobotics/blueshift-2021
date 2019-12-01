@@ -1,8 +1,6 @@
 import simplejson as json
 import time
 import socket
-import fcntl
-import struct
 import base64
 import cv2
 import time
@@ -15,39 +13,35 @@ AIR_PORT = 6663
 EARTH_IP = '169.254.219.238'
 WATER_IP = '169.254.210.218'
 
-def sendMsg(sckt,data,dataType,metadata,isString=True,repetitions=1,lowPriority=False,send=True):
+SIMPLE_EARTH_IP = "localhost"
+
+LENGTH_MARKER = b'|'
+
+def packet(tag="",data="",timestamp=0,metadata="",highPriority=False):
+	dataPacket = {
+		"tag": tag,
+		"data": data,
+		"timestamp": float(timestamp),
+		"metadata": metadata,
+		"highPriority": highPriority
+	}
+	return dataPacket
+
+def sendMsg(sckt, pckt):
 	""" Send a JSON message through a socket
 
 		Arguments:
 			sckt: socket to send data through
-			data: data to be sent
-			dataType: type of data to be sent
-			metadata: extra data to be sent
-			isString: (optional) whether the data is a string
-			repetitions: (optional) number of times to repeat the messge
-			send: (optional) whether a message is sent over the socket
+			pckt: packet to be sent
 
 		Returns:
 			The sent message
 	"""
-	msg = "|"
-	msg += "{"
-	msg += '"dataType":"'+str(dataType)+'",'
-	if isString:
-		msg += '"data":"'+str(data)+'",'
-	else:
-		msg += '"data":'+json.dumps(data)+','
-	msg += '"timestamp":'+str(time.time())+','
-	msg += '"metadata":"'+str(metadata)+'",'
-	msg += '"lowPriority":'+str(lowPriority).lower()
-	msg += "}"
-	plainText = msg[1:]
-	msgLen = len(msg)
-	msg = str(msgLen)+msg
-	if send:
-		for i in range(0,repetitions):
-			sckt.sendall(msg.encode())
-	return plainText
+	data = json.dumps(pckt)
+	msgLen = len(data)
+	msg = str(msgLen)+LENGTH_MARKER.decode()+data
+	sckt.sendall(msg.encode())
+	return msg
 
 def recvMsg(conn,timeout=2):
 	""" Recieve a JSON message from a socket
@@ -61,12 +55,11 @@ def recvMsg(conn,timeout=2):
 		Returns:
 			The received message
 	"""
-	lengthMarker = b'|'
 	numChars = 2
 
 	now = time.time()
 	lastChar = conn.recv(numChars, socket.MSG_PEEK)[-1:]
-	while(lastChar != lengthMarker):
+	while(lastChar != LENGTH_MARKER):
 		numChars += 1
 		lastChar = conn.recv(numChars, socket.MSG_PEEK)[-1:]
 
@@ -79,8 +72,8 @@ def recvMsg(conn,timeout=2):
 			raise Exception("recvMsg Timeout of {} was reached".format(timeout))
 
 	conn.recv(numChars)
-	recv = conn.recv(iMsgLength-1)
-	return str(recv.decode())
+	recv = conn.recv(iMsgLength)
+	return json.loads(str(recv.decode()))
 
 def encodeImage(image):
     """ Encodes an image in Base64
@@ -102,4 +95,3 @@ def clearQueue(qToClear, debug=False):
 			print(qToClear.get())
 		else:
 			qToClear.get()
-		qToClear.task_done()
