@@ -15,6 +15,8 @@ WATER_IP = '169.254.210.218'
 
 SIMPLE_EARTH_IP = "localhost"
 
+LENGTH_MARKER = b'|'
+
 def packet(tag="",data="",timestamp=0,metadata="",highPriority=False):
 	dataPacket = {
 		"tag": tag,
@@ -37,7 +39,7 @@ def sendMsg(sckt, pckt):
 	"""
 	data = json.dumps(pckt)
 	msgLen = len(data)
-	msg = str(msgLen)+data
+	msg = str(msgLen)+LENGTH_MARKER+data
 	sckt.sendall(msg.encode())
 	return msg
 
@@ -53,12 +55,11 @@ def recvMsg(conn,timeout=2):
 		Returns:
 			The received message
 	"""
-	lengthMarker = b'|'
 	numChars = 2
 
 	now = time.time()
 	lastChar = conn.recv(numChars, socket.MSG_PEEK)[-1:]
-	while(lastChar != lengthMarker):
+	while(lastChar != LENGTH_MARKER):
 		numChars += 1
 		lastChar = conn.recv(numChars, socket.MSG_PEEK)[-1:]
 
