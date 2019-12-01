@@ -39,7 +39,7 @@ def sendMsg(sckt, pckt):
 	"""
 	data = json.dumps(pckt)
 	msgLen = len(data)
-	msg = str(msgLen)+LENGTH_MARKER+data
+	msg = str(msgLen)+LENGTH_MARKER.decode()+data
 	sckt.sendall(msg.encode())
 	return msg
 
@@ -72,7 +72,7 @@ def recvMsg(conn,timeout=2):
 			raise Exception("recvMsg Timeout of {} was reached".format(timeout))
 
 	conn.recv(numChars)
-	recv = conn.recv(iMsgLength-1)
+	recv = conn.recv(iMsgLength)
 	return json.loads(str(recv.decode()))
 
 def encodeImage(image):
