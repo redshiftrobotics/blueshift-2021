@@ -1,10 +1,23 @@
 # Utility Imports
 import sys
 import os
+import argparse
 
+# Stores if the program is in testing mode or not
+simpleMode = False
+
+# Check if the program is in testing mode and enable it if so
+parser = argparse.ArgumentParser()
+parser.add_argument("-s", "--simple", help="run the program in simple mode (fake data and no special libraries). Useful for running on any device not in the robot", action="store_true")
+args = parser.parse_args()
+
+simpleMode = args.simple
+
+'''
 # Imports for Logging
 import logging
-from pythonjsonlogger import jsonlogger
+from pythonjsonlogger import jsonslogger
+'''
 
 # Imports for Threading
 import threading
@@ -13,9 +26,11 @@ from queue import Queue
 # Imports for Video Streaming
 sys.path.insert(0, 'imagezmq/imagezmq')
 
-# import cv2 ## NO LONGER NEEDED ##
-import v4l2_camera
+import cv2
+if not simpleMode:
+	import v4l2_camera
 import imagezmq
+import numpy as np
 
 # Imports for Socket Communication
 import socket
@@ -41,7 +56,7 @@ settings = {
 		"x": 640,
 		"y": 480
 	},
-	"v4l2QueueNum": 4
+	"v4l2QueueNum": 4,
 }
 
 # Dict to stop threads
@@ -51,9 +66,11 @@ execute = {
 	"receiveData": True
 }
 
+
 # Queue, Logger, and Class for Multithreaded Logging Communication
 earthQueue = Queue(0)
 
+'''
 class nodeHandler(logging.Handler):
 	def emit(self, record):
 		global earthQueue
@@ -62,7 +79,7 @@ class nodeHandler(logging.Handler):
 		earthQueue.put([json.loads(logEntry),"log",False,False])
 
 logger = logging.getLogger("WaterNode")
-
+'''
 
 def stopAllThreads(callback=0):
 	""" Stops all currently running threads
@@ -74,7 +91,9 @@ def stopAllThreads(callback=0):
 	execute['streamVideo'] = False
 	execute['receiveData'] = False
 	execute['sendData'] = False
+	'''
 	logger.debug("Stopping Threads")
+	'''
 	time.sleep(0.5)
 
 def sendVideoStreams(debug=False):
@@ -84,34 +103,43 @@ def sendVideoStreams(debug=False):
 			debug: (optional) log debugging data
 	"""
 
-	sender = imagezmq.ImageSender(connect_to='tcp://'+CommunicationUtils.EARTH_IP+':'+str(CommunicationUtils.CAM_PORT))
-	logger.debug("Sending images to port: "+'tcp://'+CommunicationUtils.EARTH_IP+':'+str(CommunicationUtils.CAM_PORT))
+	sender = imagezmq.ImageSender(connect_to='tcp://'+ (CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP) +':'+str(CommunicationUtils.CAM_PORT))
+	'''
+	logger.debug("Sending images to port: "+'tcp://'+CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP+':'+str(CommunicationUtils.CAM_PORT))
+	'''
 
 	camNames = ["mainCam"]
-	camCaps = [v4l2_camera.Camera("/dev/video0", settings["mainCameraResolution"]["x"], settings["mainCameraResolution"]["y"], settings["v4l2QueueNum"])]
+	camCaps = []
+	if not simpleMode:
+		camCaps = [v4l2_camera.Camera("/dev/video0", settings["mainCameraResolution"]["x"], settings["mainCameraResolution"]["y"], settings["v4l2QueueNum"])]
+	else:
+		camCaps = [cv2.VideoCapture(0)]
 
 	for i in range(1,settings['numCams']):
 		camNames.append("bkpCam"+str(i))
-		camCaps.append(camCaps[0]) #v4l2_camera.Camera("/dev/video"+str(i), settings["bkpCameraResolution"]["x"],settings["bkpCameraResolution"]["y"], settings["v4l2QueueNum"])) ### UPDATE LATER TO USE ADDITIONAL CAMERAS
+		if not simpleMode:
+			camCaps.append(camCaps[0]) #v4l2_camera.Camera("/dev/video"+str(i), settings["bkpCameraResolution"]["x"],settings["bkpCameraResolution"]["y"], settings["v4l2QueueNum"])) ### UPDATE LATER TO USE ADDITIONAL CAMERAS
+		else:
+			camCaps.append(camCaps[0])
 	numCams = len(camCaps)
+	'''
 	logger.debug('Cam names and Objects: '+str(camNames)+', '+str(camCaps))
+	'''
 
 	time.sleep(2.0)
-	try:
-		while execute['streamVideo']:
-			for i in range(0,numCams):
+	while execute['streamVideo']:
+		for i in range(0,numCams):
+			jpg_img = ""
+			if not simpleMode:
 				jpg_img = camCaps[i].get_frame()
-				try:
-					sender.send_jpg(camNames[i], jpg_img)
-					#sender.send_image(camNames[i], resized)
-				except:
-					logger.warning("Invalid Image: "+str(jpg_img))
-					time.sleep(1)
-				if debug:
-					logger.debug("Sent Image: "+str(jpg_img))
-	except Exception as e:
-		logger.error("VideoStream Thread Exception Occurred: {}".format(e), exec_info=True)
-	logger.debug("Stopped VideoStream")
+				sender.send_jpg(camNames[i]+"|"+str(time.time()), jpg_img)
+			else:
+				_, img = camCaps[i].read()
+				sender.send_image(camNames[i]+"|"+str(time.time()), img)
+			'''
+			if debug:
+				logger.debug("Sent Image: "+str(jpg_img))
+			'''
 
 def receiveData(debug=False):
 	""" Recieves and processes JSON data from the Water Node
@@ -142,15 +170,23 @@ def receiveData(debug=False):
 							for loc,spd in enumerate(j['data']):
 								SD.set_servo(loc,spd)
 
+						'''
 						if debug:
 							logger.debug("Raw receive: "+str(recv))
 							logger.debug("TtS: "+str(time.time()-float(j['timestamp'])))
+						'''
 					except Exception as e:
+						pass
+						'''
 						logger.debug("Couldn't recieve data: {}".format(e), exc_info=True)
+						'''
 
 	except Exception as e:
+		pass
+	'''
 		logger.error("Receive Thread Exception Occurred", exc_info=True)
 	logger.debug("Stopped recvData")
+	'''
 
 def sendData(sendQueue,debug=False):
 	""" Sends JSON data to the Water Node
@@ -167,39 +203,50 @@ def sendData(sendQueue,debug=False):
 		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as snsr:
 			snsr.connect((HOST, PORT))
 			while execute['sendData']:
-				# Get gyro, accel, voltage, amperage readings
+				# Get gyro, accel readings
 				sensors = {
 					"gyro": {
 						"x": 0,
 						"y": 0,
 						"z": 0,
 					},
-					"speed": 0,
-					"volts": 0,
-					"amps": 0
+					"lin-accel": {
+						"x": 0,
+						"y": 0,
+						"z": 0,
+					},
+					"temp": 0
 				}
-				sendQueue.put([sensors,"sensors",False,True])
-				time.sleep(0.0125)
+				sendQueue.put(CommunicationUtils.packet(tag="sensor",data=sensors,timestamp=0.0))
+				time.sleep(1)#0.0125)
 				while not sendQueue.empty():
 					toSend = sendQueue.get()
 					try:
-						sent = CommunicationUtils.sendMsg(snsr,toSend[0],toSend[1],"None",isString=toSend[2],lowPriority=toSend[3])
+						sent = CommunicationUtils.sendMsg(snsr,toSend)
+						print(sent)
+						'''
 						if debug:
 							logger.debug("Sending: "+str(sent))
+						'''
 
 					except Exception as e:
+						pass
+					'''
 						logger.warning("Couldn't send data: {}".format(e), exc_info=True)
-
-					sendQueue.task_done()
+					'''
 
 	except Exception as e:
+		pass
+	'''
 		logger.error("Send Thread Exception Occurred: {}".format(e), exc_info=True)
 	logger.debug("Stopped sendData")
+	'''
 
 if( __name__ == "__main__"):
 	# Setup Logging preferences
 	verbose = [False,True]
 
+	'''
 	# Setup the logger
 	logger.setLevel(logging.DEBUG)
 
@@ -218,21 +265,22 @@ if( __name__ == "__main__"):
 	# Start each thread
 	logger.info("Starting Water Node")
 	logger.debug("Started all Threads")
-	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose[0],),daemon=True)
-	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],),daemon=True)
-	sendDataThread = threading.Thread(target=sendData, args=(earthQueue,verbose[0],),daemon=True)
-	vidStreamThread.start()
-	recvDataThread.start()
+	'''
+	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose[0],))
+	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
+	sendDataThread = threading.Thread(target=sendData, args=(earthQueue,verbose[0],))
+	#vidStreamThread.start()
+	#recvDataThread.start()
 	sendDataThread.start()
 
 	# Begin the Shutdown
-	while execute['streamVideo'] or execute['receiveData'] or execute['sendData']:
+	while execute['streamVideo'] and execute['receiveData'] and execute['sendData']:
 		time.sleep(0.1)
-	recvDataThread.join(timeout=5)
-	sendDataThread.join(timeout=5)
-	vidStreamThread.join(timeout=5)
+	#recvDataThread.join()
+	sendDataThread.join()
+	#vidStreamThread.join()
+	'''
 	logger.debug("Stopped all Threads")
 	logger.info("Shutting Down Water Node")
 	CommunicationUtils.clearQueue(earthQueue)
-
-	sys.exit()
+	'''
