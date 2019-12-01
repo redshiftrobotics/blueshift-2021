@@ -15,11 +15,12 @@ WATER_IP = '169.254.210.218'
 
 SIMPLE_EARTH_IP = "localhost"
 
-def packet(tag,data,timestamp,metadata="",highPriority=False):
+def packet(tag="",data="",timestamp=0,metadata="",highPriority=False):
 	dataPacket = {
 		"tag": tag,
 		"data": data,
-		"timestamp": timestamp,
+		"timestamp": float(timestamp),
+		"metadata": metadata,
 		"highPriority": highPriority
 	}
 	return dataPacket
