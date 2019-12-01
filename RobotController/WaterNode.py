@@ -68,6 +68,8 @@ execute = {
 
 
 # Queue, Logger, and Class for Multithreaded Logging Communication
+lock = threading.Lock()
+restartCamStream = False
 earthQueue = Queue(0)
 
 '''
@@ -102,7 +104,7 @@ def sendVideoStreams(debug=False):
 		Arguments:
 			debug: (optional) log debugging data
 	"""
-
+	global restartCamStream
 	sender = imagezmq.ImageSender(connect_to='tcp://'+ (CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP) +':'+str(CommunicationUtils.CAM_PORT))
 	'''
 	logger.debug("Sending images to port: "+'tcp://'+CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP+':'+str(CommunicationUtils.CAM_PORT))
@@ -140,6 +142,15 @@ def sendVideoStreams(debug=False):
 			if debug:
 				logger.debug("Sent Image: "+str(jpg_img))
 			'''
+		if restartCamStream:
+				sender = imagezmq.ImageSender(connect_to='tcp://'+ (CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP) +':'+str(CommunicationUtils.CAM_PORT))
+				lock.acquire()
+				try:
+					restartCamStream = False
+				except:
+					pass
+				finally:
+					lock.release()
 
 def receiveData(debug=False):
 	""" Recieves and processes JSON data from the Water Node
@@ -150,39 +161,62 @@ def receiveData(debug=False):
 			debug: (optional) log debugging data
 	"""
 
+	#SD = HardwareUtils.ServoDriver(enumerate(["T100"]*8))
+
 	HOST = CommunicationUtils.EARTH_IP
 	PORT = CommunicationUtils.CNTLR_PORT
 	
-	SD = HardwareUtils.ServoDriver(enumerate(["T100"]*8))
+	connected = True
+	cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+	print("initial connection check")
 	try:
-		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as cntlr:
-			cntlr.connect((HOST, PORT))
-			while execute['receiveData']:
-					recv = "{}"
+		cntlr.connect((HOST, PORT))
+		print("initial check succeded")
+	except ConnectionRefusedError:
+		print("initial check failed")
+		connected = False
+	
+	while execute['receiveData']:
+		try:
+			recv = CommunicationUtils.recvMsg(cntlr)
+			if recv['tag'] == 'stateChange':
+				if recv['data'] == 'close':
+					stopAllThreads()
+				if recv['data'] == 'restartCamStream':
+					lock.acquire()
 					try:
-						recv = CommunicationUtils.recvMsg(cntlr)
-						j = json.loads(recv)
-						if j['dataType'] == "connInfo" and j['data'] == "closing":
-							stopAllThreads()
-						
-						elif j['dataType'] == "thrustSpds":
-							for loc,spd in enumerate(j['data']):
-								SD.set_servo(loc,spd)
-
-						'''
-						if debug:
-							logger.debug("Raw receive: "+str(recv))
-							logger.debug("TtS: "+str(time.time()-float(j['timestamp'])))
-						'''
-					except Exception as e:
+						restartCamStream = True
+					except:
 						pass
-						'''
-						logger.debug("Couldn't recieve data: {}".format(e), exc_info=True)
-						'''
+					finally:
+						lock.release()
+					
+			
+			elif recv['tag'] == "motorData":
+				for loc,spd in enumerate(recv['data']):
+					SD.set_servo(loc,spd)
 
-	except Exception as e:
-		pass
+
+			'''
+			if debug:
+				logger.debug("Raw receive: "+str(recv))
+				logger.debug("TtS: "+str(time.time()-float(j['timestamp'])))
+			'''
+		except OSError:
+			print("connection error")
+			connected = False
+			cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			while (not connected) and execute['sendData']:
+				try:
+					cntlr.connect((HOST, PORT))
+					connected = True
+					print("reconnect attempt succeded")
+				except ConnectionRefusedError:
+					print("reconnect attempt failed")
+					time.sleep(2)
+	cntlr.close()
+
 	'''
 		logger.error("Receive Thread Exception Occurred", exc_info=True)
 	logger.debug("Stopped recvData")
@@ -199,44 +233,60 @@ def sendData(sendQueue,debug=False):
 	HOST = CommunicationUtils.EARTH_IP
 	PORT = CommunicationUtils.SNSR_PORT
 
+	connected = True
+	snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+	print("initial connection check")
 	try:
-		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as snsr:
-			snsr.connect((HOST, PORT))
-			while execute['sendData']:
-				# Get gyro, accel readings
-				sensors = {
-					"gyro": {
-						"x": 0,
-						"y": 0,
-						"z": 0,
-					},
-					"lin-accel": {
-						"x": 0,
-						"y": 0,
-						"z": 0,
-					},
-					"temp": 0
-				}
-				sendQueue.put(CommunicationUtils.packet(tag="sensor",data=sensors,timestamp=0.0))
-				time.sleep(1)#0.0125)
-				while not sendQueue.empty():
-					toSend = sendQueue.get()
-					try:
-						sent = CommunicationUtils.sendMsg(snsr,toSend)
-						print(sent)
-						'''
-						if debug:
-							logger.debug("Sending: "+str(sent))
-						'''
+		snsr.connect((HOST, PORT))
+		print("initial check succeded")
+	except ConnectionRefusedError:
+		print("initial check failed")
+		connected = False
+	
+	while execute['sendData']:
+		try:
+			# Get gyro, accel readings
+			sensors = {
+				"gyro": {
+					"x": 0,
+					"y": 0,
+					"z": 0,
+				},
+				"lin-accel": {
+					"x": 0,
+					"y": 0,
+					"z": 0,
+				},
+				"temp": 0
+			}
+			sendQueue.put(CommunicationUtils.packet(tag="sensor",data=sensors,timestamp=time.time()))
+			time.sleep(0.0125)
+			while not sendQueue.empty():
+				toSend = sendQueue.get()
+				sent = CommunicationUtils.sendMsg(snsr,toSend)
+				print(sent)
+				'''
+				if debug:
+					logger.debug("Sending: "+str(sent))
+				'''
 
-					except Exception as e:
-						pass
-					'''
-						logger.warning("Couldn't send data: {}".format(e), exc_info=True)
-					'''
-
-	except Exception as e:
-		pass
+				'''
+					logger.warning("Couldn't send data: {}".format(e), exc_info=True)
+				'''
+		except BrokenPipeError:
+			print("connection error")
+			connected = False
+			snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			while (not connected) and execute['sendData']:
+				try:
+					snsr.connect((HOST, PORT))
+					connected = True
+					print("reconnect attempt succeded")
+				except ConnectionRefusedError:
+					print("reconnect attempt failed")
+					time.sleep(2)
+	snsr.close()
 	'''
 		logger.error("Send Thread Exception Occurred: {}".format(e), exc_info=True)
 	logger.debug("Stopped sendData")
@@ -269,16 +319,16 @@ if( __name__ == "__main__"):
 	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose[0],))
 	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
 	sendDataThread = threading.Thread(target=sendData, args=(earthQueue,verbose[0],))
-	#vidStreamThread.start()
+	vidStreamThread.start()
 	#recvDataThread.start()
-	sendDataThread.start()
+	#sendDataThread.start()
 
 	# Begin the Shutdown
 	while execute['streamVideo'] and execute['receiveData'] and execute['sendData']:
 		time.sleep(0.1)
 	#recvDataThread.join()
-	sendDataThread.join()
-	#vidStreamThread.join()
+	#sendDataThread.join()
+	vidStreamThread.join()
 	'''
 	logger.debug("Stopped all Threads")
 	logger.info("Shutting Down Water Node")
