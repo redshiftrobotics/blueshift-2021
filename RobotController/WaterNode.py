@@ -203,7 +203,7 @@ def sendData(sendQueue,debug=False):
 		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as snsr:
 			snsr.connect((HOST, PORT))
 			while execute['sendData']:
-				# Get gyro, accel, voltage, amperage readings
+				# Get gyro, accel readings
 				sensors = {
 					"gyro": {
 						"x": 0,
@@ -217,12 +217,13 @@ def sendData(sendQueue,debug=False):
 					},
 					"temp": 0
 				}
-				sendQueue.put([sensors,"sensors",False,True])
-				time.sleep(0.0125)
+				sendQueue.put(CommunicationUtils.packet(tag="sensor",data=sensors,timestamp=0.0))
+				time.sleep(1)#0.0125)
 				while not sendQueue.empty():
 					toSend = sendQueue.get()
 					try:
 						sent = CommunicationUtils.sendMsg(snsr,toSend)
+						print(sent)
 						'''
 						if debug:
 							logger.debug("Sending: "+str(sent))
@@ -268,16 +269,16 @@ if( __name__ == "__main__"):
 	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose[0],))
 	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
 	sendDataThread = threading.Thread(target=sendData, args=(earthQueue,verbose[0],))
-	vidStreamThread.start()
-	recvDataThread.start()
+	#vidStreamThread.start()
+	#recvDataThread.start()
 	sendDataThread.start()
 
 	# Begin the Shutdown
 	while execute['streamVideo'] and execute['receiveData'] and execute['sendData']:
 		time.sleep(0.1)
-	recvDataThread.join()
+	#recvDataThread.join()
 	sendDataThread.join()
-	vidStreamThread.join()
+	#vidStreamThread.join()
 	'''
 	logger.debug("Stopped all Threads")
 	logger.info("Shutting Down Water Node")
