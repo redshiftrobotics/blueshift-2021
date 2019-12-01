@@ -84,7 +84,6 @@ tags = {
         "bkpCam1": [airCamQueues["bkpCam1"]],
         "bkpCam2": [airCamQueues["bkpCam2"]],
         },
-    "bkpCams": [airQueue],
     "motorData": [sendDataQueue],
     "log": [airQueue],
     "stateChange": [airQueue,recvDataQueue,sendDataQueue,recvImageQueue,mainQueue]
@@ -172,19 +171,16 @@ def receiveData(debug=False):
     '''
 
     while execute['receiveData']:
-        try:
-            recvPacket = CommunicationUtils.recvMsg(conn)
-            handlePacket(recvPacket)
-            '''
-            if debug:
-                logger.debug("Raw receive: "+str(recv))
-                logger.debug("TtS: "+str(time.time()-float(j['timestamp'])))
-            '''
-        except Exception as e:
-            print(e)
-            '''
-            logger.debug("Couldn't receive data: {}".format(e), exc_info=True)
-            '''
+        recvPacket = CommunicationUtils.recvMsg(conn)
+        handlePacket(recvPacket)
+        '''
+        if debug:
+            logger.debug("Raw receive: "+str(recv))
+            logger.debug("TtS: "+str(time.time()-float(j['timestamp'])))
+        '''
+        '''
+        logger.debug("Couldn't receive data: {}".format(e), exc_info=True)
+        '''
     
     conn.close()
     snsr.close()
@@ -212,17 +208,12 @@ def sendData(debug=False):
     logger.info('Motor Socket Connected by '+str(addr))
     '''
 
-    # Start the update settings thread
-    updtSettingsThread = threading.Thread(target=updateSettings, args=(conn,debug,))
-    updtSettingsThread.start()
-
     while execute['sendData']:
         while not sendDataQueue.empty():
             sendPacket = sendDataQueue.get()
-            if sendPacket["tag"] == "motor":
-                sent = CommunicationUtils.sendMsg(conn, sendPacket)
+            sent = CommunicationUtils.sendMsg(conn, sendPacket)
             if debug:
-                print(sendPacket)
+                print(sent)
                 '''
                 logger.debug("Sending: "+str(sent),extra={"rawData":"true"})
                 '''
@@ -259,24 +250,13 @@ def startAirNode(debug=False):
             socketio.emit("updateAirNode", tosend)
 
     def camGen(camName):
-<<<<<<< HEAD
-        myCamStream = camStreams[camName]
-=======
         myCamStream = airCamQueues[camName]
->>>>>>> temp
         while True:
             time.sleep(settings["camStreamSleep"])
             while not myCamStream.empty():
-<<<<<<< HEAD
-                tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + myCamStream.get() + b'\r\n\r\n')
-<<<<<<< HEAD
-=======
-=======
                 camPacket = myCamStream.get()
                 tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + camPacket['data'] + b'\r\n\r\n')
->>>>>>> 1e7db832b9963d5236f883762904df97d375dcce
                 '''
->>>>>>> temp
                 if debug:
                     logger.debug("Sending new image to Air Node")
                 '''
@@ -284,13 +264,8 @@ def startAirNode(debug=False):
                 myCamStream.task_done()
 
     @app.route('/videoFeed/<camName>')
-<<<<<<< HEAD
-    def mainCam(camName):
-=======
     def videoFeed(camName):
->>>>>>> temp
-        return Response(camGen(camName),
-                        mimetype='multipart/x-mixed-replace; boundary=frame')
+        return Response(camGen(camName), mimetype='multipart/x-mixed-replace; boundary=frame')
 
     @app.route('/left')
     def left():
