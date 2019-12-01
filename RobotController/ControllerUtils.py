@@ -33,7 +33,7 @@ class DriveController():
         code = event.code
         value = event.value
         
-        if ((value <= -50 or value >= 50) and (code == 0 or code == 1 or code == 3 or code == 4) and generator.type !=0):
+        if ((value <= -50 or value >= 50) and (code == 0 or code == 1 or code == 3 or code == 4) and event.type !=0):
             if code == 0:
                 self.joyHorizontal = deadzoneCorrect(value)
             if code == 1:

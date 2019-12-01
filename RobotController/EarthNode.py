@@ -232,7 +232,7 @@ def sendData(debug=False):
     while (not gamepad) and execute['sendData']:
         time.sleep(5)
         try:
-            gamepad = ControllerUtils.identifyControllers()
+            gamepad = ControllerUtils.identifyController()
         except Exception as e:
             print(e)
 
