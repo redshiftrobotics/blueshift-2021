@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Robot Diagram</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.0.13/svg.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+  <style>
+      #robotDiagram {
+        background-image: url(robotDiagram.svg)
+      }
+  </style>
+</head>
+<body>
+  <div id="robotDiagram"></div>
+  <script>
+    var robotDiagram = SVG().addTo("#robotDiagram");
+    var rect = robotDiagram.rect(100, 100).attr({ fill: '#f06' })
+  </script>
+</body>
+</html>
