@@ -7,20 +7,27 @@
 </head>
 <style>
   body {
-    background: black;
   }
   canvas {
-    border-width: 4px;
+    border-width: 1px;
     border-style: solid;
     border-color: blue;
+    background: black;
   }
+
+  @font-face {
+    font-family: 'Ubuntu-Title';
+    src: url('robotDiagram/ubuntu_title/Ubuntu-Title.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
 </style>
 <body>
-  <canvas id="robotDiagram" width="600" height="600"></canvas>
+  <canvas id="robotDiagram" width="1000" height="1000"></canvas>
   <script>
     var canvas = document.getElementById('robotDiagram');
     var ctx = canvas.getContext('2d');
-    //ctx.scale(0.5,0.5);
+
     var chassis = new Image();
     chassis.src = 'robotDiagram/robotDiagram-Chassis.svg';
 
@@ -53,7 +60,7 @@
 
     var rasPi = new Image();
     rasPi.src = 'robotDiagram/robotDiagram-RasPi.svg';
-    
+
     function drawImg(img, x, y, degrees = 0, scale = 1, hFlip = 1, vFlip = 1, tint){
       if (img.complete) {
         ctx.save();
@@ -70,25 +77,32 @@
       }
     }
 
-    function clearCanvas() {
-      ctx.save();
+    function drawText(text, x, y, font, size, color, align, style = "") {
+      ctx.fillStyle = color;
+      ctx.textAlign = align;
+      ctx.font = size.toString() + "px  " + font + " " + style;
+
+      if (align == "center") {
+        ctx.textBaseline = "middle";
+      }
+
+      ctx.fillText(text, x, y);
+    }
+
+    function clearCanvas(clearTransforms) {
+      if (!clearTransforms) ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.restore();
+      if (!clearTransforms) ctx.restore();
     }
 
     function drawTopThruster(loc, speed, xLoc, yLoc) {
-      s = 0.65
-      x = 39.5
-      y = 145
-      r = 0
-      v = 1
-      h = 1
-      
-      //drawImg(upThruster, xLoc-39.5, xLoc-145, 0, 0.65);
-      //drawImg(upThruster, xLoc+39.5, xLoc-145, 0, 0.65);
-      //drawImg(upThruster, xLoc-39.5, xLoc+145, 0, 0.65, 1, -1);
-      //drawImg(upThruster, xLoc+39.5, xLoc+145, 0, 0.65, 1, -1);
+      s = 0.65;
+      x = 39.5;
+      y = 145;
+      r = 0;
+      v = 1;
+      h = 1;
 
       switch (loc) {
         case "TL":
@@ -115,6 +129,7 @@
         drawImg(downThruster, xLoc+x, yLoc+y, r, s, v, h);
       }
       
+      drawText(speed*100.0, xLoc+x, yLoc+(y*1.51), "Ubuntu-Title", 40, "#D1D1D1", "center"); 
     }
 
     function drawSideThruster(loc, speed, xLoc, yLoc) {
@@ -173,6 +188,7 @@
         drawImg(sideThrusterPower, x+xThrust, y+yThrust, rThrust, s, vThrust, hThrust);
       }
       drawImg(sideThruster, x, y, r, s, v, h);
+      drawText(speed*100.0, x+(xThrust*9), y+(yThrust*9), "Ubuntu-Title", 40, "#D1D1D1", "center"); 
     }
 
     function drawDevice(devName, working, xLoc, yLoc) {
@@ -223,15 +239,18 @@
     }
 
     function updateDiagram() {
-      clearCanvas()
+      clearCanvas(true);
 
-      xLoc = canvas.width/2;
-      yLoc = canvas.height/2;
+      scaleAmnt = 1.5;
+      ctx.scale(scaleAmnt,scaleAmnt);
 
-      drawSideThruster("TL", 1, xLoc, yLoc);
-      drawSideThruster("TR", 1, xLoc, yLoc);
-      drawSideThruster("BL", 1, xLoc, yLoc);
-      drawSideThruster("BR", 1, xLoc, yLoc);
+      xLoc = (canvas.width/2)/scaleAmnt;
+      yLoc = (canvas.height/2)/scaleAmnt;
+
+      drawSideThruster("TL", 0, xLoc, yLoc);
+      drawSideThruster("TR", 0, xLoc, yLoc);
+      drawSideThruster("BL", 0, xLoc, yLoc);
+      drawSideThruster("BR", 0, xLoc, yLoc);
 
       drawTopThruster("TL", 0, xLoc, yLoc);
       drawTopThruster("TR", 0, xLoc, yLoc);
