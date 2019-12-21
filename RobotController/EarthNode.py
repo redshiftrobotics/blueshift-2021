@@ -236,9 +236,9 @@ def startAirNode(debug=False):
 
     socketio = SocketIO(app)
 
-    @app.route('/')
-    def index():
-        return render_template('mid_sensors.html')
+    @app.route('/copilot')
+    def copilot():
+        return render_template('copilot.html')
 
     def messageReceived(methods=['GET', 'POST']):
         print('message was received!!!')
