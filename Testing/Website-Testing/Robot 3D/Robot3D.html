@@ -23,6 +23,7 @@
             var roboX = 1;
             var roboY = -1;
             var roboZ = 0;
+            var roboSpeed = 1;
             
 
             scene = new THREE.Scene();
@@ -74,7 +75,10 @@
                 fullRobotBody.scene.children[arrowLoc].rotation.y = roboY;
                 fullRobotBody.scene.children[arrowLoc].rotation.z = roboZ;
 
-                // Direction of Camera
+                // Scale of Arrow
+                fullRobotBody.scene.children[arrowLoc].scale.y = (roboSpeed/1.2)+1.5;
+
+                // Orientation of Camera
                 camera.rotation.x = camX;
                 camera.rotation.y = camY;
                 camera.rotation.z = camZ;
