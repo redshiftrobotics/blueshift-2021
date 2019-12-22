@@ -1,261 +1,841 @@
 <html>
-  <head>
-    <title>Robot Controller</title>
-    <!-- Utilites and Communication -->
-    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.4.1.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.slimscroll.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
 
-    <!-- Visualization and Display -->
-    <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='js/svg.min.js') }}"></script>
+<head>
+  <title>Copilot Monitor</title>
+  <!-- Utilites and Communication -->
+  <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.4.1.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.slimscroll.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
 
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/dashboard.css') }}" />
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/iconfont/material-icons.css') }}" />
-  </head>
-  <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-      <a class="navbar-brand" href="#">Copilot</a>
-      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
-          aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-      </button>
+  <!-- Visualization and Display -->
+  <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/svg.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/three.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/GLTFLoader.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/plotly-latest.min.js') }}"></script>
 
-      <div class="collapse navbar-collapse" id="navbarSupportedContent">
-          <ul class="navbar-nav ml-auto">
-              <li class="nav-item">
-                  <a class="nav-link" href="#">Blueshift Robotics</a>
-              </li>
-          </ul>
-      </div>
-  </nav>
-  <div class="wrapper d-flex">
-      <div class="sideMenu bg-mattBlackLight">
-          <div class="sidebar">
-              <ul class="navbar-nav">
-                  <li class="nav-item">
-                      <a href="#" class="nav-link px-2">
-                          <i class="material-icons icon">videocam</i>
-                          <span class="text">Video</span>
-                      </a>
-                  </li>
-                  <ul class="navbar-nav">
-                      <li class="nav-item">
-                          <a href="#" class="nav-link px-2">
-                              <i class="material-icons icon">videogame_asset</i>
-                              <span class="text">Copilot</span>
-                          </a>
-                      </li>
-                      <ul class="navbar-nav">
-                          <li class="nav-item">
-                              <a href="#" class="nav-link px-2">
-                                  <i class="material-icons icon">visibility</i>
-                                  <span class="text">Computer Vision</span>
-                              </a>
-                          </li>
-                          <li class="nav-item">
-                              <a href="#" class="nav-link px-2">
-                                  <i class="material-icons icon">settings</i>
-                                  <span class="text">Settings</span>
-                              </a>
-                          </li>
-                          <li class="nav-item">
-                              <a href="#" class="nav-link px-2 sideMenuToggler">
-                                  <i class="material-icons icon expandView">view_list</i>
-                                  <span class="text">Resize</span>
-                              </a>
-                          </li>
-                      </ul>
-          </div>
-      </div>
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap.min.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/iconfont/material-icons.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/dashboard.css') }}" />
 
-      <div class="content">
-          <main>
-              <div class="container-fluid">
-                  <div class="row">
-                      <div class="col-md-3">
-                          <div class="bg-mattBlackLight my-3 p-3 mx-0">
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                          </div>
-                          <div class="bg-mattBlackLight my-3 p-3 mx-0">
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                          </div>
-                      </div>
-                      <div class="col-md-6">
-                          <div class="bg-mattBlackLight my-3 p-3 mx-0">
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                          </div>
-                          <div class="bg-mattBlackLight my-3 p-3 mx-0">
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                          </div>
-                      </div>
-                      <div class="col-md-3">
-                          <div class="bg-mattBlackLight my-3 p-3 mx-0">
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                          </div>
-                          <div class="bg-mattBlackLight my-3 p-3 mx-0">
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                              Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                              in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                              sunt earum tempora veniam.
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          </main>
-      </div>
-  </body>
-  <script type="text/javascript">
-    var socket = io.connect('http://' + document.domain + ':' + location.port);
-
-    socket.on('updateAirNode', handleUpdates);
-
-    function handleUpdates(data) {
-      var parsed = JSON.parse(data);
-      console.log(parsed);
-      switch (parsed.dataType) {
-        case "log":
-          console.log(JSON.stringify(parsed.data));
-        case "sensors":
-          var sensorData = parsed.data;
-          console.log(JSON.stringify(sensorData));
-          updateAttitude(sensorData.gyro);
-      }
+  <style>
+    @font-face {
+      font-family: 'Ubuntu-Title';
+      src: url("{{ url_for('static', filename='assets/robotDiagram/ubuntu_title/Ubuntu-Title.ttf') }}") format('truetype');
+      font-weight: normal;
+      font-style: normal;
     }
 
-    setInterval(function() {socket.emit("getAirNodeUpdates",Date.now())}, 16);
-  </script>
-  <script type="text/javascript" src="{{ url_for('static', filename='js/attitude.js') }}"></script>
+    #robotDiagram {
+      background: #303337;
+    }
+
+    #robot3D {
+      width: 400px;
+      height: 360px;
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <a class="navbar-brand" href="#">Copilot</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+      aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="#">Blueshift Robotics</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <div class="wrapper d-flex">
+    <div class="sideMenu bg-mattBlackLight">
+      <div class="sidebar">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a href="#" class="nav-link px-2">
+              <i class="material-icons icon">videocam</i>
+              <span class="text">Video</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#" class="nav-link px-2">
+              <i class="material-icons icon">videogame_asset</i>
+              <span class="text">Copilot</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#" class="nav-link px-2">
+              <i class="material-icons icon">visibility</i>
+              <span class="text">Computer Vision</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#" class="nav-link px-2">
+              <i class="material-icons icon">settings</i>
+              <span class="text">Settings</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#" class="nav-link px-2 sideMenuToggler">
+              <i class="material-icons icon expandView">view_list</i>
+              <span class="text">Resize</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="content">
+      <main>
+        <div class="container-fluid">
+          <div class="row">
+            <div class="col-md-3">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+                <div id="attitude" class="ml-3"></div>
+              </div>
+              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+                <div id="amperageGraph"></div>
+                <div id="voltageGraph"></div>
+                <div id="speedGraph"></div>
+                <div id="temperatureGraph"></div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+                <canvas id="robotDiagram" width="860" height="500"></canvas>
+              </div>
+              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
+                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
+                sunt earum tempora veniam.
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
+                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
+                sunt earum tempora veniam.
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
+                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
+                sunt earum tempora veniam.
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
+                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
+                sunt earum tempora veniam.
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
+                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
+                sunt earum tempora veniam.
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
+                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
+                sunt earum tempora veniam.
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
+                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
+                sunt earum tempora veniam.
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+                <div id="robot3D"></div>
+              </div>
+              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
+                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
+                sunt earum tempora veniam.
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
+                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
+                sunt earum tempora veniam.
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
+                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
+                sunt earum tempora veniam.
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
+                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
+                sunt earum tempora veniam.
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script>
+      var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+      socket.on('updateAirNode', handleUpdates);
+
+      function handleUpdates(data) {
+        var parsed = JSON.parse(data);
+        console.log(parsed);
+        switch (parsed.dataType) {
+          case "log":
+            console.log(JSON.stringify(parsed.data));
+          case "sensors":
+            var sensorData = parsed.data;
+            console.log(JSON.stringify(sensorData));
+            updateAttitude(sensorData.gyro);
+        }
+      }
+
+      setInterval(function () { socket.emit("getAirNodeUpdates", Date.now()) }, 16);
+    </script>
+    <script>
+      var width = 360;
+      var height = 360;
+      var cx = (width / 2);
+      var cy = (height / 2);
+      var outerRadius = 30;
+      var elementWidth = width * Math.sqrt(2);
+      var xOffset = -(elementWidth - 360) / 2;
+      var lineWidth = 5;
+      var pitchScaleFactor = (width - (2 * outerRadius)) / width;
+
+      /* SVG.js 2.7
+      var attitudeDisplay = SVG('attitude').size(width, height);
+      $("#SvgjsSvg1003").appendTo($("#attitude"));
+      */
+
+      /* SVG.js 3.0 */
+      var attitudeDisplay = SVG().addTo("#attitude").size(width, height);
+
+      var groundInner = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#654321' }).stroke({ color: "#ffffff", width: lineWidth / 2 });
+      var skyInner = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#87ceeb' }).stroke({ color: "#ffffff", width: lineWidth / 2 });
+
+      var pitchMarkings = [
+        attitudeDisplay.line(cx - 30, cy, cx + 30, cy).center(cx, cy + (120 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 2 }),
+        attitudeDisplay.text("120").center(cx - 50, cy + (120 * pitchScaleFactor)).fill("#ffffff"), attitudeDisplay.text("120").center(cx + 50, cy + (120 * pitchScaleFactor)).fill("#ffffff"),
+        attitudeDisplay.line(cx - 10, cy, cx + 10, cy).center(cx, cy + (90 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 3 }),
+        attitudeDisplay.line(cx - 35, cy, cx + 35, cy).center(cx, cy + (60 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 2 }),
+        attitudeDisplay.text("60").center(cx - 50, cy + (60 * pitchScaleFactor)).fill("#ffffff"), attitudeDisplay.text("60").center(cx + 50, cy + (60 * pitchScaleFactor)).fill("#ffffff"),
+        attitudeDisplay.line(cx - 15, cy, cx + 15, cy).center(cx, cy + (45 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 3 }),
+        attitudeDisplay.line(cx - 30, cy, cx + 30, cy).center(cx, cy + (30 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 2 }),
+        attitudeDisplay.text("30").center(cx - 45, cy + (30 * pitchScaleFactor)).fill("#ffffff"), attitudeDisplay.text("30").center(cx + 45, cy + (30 * pitchScaleFactor)).fill("#ffffff"),
+        attitudeDisplay.line(cx - 15, cy, cx + 15, cy).center(cx, cy + (20 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 2 }),
+        attitudeDisplay.line(cx - 10, cy, cx + 10, cy).center(cx, cy + (10 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 3 }),
+        attitudeDisplay.line(cx - 10, cy, cx + 10, cy).center(cx, cy + (-10 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 3 }),
+        attitudeDisplay.line(cx - 15, cy, cx + 15, cy).center(cx, cy + (-20 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 2 }),
+        attitudeDisplay.line(cx - 30, cy, cx + 30, cy).center(cx, cy + (-30 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 2 }),
+        attitudeDisplay.text("30").center(cx - 45, cy + (-30 * pitchScaleFactor)).fill("#ffffff"), attitudeDisplay.text("30").center(cx + 45, cy + (-30 * pitchScaleFactor)).fill("#ffffff"),
+        attitudeDisplay.line(cx - 15, cy, cx + 15, cy).center(cx, cy + (-45 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 3 }),
+        attitudeDisplay.line(cx - 35, cy, cx + 35, cy).center(cx, cy + (-60 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 2 }),
+        attitudeDisplay.text("60").center(cx - 50, cy + (-60 * pitchScaleFactor)).fill("#ffffff"), attitudeDisplay.text("60").center(cx + 50, cy + (-60 * pitchScaleFactor)).fill("#ffffff"),
+        attitudeDisplay.line(cx - 10, cy, cx + 10, cy).center(cx, cy + (-90 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 3 }),
+        attitudeDisplay.line(cx - 30, cy, cx + 30, cy).center(cx, cy + (-120 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 2 }),
+        attitudeDisplay.text("120").center(cx - 50, cy + (-120 * pitchScaleFactor)).fill("#ffffff"), attitudeDisplay.text("120").center(cx + 50, cy + (-120 * pitchScaleFactor)).fill("#ffffff")];
+      var pitchMarkingLocs = [120, 120, 120, 90, 60, 60, 60, 45, 30, 30, 30, 20, 10, -10, -20, -30, -30, -30, -45, -60, -60, -60, -90, -120, -120, -120];
+
+      var groundOuter = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#654321' }).stroke({ color: "#ffffff", width: lineWidth });
+      var skyOuter = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#87ceeb' }).stroke({ color: "#ffffff", width: lineWidth });
+
+      groundInner.move(xOffset, 180);
+      skyInner.move(xOffset, -180);
+      groundOuter.move(xOffset, 180);
+      skyOuter.move(xOffset, -180);
+
+      var rollMarkings = [[-60, attitudeDisplay.line(cx, outerRadius / 10, cx, outerRadius).stroke({ color: "#ffffff", width: lineWidth })],
+      [-45, attitudeDisplay.circle(lineWidth * 1.25).center(cx, outerRadius / 2).fill("#ffffff")],
+      [-30, attitudeDisplay.line(cx, outerRadius / 10, cx, outerRadius).stroke({ color: "#ffffff", width: lineWidth })],
+      [-20, attitudeDisplay.line(cx, outerRadius / 2, cx, outerRadius).stroke({ color: "#ffffff", width: lineWidth / 2 })],
+      [-10, attitudeDisplay.line(cx, outerRadius / 2, cx, outerRadius).stroke({ color: "#ffffff", width: lineWidth / 2 })],
+      [0, attitudeDisplay.polyline([[cx - (outerRadius / 2.5), outerRadius / 10], [cx, outerRadius], [cx + (outerRadius / 2.5), outerRadius / 10], [cx - (outerRadius / 2), outerRadius / 10]]).fill("#ffffff").stroke({ width: 0, color: "#ffffff" })],
+      [10, attitudeDisplay.line(cx, outerRadius / 2, cx, outerRadius).stroke({ color: "#ffffff", width: lineWidth / 2 })],
+      [20, attitudeDisplay.line(cx, outerRadius / 2, cx, outerRadius).stroke({ color: "#ffffff", width: lineWidth / 2 })],
+      [30, attitudeDisplay.line(cx, outerRadius / 10, cx, outerRadius).stroke({ color: "#ffffff", width: lineWidth })],
+      [45, attitudeDisplay.circle(lineWidth * 1.25).center(cx, outerRadius / 2).fill("#ffffff")],
+      [60, attitudeDisplay.line(cx, outerRadius / 10, cx, outerRadius).stroke({ color: "#ffffff", width: lineWidth })]];
+
+      updateMarkers(0);
+
+      var maskOuter = attitudeDisplay.mask();
+      maskOuter.add(attitudeDisplay.circle(360).fill("#ffffff"));
+      maskOuter.add(attitudeDisplay.circle(width - (2 * outerRadius)).dmove(outerRadius, outerRadius).fill("#000000"));
+      groundOuter.maskWith(maskOuter);
+      skyOuter.maskWith(maskOuter);
+
+      var maskInner = attitudeDisplay.mask();
+      maskInner.add(attitudeDisplay.circle(360).fill("#ffffff"));
+      groundInner.maskWith(maskInner);
+      skyInner.maskWith(maskInner);
+
+      var shadowGradient = attitudeDisplay.gradient('radial', function (add) {
+        add.stop({ offset: 0, color: "#000000", opacity: 0 })
+        add.stop({ offset: 0.5, color: "#000000", opacity: 0.1 })
+        add.stop({ offset: 0.75, color: "#000000", opacity: 0.3 })
+        add.stop({ offset: 1, color: "#000000", opacity: 1 })
+      })
+
+      var lightGradient = attitudeDisplay.gradient('radial', function (add) {
+        add.stop({ offset: 1 - (2 * outerRadius / width), color: "#ffffff", opacity: 1 })
+        add.stop({ offset: (1 - (2 * outerRadius / width)) * 1.07, color: "#ffffff", opacity: 0.3 })
+        add.stop({ offset: 1, color: "#ffffff", opacity: 0 })
+      })
+
+      var shadow = attitudeDisplay.circle(width - (2 * outerRadius)).dmove(outerRadius, outerRadius).fill(shadowGradient).opacity(0.4);
+      var light = attitudeDisplay.circle(width).fill(lightGradient).opacity(0.5);
+      light.maskWith(maskOuter);
+
+      var markerStand = attitudeDisplay.polyline([[cx - 10, height], [cx - 1, cy + 40], [cx + 1, cy + 40], [cx + 10, height]]).fill("#ffff00").stroke({ color: "#ffff00", width: lineWidth });
+      var markerLine = attitudeDisplay.line(cx, cy, cx, height).stroke({ color: "#ffff00", width: lineWidth / 1.5 });
+      var markerCircle = attitudeDisplay.circle(lineWidth * 2).center(cx, cy).fill("#ffff00");
+      var orientationGuide = attitudeDisplay.path("M 31.427734,270.96094 H 265.25781 c -4.4e-4,65.73748 53.28987,119.02865 119.02735,119.02929 65.73824,4.4e-4 119.02973,-53.29105 119.02929,-119.02929 h 233.82813").attr({ 'fill-opacity': 0, stroke: "#ffff00", 'stroke-width': lineWidth * 3.33 }).center(cx, cy + 18).scale(0.3);
+
+      function updateAttitude(gyroData) {
+        var roll = gyroData.x; // -180 to 180 (Data from the gyro will probably be 0-360. Check if # is > 180, if so subtract 180 and multiply by -1)
+        var pitch = gyroData.y; // ''
+        var pScale = 3; // 1-3 (Take max of circular array *1.2? should automatically adjust based on the pitch values)
+
+        pitchScaleFactor = ((width - (2 * outerRadius)) / width) * pScale;
+        pitch *= pitchScaleFactor;
+
+        groundInner.rotate(roll, cx, cy);
+        skyInner.rotate(roll, cx, cy);
+        groundInner.y(pitch + 180);
+        skyInner.y(pitch - 180);
+        groundOuter.rotate(roll, cx, cy);
+        skyOuter.rotate(roll, cx, cy);
+
+        updateMarkers(roll);
+      }
+
+      function updateMarkers(roll) {
+        for (var i = 0; i < rollMarkings.length; i++) {
+          rollMarkings[i][1].rotate(rollMarkings[i][0] + roll, cx, cy);
+        }
+
+        for (var i = 0; i < pitchMarkings.length; i++) {
+          pitchMarkings[i].cy(cy + (pitchMarkingLocs[i] * pitchScaleFactor));
+        }
+
+        for (var i = 0; i < pitchMarkings.length; i++) {
+          pitchMarkings[i].rotate(roll, cx, cy)
+        }
+      }
+    </script>
+    <script>
+      var camX = 0;
+      var camY = 0;
+      var camZ = 0;
+      var camDist = 30;
+
+      var roboX = 1;
+      var roboY = -1;
+      var roboZ = 0;
+      var roboSpeed = 1;
+
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x303337);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      var container = document.getElementById('robot3D');
+      var w = container.offsetWidth;
+      var h = container.offsetHeight;
+      renderer.setSize(w, h);
+      container.appendChild(renderer.domElement);
+
+      renderer.shadowMapEnabled = true;
+      renderer.shadowMapType = THREE.PCFSoftShadowMap;
+
+      camera = new THREE.PerspectiveCamera(70, w / h, 1, 1000);
+
+      hlight = new THREE.AmbientLight(0x404040, 2);
+      scene.add(hlight);
+      light = new THREE.PointLight(0xc4c4c4, 10);
+      light.position.set(0, 300, 500);
+      scene.add(light);
+      light2 = new THREE.PointLight(0xc4c4c4, 10);
+      light2.position.set(500, 100, 0);
+      scene.add(light2);
+      light3 = new THREE.PointLight(0xc4c4c4, 10);
+      light3.position.set(0, 100, -500);
+      scene.add(light3);
+      light4 = new THREE.PointLight(0xc4c4c4, 10);
+      light4.position.set(-500, 300, 500);
+      scene.add(light4);
+
+      let loader = new THREE.GLTFLoader();
+      var fullRobotBody;
+      var arrowLoc;
+      loader.load("{{ url_for('static', filename='assets/Full-Robot-Body.gltf') }}", function (gltf) {
+        gltf.scene.recieveShadow = true;
+        gltf.scene.castShadow = true;
+        scene.add(gltf.scene);
+        fullRobotBody = gltf;
+        arrowLoc = 20;
+        update3D();
+      });
+
+      function update3D() {
+        // Direction of Arrow
+        fullRobotBody.scene.children[arrowLoc].rotation.x = roboX;
+        fullRobotBody.scene.children[arrowLoc].rotation.y = roboY;
+        fullRobotBody.scene.children[arrowLoc].rotation.z = roboZ;
+
+        // Scale of Arrow
+        fullRobotBody.scene.children[arrowLoc].scale.y = (roboSpeed / 1.2) + 1.5;
+
+        // Orientation of Camera
+        camera.rotation.x = camX;
+        camera.rotation.y = camY;
+        camera.rotation.z = camZ;
+        camera.position.x = 0;
+        camera.position.y = 0;
+        camera.position.z = 0;
+        camera.translateZ(camDist);
+
+        camX += 0.01;
+        camY += 0.01;
+        camZ += 0.01;
+
+        roboX += 0.01;
+        roboY += 0.01;
+        roboZ += 0.01;
+
+        renderer.render(scene, camera);
+        requestAnimationFrame(update3D);
+      }
+    </script>
+    <script>
+
+      var canvas = document.getElementById('robotDiagram');
+      var ctx = canvas.getContext('2d');
+
+      var chassis = new Image();
+      chassis.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-Chassis.svg') }}";
+
+      var sideThruster = new Image();
+      sideThruster.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-sideThruster.svg') }}";
+
+      var sideThrusterPower = new Image();
+      sideThrusterPower.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-sideThrusterPower.svg') }}";
+
+      var upThruster = new Image();
+      upThruster.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-UpThruster.svg') }}";
+
+      var stillThruster = new Image();
+      stillThruster.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-StillThruster.svg') }}";
+
+      var downThruster = new Image();
+      downThruster.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-DownThruster.svg') }}";
+
+      var ESCController = new Image();
+      ESCController.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-ESC.svg') }}";
+
+      var FathomX = new Image();
+      FathomX.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-FathomX.svg') }}";
+
+      var IMUSensor = new Image();
+      IMUSensor.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-IMU.svg') }}";
+
+      var PWMController = new Image();
+      PWMController.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-PWM.svg') }}";
+
+      var rasPi = new Image();
+      rasPi.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-RasPi.svg') }}";
+
+      function drawImg(img, x, y, degrees = 0, scale = 1, hFlip = 1, vFlip = 1, tint) {
+        if (img.complete) {
+          ctx.save();
+          ctx.translate(x, y);
+
+          ctx.scale(scale, scale);
+
+          //ctx.translate(canvas.width/2, canvas.height/2);
+          ctx.rotate(degrees * Math.PI / 180);
+          ctx.scale(hFlip, vFlip);
+          ctx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
+
+          ctx.restore();
+        }
+      }
+
+      function drawText(text, x, y, font, size, color, align, style = "") {
+        ctx.fillStyle = color;
+        ctx.textAlign = align;
+        ctx.font = size.toString() + "px  " + font + " " + style;
+
+        if (align == "center") {
+          ctx.textBaseline = "middle";
+        }
+
+        ctx.fillText(text, x, y);
+      }
+
+      function clearCanvas(clearTransforms) {
+        if (!clearTransforms) ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (!clearTransforms) ctx.restore();
+      }
+
+      function drawTopThruster(loc, speed, xLoc, yLoc) {
+        s = 0.65;
+        x = 39.5;
+        y = 145;
+        r = 0;
+        v = 1;
+        h = 1;
+
+        switch (loc) {
+          case "TL":
+            x *= -1;
+            y *= -1;
+            break;
+          case "TR":
+            y *= -1;
+            break;
+          case "BL":
+            x *= -1;
+            h *= -1;
+            break;
+          case "BR":
+            h *= -1;
+            break;
+        }
+
+        if (speed > 0) {
+          drawImg(upThruster, xLoc + x, yLoc + y, r, s, v, h);
+        } else if (speed == 0) {
+          drawImg(stillThruster, xLoc + x, yLoc + y, r, s, v, h);
+        } else {
+          drawImg(downThruster, xLoc + x, yLoc + y, r, s, v, h);
+        }
+
+        drawText(speed * 100.0, xLoc + x, yLoc + (y * 1.51), "Ubuntu-Title", 40, "#D1D1D1", "center");
+      }
+
+      function drawSideThruster(loc, speed, xLoc, yLoc) {
+        s = 0.65;
+        x = 0;
+        y = 0;
+        r = 0;
+        v = 1;
+        h = 1;
+        xThrust = 7;
+        yThrust = 7;
+        rThrust = 0;
+        vThrust = 1;
+        hThrust = 1;
+
+        switch (loc) {
+          case "TL":
+            x = xLoc - 160;
+            y = yLoc - 135;
+            r = -45;
+            xThrust *= -1;
+            yThrust *= -1;
+            rThrust = r;
+            break;
+          case "TR":
+            x = xLoc + 165;
+            y = yLoc - 132;
+            r = 45;
+            yThrust *= -1;
+            rThrust = r;
+            break;
+          case "BL":
+            x = xLoc - 160;
+            y = yLoc + 135;
+            r = 45;
+            xThrust *= -1;
+            h = -1;
+            rThrust = r;
+            break;
+          case "BR":
+            x = xLoc + 165;
+            y = yLoc + 132;
+            r = -45;
+            h = -1;
+            rThrust = r;
+            break;
+        }
+
+        if (speed != 0) {
+          vThrust = Math.abs(speed);
+          if (speed < 0) {
+            rThrust = 180 + rThrust;
+
+          }
+
+          drawImg(sideThrusterPower, x + xThrust, y + yThrust, rThrust, s, vThrust, hThrust);
+        }
+        drawImg(sideThruster, x, y, r, s, v, h);
+        drawText(speed * 100.0, x + (xThrust * 9), y + (yThrust * 9), "Ubuntu-Title", 40, "#D1D1D1", "center");
+      }
+
+      function drawDevice(devName, working, xLoc, yLoc) {
+        x = xLoc;
+        y = yLoc;
+        s = 1;
+        r = 0
+        image = new Image();
+        switch (devName) {
+          case "ESC":
+            image = ESCController;
+            s = 0.32;
+            x = xLoc - 75;
+            y = yLoc + 15;
+            break;
+          case "IMU":
+            image = IMUSensor;
+            s = 0.15;
+            x = xLoc - 75;
+            y = yLoc - 28;
+            break;
+          case "FathomX":
+            image = FathomX;
+            s = 0.2;
+            x = xLoc + 75;
+            y = yLoc;
+            break;
+          case "PWM":
+            image = PWMController;
+            s = 0.24;
+            x = xLoc;
+            y = yLoc + 25;
+            break;
+          case "RasPi":
+            image = rasPi;
+            s = 0.3;
+            x = xLoc;
+            y = yLoc - 17;
+            break;
+        }
+
+        ctx.filter = "sepia(100%) saturate(250%) hue-rotate(-50deg)";
+        if (working) {
+          ctx.filter = "none";
+        }
+        drawImg(image, x, y, r, s);
+        ctx.filter = "none";
+      }
+
+      function updateDiagram() {
+        clearCanvas(true);
+
+        scaleAmnt = 1;
+        ctx.scale(scaleAmnt, scaleAmnt);
+
+        xLoc = ((canvas.width / 2) / scaleAmnt); // * 0.7;
+        yLoc = (canvas.height / 2) / scaleAmnt;
+
+        drawSideThruster("TL", 0, xLoc, yLoc);
+        drawSideThruster("TR", 0, xLoc, yLoc);
+        drawSideThruster("BL", 0, xLoc, yLoc);
+        drawSideThruster("BR", 0, xLoc, yLoc);
+
+        drawTopThruster("TL", 0, xLoc, yLoc);
+        drawTopThruster("TR", 0, xLoc, yLoc);
+        drawTopThruster("BL", 0, xLoc, yLoc);
+        drawTopThruster("BR", 0, xLoc, yLoc);
+
+        drawImg(chassis, xLoc, yLoc, 0, 1.5);
+
+        drawDevice("ESC", true, xLoc, yLoc);
+        drawDevice("FathomX", true, xLoc, yLoc);
+        drawDevice("IMU", true, xLoc, yLoc);
+        drawDevice("PWM", true, xLoc, yLoc);
+        drawDevice("RasPi", true, xLoc, yLoc);
+
+        requestAnimationFrame(updateDiagram);
+      }
+      requestAnimationFrame(updateDiagram);
+    </script>
+    <script>
+      function getData() {
+        return Math.random();
+      }
+
+      var layout = {
+        showlegend: true,
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        width: 400,
+        height: 120,
+        margin: {
+          l: 25,
+          r: 25,
+          b: 25,
+          t: 25,
+          pad: 4
+        },
+        legend: {
+          x: 0,
+          y: 1.5,
+          font: {
+            family: 'Arial',
+            size: 14,
+            color: '#808080'
+          }
+        },
+        xaxis: {
+          showgrid: true,
+          zeroline: false,
+          showline: false,
+          mirror: 'ticks',
+          gridcolor: '#808080',
+          gridwidth: 2,
+          zerolinecolor: '#969696',
+          zerolinewidth: 4,
+          linecolor: '#636363',
+          linewidth: 6,
+          tickfont: {
+            family: 'Arial',
+            size: 14,
+            color: '#808080'
+          },
+          range: [500, 0]
+        },
+        yaxis: {
+          showgrid: true,
+          zeroline: false,
+          showline: false,
+          mirror: 'ticks',
+          gridcolor: '#808080',
+          gridwidth: 2,
+          zerolinecolor: '#969696',
+          zerolinewidth: 4,
+          linecolor: '#636363',
+          linewidth: 6,
+          tickfont: {
+            family: 'Arial',
+            size: 14,
+            color: '#808080'
+          },
+        }
+      };
+      settings = {
+        displayModeBar: false
+      };
+
+      var amperageData = [
+        {
+          y: [getData()],
+          type: 'scatter',
+          line: {
+            shape: 'spline',
+            smoothing: 1,
+            color: 'rgb(255, 157, 98)'
+          },
+          name: "Amps"
+        }
+      ];
+      Plotly.plot('amperageGraph', amperageData, layout, settings);
+
+      var voltageData = [
+        {
+          y: [getData()],
+          type: 'scatter',
+          line: {
+            shape: 'spline',
+            smoothing: 1,
+            color: 'rgb(255, 98, 157)'
+          },
+          name: "Volts"
+        }
+      ];
+      Plotly.plot('voltageGraph', voltageData, layout, settings);
+
+      var speedData = [
+        {
+          y: [getData()],
+          type: 'scatter',
+          line: {
+            shape: 'spline',
+            smoothing: 1,
+            color: 'rgb(98, 157, 255)'
+          },
+          name: "Speed"
+        }
+      ];
+      Plotly.plot('speedGraph', speedData, layout, settings);
+
+      var temperatureData = [
+        {
+          y: [getData()],
+          type: 'scatter',
+          line: {
+            shape: 'spline',
+            smoothing: 1,
+            color: 'rgb(157, 98, 255)'
+          },
+          name: "Temp"
+        }
+      ];
+      Plotly.plot('temperatureGraph', temperatureData, layout, settings);
+
+      var cnt = 1;
+      var maxCnt = 50;
+      setInterval(function () {
+        Plotly.prependTraces(
+          'amperageGraph',
+          {
+            y: [[getData()]]
+          },
+          [0]
+        );
+
+        Plotly.prependTraces(
+          'voltageGraph',
+          {
+            y: [[getData()]]
+          },
+          [0]
+        );
+
+        Plotly.prependTraces(
+          'speedGraph',
+          {
+            y: [[getData()]]
+          },
+          [0]
+        );
+
+        Plotly.prependTraces(
+          'temperatureGraph',
+          {
+            y: [[getData()]]
+          },
+          [0]
+        );
+
+        cnt++;
+        if (cnt > maxCnt) {
+          amperageData[0].y.pop();
+          voltageData[0].y.pop();
+          speedData[0].y.pop();
+          temperatureData[0].y.pop();
+          cnt--;
+        }
+
+        Plotly.relayout('amperageGraph', {
+          'xaxis.range': [cnt, 0]
+        });
+
+        Plotly.relayout('voltageGraph', {
+          'xaxis.range': [cnt, 0]
+        });
+
+        Plotly.relayout('speedGraph', {
+          'xaxis.range': [cnt, 0]
+        });
+
+        Plotly.relayout('temperatureGraph', {
+          'xaxis.range': [cnt, 0]
+        });
+      }, 15);
+    </script>
+</body>
+
 </html>
