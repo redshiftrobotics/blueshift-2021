@@ -87,7 +87,8 @@ tags = {
         },
     "motorData": [sendDataQueue],
     "log": [airQueue],
-    "stateChange": [airQueue,recvDataQueue,sendDataQueue,recvImageQueue,mainQueue]
+    "stateChange": [airQueue,recvDataQueue,sendDataQueue,recvImageQueue,mainQueue],
+    "settingChange": [mainQueue, sendDataQueue]
 }
 
 '''
@@ -250,6 +251,11 @@ def startAirNode(debug=False):
         while not airQueue.empty():
             tosend = airQueue.get()
             socketio.emit("updateAirNode", tosend)
+    
+    @socketio.on('sendUpdate')
+    def getAir(recv, methods=["GET","POST"]):
+        handlePacket(recv)
+        
 
     def camGen(camName):
         myCamStream = airCamQueues[camName]

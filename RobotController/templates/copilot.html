@@ -147,12 +147,30 @@
                 <div id="robot3D"></div>
               </div>
               <div class="bg-mattBlackLight my-3 p-3 mx-0">
-                <label for="gyroX">gyroX</label>
-                <input type="range" class="custom-range" min="-180" max="180" step="0.5" id="gyroX">
-                <label for="gyroY">gyroY</label>
-                <input type="range" class="custom-range" min="-180" max="180" step="0.5" id="gyroY">
-                <label for="gyroZ">gyroZ</label>
-                <input type="range" class="custom-range" min="-180" max="180" step="0.5" id="gyroZ">
+                <h2>IMU Calibration</h2>
+                <ul class="list-group">
+                  <li
+                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h4"
+                    id="imu-calib-sys">
+                    System<span class="badge badge-primary badge-pill" id="imu-span-sys">Failed</span>
+                  </li>
+                  <li
+                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h4"
+                    id="imu-calib-gyro">
+                    Gyroscope<span class="badge badge-primary badge-pill" id="imu-span-gyro">Failed</span>
+                  </li>
+                  <li
+                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h4"
+                    id="imu-calib-accel">
+                    Accelerometer<span class="badge badge-primary badge-pill" id="imu-span-accel">Failed</span>
+                  </li>
+                  <li
+                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h4"
+                    id="imu-calib-mag">
+                    Magnetometer<span class="badge badge-primary badge-pill" id="imu-span-mag">Failed</span>
+                  </li>
+                </ul>
+                <button type="button" class="btn btn-secondary btn-lg" id="imu-straighten">Straighten</button>
               </div>
             </div>
           </div>
@@ -224,7 +242,7 @@
       [45, attitudeDisplay.circle(lineWidth * 1.25).center(cx, outerRadius / 2).fill("#ffffff")],
       [60, attitudeDisplay.line(cx, outerRadius / 10, cx, outerRadius).stroke({ color: "#ffffff", width: lineWidth })]];
 
-      updateMarkers(0,1);
+      updateMarkers(0, 1);
 
       var maskOuter = attitudeDisplay.mask();
       maskOuter.add(attitudeDisplay.circle(360).fill("#ffffff"));
@@ -279,13 +297,13 @@
         lastRoll = gyroData.x;
       }
 
-      function dist(x1,y1,x2,y2) {
-        return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2));
+      function dist(x1, y1, x2, y2) {
+        return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
       }
 
-      function updateMarkers(roll,initialize = 0) {
+      function updateMarkers(roll, initialize = 0) {
         for (var i = 0; i < rollMarkings.length; i++) {
-          rollMarkings[i][1].rotate(initialize*rollMarkings[i][0] + roll, cx, cy);
+          rollMarkings[i][1].rotate(initialize * rollMarkings[i][0] + roll, cx, cy);
         }
 
         for (var i = 0; i < pitchMarkings.length; i++) {
@@ -294,7 +312,7 @@
 
         for (var i = 0; i < pitchMarkings.length; i++) {
           pitchMarkings[i].rotate(roll, cx, cy);
-          if(dist(cx,cy,pitchMarkings[i].cx(),pitchMarkings[i].cy())> 160) {
+          if (dist(cx, cy, pitchMarkings[i].cx(), pitchMarkings[i].cy()) > 160) {
             pitchMarkings[i].opacity(0.0);
           } else {
             pitchMarkings[i].opacity(1.0);
@@ -369,16 +387,16 @@
       function update3D(state) {
         if (sceneLoaded) {
 
-          linAccelVec = [state.linAccel.x, state.linAccel.y, state.linAccel.z];
-          linAccelNorm = normalizeVector(linAccelVec);
+          velVec = [state.vel.x, state.vel.y, state.vel.z];
+          velNorm = normalizeVector(velVec);
 
           // Direction of Arrow
-          fullRobotBody.scene.children[arrowLoc].rotation.x = Math.acos(linAccelNorm[0]);
-          fullRobotBody.scene.children[arrowLoc].rotation.y = Math.asin(linAccelNorm[1]);
-          fullRobotBody.scene.children[arrowLoc].rotation.z = Math.atan(linAccelNorm[2]);
+          fullRobotBody.scene.children[arrowLoc].rotation.x = Math.acos(velNorm[0]);
+          fullRobotBody.scene.children[arrowLoc].rotation.y = Math.asin(velNorm[1]);
+          fullRobotBody.scene.children[arrowLoc].rotation.z = Math.atan(velNorm[2]);
 
           // Scale of Arrow
-          fullRobotBody.scene.children[arrowLoc].scale.y = (vectorSize(linAccelVec) / 1.2) + 1.5;
+          fullRobotBody.scene.children[arrowLoc].scale.y = (vectorSize(velVec) / 1.2) + 1.5;
 
           // Orientation of Camera
           //console.log(state.gyro);
@@ -782,7 +800,7 @@
         Plotly.prependTraces(
           'speedGraph',
           {
-            y: [[vectorSize([sensors.imu.linAccel.x, sensors.imu.linAccel.y, sensors.imu.linAccel.z])]]
+            y: [[vectorSize([sensors.imu.vel.x, sensors.imu.vel.y, sensors.imu.vel.z])]]
           },
           [0]
         );
@@ -839,7 +857,7 @@
             "y": 0,
             "z": 0,
           },
-          "linAccel": {
+          "vel": {
             "x": 0,
             "y": 0,
             "z": 0,
@@ -852,24 +870,72 @@
         switch (parsed.tag) {
           case "log":
             console.log(parsed.data);
+            break;
           case "sensor":
             sensorData = parsed.data;
+            break;
         }
       }
 
-      var gyroX = document.getElementById("gyroX");
-      var gyroY = document.getElementById("gyroY");
-      var gyroZ = document.getElementById("gyroZ");
+      // List elements to display the IMU calibration status
+      var imuCalibSys = document.getElementById("imu-calib-sys");
+      var imuSpanSys = document.getElementById("imu-span-sys");
+
+      var imuCalibGyro = document.getElementById("imu-calib-gyro");
+      var imuSpanGyro = document.getElementById("imu-span-gyro");
+
+      var imuCalibAccel = document.getElementById("imu-calib-accel");
+      var imuSpanAccel = document.getElementById("imu-span-accel");
+
+      var imuCalibMag = document.getElementById("imu-calib-mag");
+      var imuSpanMag = document.getElementById("imu-span-mag");
+
       function updateSite() {
         socket.emit("getAirNodeUpdates", Date.now());
 
-        //console.log(sensorData.imu);
-        /*
-        sensorData.imu.gyro.x = gyroX.value;
-        sensorData.imu.gyro.y = gyroY.value;
-        sensorData.imu.gyro.z = gyroZ.value;
-        */
-        console.log(sensorData.imu.gyro);
+        for (const [part, status] of Object.entries(sensorData.imu.calibration)) {
+          var selectedCalib;
+          var selectedSpan;
+
+          switch (part) {
+            case "sys":
+              selectedCalib = imuCalibSys;
+              selectedSpan = imuSpanSys;
+              break;
+            case "gyro":
+              selectedCalib = imuCalibGyro;
+              selectedSpan = imuSpanGyro;
+              break;
+            case "accel":
+              selectedCalib = imuCalibAccel;
+              selectedSpan = imuSpanAccel;
+              break;
+            case "mag":
+              selectedCalib = imuCalibMag;
+              selectedSpan = imuSpanMag;
+              break;
+          }
+          selectedCalib.classList.remove("list-group-item-warning");
+          selectedCalib.classList.remove("list-group-item-success");
+          selectedCalib.classList.remove("list-group-item-danger");
+
+          switch (status) {
+            case 0:
+              selectedCalib.classList.add("list-group-item-danger");
+              selectedSpan.innerHTML = "Failed";
+              break;
+            case 1:
+            case 2:
+              selectedCalib.classList.add("list-group-item-warning");
+              selectedSpan.innerHTML = "Working";
+              break;
+            case 3:
+              selectedCalib.classList.add("list-group-item-success");
+              selectedSpan.innerHTML = "Calibrated";
+              break;
+          }
+        }
+
         update3D(sensorData.imu);
         updateAttitude(sensorData.imu.gyro);
         updateGraphs(sensorData);
@@ -877,6 +943,17 @@
       }
 
       requestAnimationFrame(updateSite);
+
+      $('#imu-straighten').click(function() {
+        var packet = {
+          "tag": "settingChange",
+          "data": sensorData.imu.gyro,
+          "timestamp": Date.now() / 1000 | 0,
+          "metadata": "imuStraighten",
+          "highPriority": false
+        }
+        socket.emit("sendUpdate", packet);
+      });
     </script>
 </body>
 
