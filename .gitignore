@@ -3,12 +3,8 @@
 imagezmq/
 pycache
 /Testing/ZMQ\ Video\ Test/*.zip
-*svg.js
-*jquery*.js
-*socket.io*.js
 *.vscode
 RobotController/__pycache__/*
-RobotController/static/lib/svg.min.js
 Testing/Website-Testing/Robot 3D/Full-Robot-Body.blend
 Testing/Website-Testing/Robot 3D/Full-Robot-Body.blend1
 Testing/Website-Testing/Robot 3D/Full-Robot-Body.stl
