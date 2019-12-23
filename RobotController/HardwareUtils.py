@@ -59,6 +59,26 @@ class IMUFusion():
     def __init__(self):
         if not simpleMode:
             self.imu = BNO055(i2c)
+            self.calibration = {
+                "gyro-offset": {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                "last": {
+                    "gyro": {
+                        "x": 0,
+                        "y": 0,
+                        "z": 0
+                    },
+                    "vel": {
+                        "x": 0,
+                        "y": 0,
+                        "z": 0
+                    },
+                    "temp": 0
+                }
+            }
         else:
             self.offsets = {
                 "imu": {
@@ -73,7 +93,7 @@ class IMUFusion():
                         "y": randint(0, 1000),
                         "z": randint(0, 1000),
                     },
-                    "linAccel": {
+                    "vel": {
                         "x": randint(0, 1000),
                         "y": randint(0, 1000),
                         "z": randint(0, 1000),
@@ -83,6 +103,17 @@ class IMUFusion():
             }
             self.start = time.time()
             self.octaves = 2
+    
+    def set_offset(self, offset=False):
+        if not simpleMode:
+            if offset:
+                self.calibration["gyro-offset"]["x"] += offset["x"]
+                self.calibration["gyro-offset"]["y"] += offset["y"]
+                self.calibration["gyro-offset"]["z"] += offset["z"]
+            else:
+                self.calibration["gyro-offset"]["x"] += self.calibration["last"]["gyro"]["x"]
+                self.calibration["gyro-offset"]["y"] += self.calibration["last"]["gyro"]["y"]
+                self.calibration["gyro-offset"]["z"] += self.calibration["last"]["gyro"]["z"]
     
     def get_full_state(self):
         state = {
@@ -98,7 +129,7 @@ class IMUFusion():
                     "y": 0,
                     "z": 0,
                 },
-                "linAccel": {
+                "vel": {
                     "x": 0,
                     "y": 0,
                     "z": 0,
@@ -111,22 +142,43 @@ class IMUFusion():
             gyro = self.imu.euler
             lin_accel = self.imu.linear_acceleration
             temp = self.imu.temperature
-            calibration = self.imu.calibration_status
+            calib = self.imu.calibration_status
 
-            state["imu"]["calibration"]["sys"] = calibration[0]
-            state["imu"]["calibration"]["gyro"] = calibration[1]
-            state["imu"]["calibration"]["accel"] = calibration[2]
-            state["imu"]["calibration"]["mag"] = calibration[3]
-            
-            state["imu"]["gyro"]["x"] = gyro[0]
-            state["imu"]["gyro"]["y"] = gyro[1]
-            state["imu"]["gyro"]["z"] = gyro[2]
+            state["imu"]["calibration"]["sys"] = calib[0]
+            state["imu"]["calibration"]["gyro"] = calib[1]
+            state["imu"]["calibration"]["accel"] = calib[2]
+            state["imu"]["calibration"]["mag"] = calib[3]
 
-            state["imu"]["linAccel"]["x"] = lin_accel[0]
-            state["imu"]["linAccel"]["y"] = lin_accel[1]
-            state["imu"]["linAccel"]["z"] = lin_accel[2]
+            if gyro[0] is not None:
+                state["imu"]["gyro"]["x"] = gyro[2] - self.calibration["gyro-offset"]["x"]
+                state["imu"]["gyro"]["y"] = gyro[1] - self.calibration["gyro-offset"]["y"]
+                state["imu"]["gyro"]["z"] = gyro[0] - self.calibration["gyro-offset"]["z"]
+                self.calibration["last"]["gyro"]["x"] = state["imu"]["gyro"]["x"]
+                self.calibration["last"]["gyro"]["y"] = state["imu"]["gyro"]["y"]
+                self.calibration["last"]["gyro"]["z"] = state["imu"]["gyro"]["z"]
+            else:
+                state["imu"]["gyro"]["x"] = self.calibration["last"]["gyro"]["x"]
+                state["imu"]["gyro"]["y"] = self.calibration["last"]["gyro"]["y"]
+                state["imu"]["gyro"]["z"] = self.calibration["last"]["gyro"]["z"]
             
-            state["temp"] = temp
+            if lin_accel[0] is not None:
+                state["imu"]["vel"]["x"] += lin_accel[0]
+                state["imu"]["vel"]["y"] += lin_accel[1]
+                state["imu"]["vel"]["z"] += lin_accel[2]
+                self.calibration["last"]["vel"]["x"] = state["imu"]["vel"]["x"]
+                self.calibration["last"]["vel"]["y"] = state["imu"]["vel"]["y"]
+                self.calibration["last"]["vel"]["z"] = state["imu"]["vel"]["z"]
+            else:
+                state["imu"]["vel"]["x"] = self.calibration["last"]["vel"]["x"]
+                state["imu"]["vel"]["y"] = self.calibration["last"]["vel"]["y"]
+                state["imu"]["vel"]["z"] = self.calibration["last"]["vel"]["z"]
+            
+            if temp > -102:
+                state["temp"] = temp
+                self.calibration["last"]["temp"] = state["temp"]
+            else:
+                state["temp"] = self.calibration["last"]["temp"]
+
         else:
             x = float(-(time.time()-self.start))/150.0
 
@@ -139,9 +191,9 @@ class IMUFusion():
             state["imu"]["gyro"]["y"] = pnoise1(x+self.offsets["imu"]["gyro"]["y"], self.octaves)*180
             state["imu"]["gyro"]["z"] = pnoise1(x+self.offsets["imu"]["gyro"]["z"], self.octaves)*180
 
-            state["imu"]["linAccel"]["x"] = pnoise1(x+self.offsets["imu"]["linAccel"]["x"], self.octaves)*60
-            state["imu"]["linAccel"]["y"] = pnoise1(x+self.offsets["imu"]["linAccel"]["y"], self.octaves)*60
-            state["imu"]["linAccel"]["z"] = pnoise1(x+self.offsets["imu"]["linAccel"]["z"], self.octaves)*60
+            state["imu"]["vel"]["x"] = pnoise1(x+self.offsets["imu"]["vel"]["x"], self.octaves)*60
+            state["imu"]["vel"]["y"] = pnoise1(x+self.offsets["imu"]["vel"]["y"], self.octaves)*60
+            state["imu"]["vel"]["z"] = pnoise1(x+self.offsets["imu"]["vel"]["z"], self.octaves)*60
             
             state["temp"] = pnoise1(x+self.offsets["temp"], self.octaves)*5+21
         

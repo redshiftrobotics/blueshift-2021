@@ -72,6 +72,9 @@ lock = threading.Lock()
 restartCamStream = False
 earthQueue = Queue(0)
 
+# IMU and PWM interface classes
+IMU = HardwareUtils.IMUFusion()
+#SD = HardwareUtils.ServoDriver(enumerate(["T100"]*8))
 '''
 class nodeHandler(logging.Handler):
 	def emit(self, record):
@@ -161,8 +164,8 @@ def receiveData(debug=False):
 			debug: (optional) log debugging data
 	"""
 	global restartCamStream
+	#global SD
 
-	SD = HardwareUtils.ServoDriver(enumerate(["T100"]*8))
 
 	HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
 	PORT = CommunicationUtils.CNTLR_PORT
@@ -172,8 +175,10 @@ def receiveData(debug=False):
 
 	try:
 		cntlr.connect((HOST, PORT))
+		print("inital connection check succeded")
 	except ConnectionRefusedError:
 		connected = False
+		print("inital connection check failed")
 	
 	while execute['receiveData']:
 		try:
@@ -181,19 +186,20 @@ def receiveData(debug=False):
 			if recv['tag'] == 'stateChange':
 				if recv['data'] == 'close':
 					stopAllThreads()
-				if recv['data'] == 'restartCamStream':
+				elif recv['data'] == 'restartCamStream':
 					lock.acquire()
 					try:
 						restartCamStream = True
 					except:
 						pass
 					finally:
-						lock.release()
-					
-			
-			elif recv['tag'] == "motorData":
-				for loc,spd in enumerate(recv['data']):
-					SD.set_servo(loc,spd)
+						lock.release()		
+			elif recv['tag'] == 'settingChange':
+				if recv['metadata'] == 'imuStraighten':
+					IMU.set_offset(recv["data"])
+			#elif recv['tag'] == "motorData":
+				#for loc,spd in enumerate(recv['data']):
+					#SD.set_servo(loc,spd)
 
 
 			'''
@@ -202,13 +208,16 @@ def receiveData(debug=False):
 				logger.debug("TtS: "+str(time.time()-float(j['timestamp'])))
 			'''
 		except (OSError, KeyboardInterrupt):
+			print("connection lost")
 			connected = False
 			cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			while (not connected) and execute['sendData']:
 				try:
 					cntlr.connect((HOST, PORT))
 					connected = True
+					print("successful reconnection")
 				except ConnectionRefusedError:
+					print("reconnect failed. trying in 2 seconds")
 					time.sleep(2)
 	cntlr.close()
 
@@ -225,8 +234,7 @@ def sendData(sendQueue,debug=False):
 		Arguments:
 			debug: (optional) log debugging data
 	"""
-
-	IMU = HardwareUtils.IMUFusion()
+	global IMU
 
 	HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
 	PORT = CommunicationUtils.SNSR_PORT
@@ -236,8 +244,10 @@ def sendData(sendQueue,debug=False):
 
 	try:
 		snsr.connect((HOST, PORT))
+		print("inital connection check succeded")
 	except ConnectionRefusedError:
 		connected = False
+		print("inital connection check failed")
 	
 	while execute['sendData']:
 		try:
@@ -256,14 +266,17 @@ def sendData(sendQueue,debug=False):
 				'''
 					logger.warning("Couldn't send data: {}".format(e), exc_info=True)
 				'''
-		except (BrokenPipeError, KeyboardInterrupt):
+		except (ConnectionResetError, BrokenPipeError, KeyboardInterrupt):
+			print("connection lost")
 			connected = False
 			snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			while (not connected) and execute['sendData']:
 				try:
 					snsr.connect((HOST, PORT))
 					connected = True
+					print("successful reconnection")
 				except ConnectionRefusedError:
+					print("reconnect failed. trying in 2 seconds")
 					time.sleep(2)
 	snsr.close()
 	'''
