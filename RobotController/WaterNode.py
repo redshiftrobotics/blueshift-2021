@@ -160,21 +160,19 @@ def receiveData(debug=False):
 		Arguments:
 			debug: (optional) log debugging data
 	"""
+	global restartCamStream
 
-	#SD = HardwareUtils.ServoDriver(enumerate(["T100"]*8))
+	SD = HardwareUtils.ServoDriver(enumerate(["T100"]*8))
 
-	HOST = CommunicationUtils.EARTH_IP
+	HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
 	PORT = CommunicationUtils.CNTLR_PORT
 	
 	connected = True
 	cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-	print("initial connection check")
 	try:
 		cntlr.connect((HOST, PORT))
-		print("initial check succeded")
 	except ConnectionRefusedError:
-		print("initial check failed")
 		connected = False
 	
 	while execute['receiveData']:
@@ -203,17 +201,14 @@ def receiveData(debug=False):
 				logger.debug("Raw receive: "+str(recv))
 				logger.debug("TtS: "+str(time.time()-float(j['timestamp'])))
 			'''
-		except OSError:
-			print("connection error")
+		except (OSError, KeyboardInterrupt):
 			connected = False
 			cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			while (not connected) and execute['sendData']:
 				try:
 					cntlr.connect((HOST, PORT))
 					connected = True
-					print("reconnect attempt succeded")
 				except ConnectionRefusedError:
-					print("reconnect attempt failed")
 					time.sleep(2)
 	cntlr.close()
 
@@ -230,42 +225,29 @@ def sendData(sendQueue,debug=False):
 		Arguments:
 			debug: (optional) log debugging data
 	"""
-	HOST = CommunicationUtils.EARTH_IP
+
+	IMU = HardwareUtils.IMUFusion()
+
+	HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
 	PORT = CommunicationUtils.SNSR_PORT
 
 	connected = True
 	snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-	print("initial connection check")
 	try:
 		snsr.connect((HOST, PORT))
-		print("initial check succeded")
 	except ConnectionRefusedError:
-		print("initial check failed")
 		connected = False
 	
 	while execute['sendData']:
 		try:
 			# Get gyro, accel readings
-			sensors = {
-				"gyro": {
-					"x": 0,
-					"y": 0,
-					"z": 0,
-				},
-				"lin-accel": {
-					"x": 0,
-					"y": 0,
-					"z": 0,
-				},
-				"temp": 0
-			}
+			sensors = IMU.get_full_state()
 			sendQueue.put(CommunicationUtils.packet(tag="sensor",data=sensors,timestamp=time.time()))
-			time.sleep(0.0125)
+			time.sleep(1.0/100.0)
 			while not sendQueue.empty():
 				toSend = sendQueue.get()
 				sent = CommunicationUtils.sendMsg(snsr,toSend)
-				print(sent)
 				'''
 				if debug:
 					logger.debug("Sending: "+str(sent))
@@ -274,17 +256,14 @@ def sendData(sendQueue,debug=False):
 				'''
 					logger.warning("Couldn't send data: {}".format(e), exc_info=True)
 				'''
-		except BrokenPipeError:
-			print("connection error")
+		except (BrokenPipeError, KeyboardInterrupt):
 			connected = False
 			snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			while (not connected) and execute['sendData']:
 				try:
 					snsr.connect((HOST, PORT))
 					connected = True
-					print("reconnect attempt succeded")
 				except ConnectionRefusedError:
-					print("reconnect attempt failed")
 					time.sleep(2)
 	snsr.close()
 	'''
@@ -320,14 +299,14 @@ if( __name__ == "__main__"):
 	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
 	sendDataThread = threading.Thread(target=sendData, args=(earthQueue,verbose[0],))
 	vidStreamThread.start()
-	#recvDataThread.start()
-	#sendDataThread.start()
+	recvDataThread.start()
+	sendDataThread.start()
 
 	# Begin the Shutdown
 	while execute['streamVideo'] and execute['receiveData'] and execute['sendData']:
 		time.sleep(0.1)
-	#recvDataThread.join()
-	#sendDataThread.join()
+	recvDataThread.join()
+	sendDataThread.join()
 	vidStreamThread.join()
 	'''
 	logger.debug("Stopped all Threads")

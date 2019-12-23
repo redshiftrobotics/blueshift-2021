@@ -61,7 +61,8 @@ settings = {
 execute = {
     "streamVideo": True,
     "receiveData": True,
-    "sendData": True
+    "sendData": True,
+    "webServer": True
 }
 
 # Queues to send data to specific Threads
@@ -107,6 +108,7 @@ def stopAllThreads(callback=0):
     execute['streamVideo'] = False
     execute['receiveData'] = False
     execute['sendData'] = False
+    execute['webServer'] = False
     '''
     logger.debug("Stopping Threads")
     '''
@@ -311,15 +313,15 @@ if( __name__ == "__main__"):
     sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
     airNodeThread = threading.Thread(target=startAirNode, args=(verbose[0],), daemon=True)
     vidStreamThread.start()
-    #recvDataThread.start()
-    #sendDataThread.start()
+    recvDataThread.start()
+    sendDataThread.start()
     airNodeThread.start()
 
     # Begin the Shutdown
     while execute['streamVideo'] or execute['receiveData'] or execute['sendData']:
         time.sleep(0.1)
-    #recvDataThread.join()
-    #sendDataThread.join()
+    recvDataThread.join()
+    sendDataThread.join()
     vidStreamThread.join()
     airNodeThread.join()
     '''
