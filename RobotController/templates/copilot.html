@@ -394,7 +394,6 @@
           fullRobotBody.scene.children[arrowLoc].scale.y = (vectorSize(velVec))/2 ;
 
           // Orientation of Camera
-          //console.log(state.gyro);
           camera.rotation.x = -state.gyro.y * DEGREES_TO_RADIANS;
           camera.rotation.y = state.gyro.z * DEGREES_TO_RADIANS;
           camera.rotation.z = state.gyro.x * DEGREES_TO_RADIANS;
@@ -408,6 +407,7 @@
       }
     </script>
     <script id="robotDiagram_Script">
+      var numLength = 2;
 
       var canvas = document.getElementById('robotDiagram');
       var ctx = canvas.getContext('2d');
@@ -579,7 +579,7 @@
         x = xLoc;
         y = yLoc;
         s = 1;
-        r = 0
+        r = 0;
         image = new Image();
         switch (devName) {
           case "ESC":
@@ -622,7 +622,19 @@
         ctx.filter = "none";
       }
 
-      function updateDiagram() {
+      function remapArray(arr, oldMin, oldMax, newMin, newMax) {
+        mapped = [];
+        for (i=0;i<arr.length;i++) {
+          mapped.push(newMin + (newMax - newMin) * (arr[i] - oldMin) / (oldMax - oldMin));
+        }
+        return mapped;
+      }
+
+      function truncateNumber(num, length) {
+        return Math.round(num * 10**length) / 10**length;
+      }
+
+      function updateDiagram(speeds) {
         clearCanvas(true);
 
         scaleAmnt = 1;
@@ -631,15 +643,17 @@
         xLoc = ((canvas.width / 2) / scaleAmnt); // * 0.7;
         yLoc = (canvas.height / 2) / scaleAmnt;
 
-        drawSideThruster("TL", 0, xLoc, yLoc);
-        drawSideThruster("TR", 0, xLoc, yLoc);
-        drawSideThruster("BL", 0, xLoc, yLoc);
-        drawSideThruster("BR", 0, xLoc, yLoc);
+        fixedSpeeds = remapArray(speeds, 0.0, 180.0, -1.0, 1.0);
 
-        drawTopThruster("TL", 0, xLoc, yLoc);
-        drawTopThruster("TR", 0, xLoc, yLoc);
-        drawTopThruster("BL", 0, xLoc, yLoc);
-        drawTopThruster("BR", 0, xLoc, yLoc);
+        drawSideThruster("TL", truncateNumber(fixedSpeeds[2], numLength), xLoc, yLoc);
+        drawSideThruster("TR", truncateNumber(fixedSpeeds[0], numLength), xLoc, yLoc);
+        drawSideThruster("BL", truncateNumber(fixedSpeeds[3], numLength), xLoc, yLoc);
+        drawSideThruster("BR", truncateNumber(fixedSpeeds[1], numLength), xLoc, yLoc);
+
+        drawTopThruster("TL", truncateNumber(fixedSpeeds[6], numLength), xLoc, yLoc);
+        drawTopThruster("TR", truncateNumber(fixedSpeeds[4], numLength), xLoc, yLoc);
+        drawTopThruster("BL", truncateNumber(fixedSpeeds[7], numLength), xLoc, yLoc);
+        drawTopThruster("BR", truncateNumber(fixedSpeeds[5], numLength), xLoc, yLoc);
 
         drawImg(chassis, xLoc, yLoc, 0, 1.5);
 
@@ -861,6 +875,8 @@
         "temp": 0
       };
 
+      var drivetrainSpeeds = new Array(8).fill(0);
+
       function handleUpdates(parsed) {
         switch (parsed.tag) {
           case "log":
@@ -868,6 +884,11 @@
             break;
           case "sensor":
             sensorData = parsed.data;
+            break;
+          case "motorData":
+            if (parsed.metadata == "drivetrain") {
+              drivetrainSpeeds = parsed.data;
+            }
             break;
         }
       }
@@ -934,6 +955,7 @@
         update3D(sensorData.imu);
         updateAttitude(sensorData.imu.gyro);
         updateGraphs(sensorData);
+        updateDiagram(drivetrainSpeeds);
         requestAnimationFrame(updateSite);
       }
 

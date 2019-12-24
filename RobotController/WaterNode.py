@@ -198,8 +198,9 @@ def receiveData(debug=False):
 				if recv['metadata'] == 'imuStraighten':
 					IMU.set_offset(recv["data"])
 			#elif recv['tag'] == "motorData":
-				#for loc,spd in enumerate(recv['data']):
-					#SD.set_servo(loc,spd)
+				#if recv['metadata'] == "drivetrain":
+					#for loc,spd in enumerate(recv['data']):
+						#SD.set_servo(loc,spd)
 
 
 			'''

@@ -17,11 +17,11 @@ SIMPLE_EARTH_IP = "localhost"
 
 LENGTH_MARKER = b'|'
 
-def packet(tag="",data="",timestamp=0,metadata="",highPriority=False):
+def packet(tag="",data="",timestamp=False,metadata="",highPriority=False):
 	dataPacket = {
 		"tag": tag,
 		"data": data,
-		"timestamp": float(timestamp),
+		"timestamp": float(timestamp if timestamp else time.time()),
 		"metadata": metadata,
 		"highPriority": highPriority
 	}
@@ -86,6 +86,13 @@ def encodeImage(image):
     """
     retval, bffr = cv2.imencode('.jpg', image)
     return bffr.tobytes()
+
+def decodeImage(uri):
+   encoded_data = uri.split(',')[1]
+   nparr = np.fromstring(base64.b64decode(encoded_data), np.uint8)
+   img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+   return img
+
 
 def clearQueue(qToClear, debug=False):
 	if debug:

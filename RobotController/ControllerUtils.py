@@ -16,10 +16,10 @@ class DriveController():
                 "frontRight": order[1],
                 "backLeft": order[2],
                 "backRight": order[3],
-                "verticalLeft": order[4],
-                "verticalRight": order[5],
-                "verticalFront": order[6],
-                "verticalBack": order[7]
+                "verticalFrontLeft": order[4],
+                "verticalFrontRight": order[5],
+                "verticalBackLeft": order[6],
+                "verticalBackRight": order[7]
             },
             "style": "holonomic"
         }
@@ -35,13 +35,13 @@ class DriveController():
         
         if ((value <= -50 or value >= 50) and (code == 0 or code == 1 or code == 3 or code == 4) and event.type !=0):
             if code == 0:
-                self.joyHorizontal = deadzoneCorrect(value)
+                self.joyHorizontal = self.deadzoneCorrect(value)
             if code == 1:
-                self.joyForward = deadzoneCorrect(value)
+                self.joyForward = self.deadzoneCorrect(value)
             if code == 3:
-                self.joyRotation = deadzoneCorrect(value)
+                self.joyRotation = self.deadzoneCorrect(value)
             if code == 4:
-                self.joyVertical = deadzoneCorrect(value)
+                self.joyVertical = self.deadzoneCorrect(value)
 
     def calcThrust(self, style="holonomic"):
         """ Calculates the speed for each motor based on stored controller inputs
@@ -49,18 +49,18 @@ class DriveController():
             Returns:
                 An array of calculated motors speed values
         """
-        if settings["style"] == "holonomic":
-            self.mtrSpeeds[settings["motor_order"]["frontLeft"]] = 180-self.clamp(self.remapDeg(self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[settings["motor_order"]["frontRight"]] = self.clamp(self.remapDeg(-self.joyForward + self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[settings["motor_order"]["backLeft"]] = 180-self.clamp(self.remapDeg(self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[settings["motor_order"]["backRight"]] = self.clamp(self.remapDeg(-self.joyForward + self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[settings["motor_order"]["verticalLeft"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
-            self.mtrSpeeds[settings["motor_order"]["verticalRight"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
-            self.mtrSpeeds[settings["motor_order"]["verticalFront"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
-            self.mtrSpeeds[settings["motor_order"]["verticalBack"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
+        if self.settings["style"] == "holonomic":
+            self.mtrSpeeds[self.settings["motor_order"]["frontLeft"]] = 180-self.clamp(self.remapDeg(self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["frontRight"]] = self.clamp(self.remapDeg(-self.joyForward + self.joyHorizontal + self.joyRotation), 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["backLeft"]] = 180-self.clamp(self.remapDeg(self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["backRight"]] = self.clamp(self.remapDeg(-self.joyForward + self.joyHorizontal + self.joyRotation), 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontLeft"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontRight"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalBackLeft"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalBackRight"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
         return self.mtrSpeeds
     
-    def remapDeg(val):
+    def remapDeg(self, val):
         """ Remaps a controller input to servo range
 
             Arguments:
@@ -72,7 +72,7 @@ class DriveController():
         deg = -val/32768.0 * 90.0 + 90.0
         return deg
 
-    def clamp(n, minn, maxn):
+    def clamp(self, n, minn, maxn):
         """ Clamps a number in a range
 
             Arguments:
@@ -85,7 +85,7 @@ class DriveController():
         """
         return max(min(maxn, n), minn)
 
-    def deadzoneCorrect(val,deadzone_range=150):
+    def deadzoneCorrect(self, val, deadzone_range=150):
         """ Corrects a value if it is in the controller's deadzone
 
             Argument:
@@ -99,7 +99,7 @@ class DriveController():
         else:
             return val
 
-    def checkArrayValue(arry,val):
+    def checkArrayValue(self, arry, val):
         """ Checks if each item in array is equal to an input value
 
             Arguments:
@@ -111,6 +111,9 @@ class DriveController():
                 Otherwise False
         """
         return all(item==val for item in arry)
+
+    def zeroMotors(self):
+        return [90]*len(self.mtrSpeeds)
 
 def isStopCode(event):
     """ Checks if the input event is a stop code

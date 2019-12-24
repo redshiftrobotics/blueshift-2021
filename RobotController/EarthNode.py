@@ -62,7 +62,7 @@ execute = {
     "streamVideo": True,
     "receiveData": True,
     "sendData": True,
-    "webServer": True
+    "mainThread": True
 }
 
 # Queues to send data to specific Threads
@@ -85,9 +85,9 @@ tags = {
         "bkpCam1": [airCamQueues["bkpCam1"]],
         "bkpCam2": [airCamQueues["bkpCam2"]],
         },
-    "motorData": [sendDataQueue],
+    "motorData": [sendDataQueue, airQueue],
     "log": [airQueue],
-    "stateChange": [airQueue,recvDataQueue,sendDataQueue,recvImageQueue,mainQueue],
+    "stateChange": [airQueue, recvDataQueue, sendDataQueue, recvImageQueue, mainQueue],
     "settingChange": [mainQueue, sendDataQueue]
 }
 
@@ -109,7 +109,7 @@ def stopAllThreads(callback=0):
     execute['streamVideo'] = False
     execute['receiveData'] = False
     execute['sendData'] = False
-    execute['webServer'] = False
+    execute['mainThread'] = False
     '''
     logger.debug("Stopping Threads")
     '''
@@ -127,6 +127,54 @@ def handlePacket(qData, debug=False):
         else:
             for threadQueue in tags[qData['tag']]:
                 threadQueue.put(qData)
+
+def mainThread(debug=False):
+    """ Controls the robot including joystick input, computer vision, line following, etc.
+
+        Arguments:
+            debug: (optional) log debugging data
+    """
+
+    DC = ControllerUtils.DriveController()
+
+    # Get Controller
+    gamepad = None
+    while (not gamepad) and execute['mainThread']:
+        time.sleep(5)
+        try:
+            gamepad = ControllerUtils.identifyController()
+        except Exception as e:
+            pass #print(e)
+
+    newestImage = []
+    newestGyroState = {
+        "gyro": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+        }
+    }
+    while execute['mainThread']:
+        while not mainQueue.empty():
+            recvMsg = mainQueue.get()
+            if recvMsg['tag'] == 'cam':
+                newestImage = CommunicationUtils.decodeImage(recvMsg['data'])
+            elif recvMsg['tag'] == 'sensor':
+                newestGyroState = recvMsg['data']
+
+        # Get Joystick Input
+        event = gamepad.read_one()
+        if event:
+            if (ControllerUtils.isStopCode(event)):
+                handlePacket(CommunicationUtils.packet("stateChange", "close"))
+                time.sleep(1)
+                stopAllThreads()
+            elif (ControllerUtils.isZeroMotorCode(event)):
+                handlePacket(CommunicationUtils.packet("motorData", DC.zeroMotors(), metadata="drivetrain"))
+            else:
+                DC.updateState(event)
+                speeds = DC.calcThrust(event)
+                handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
 
 def receiveVideoStreams(debug=False):
     """ Recieves and processes video from the Water Node then sends it to the Air Node
@@ -313,19 +361,21 @@ if( __name__ == "__main__"):
     logger.info("Starting Earth Node")
     logger.debug("Started all Threads")
     '''
-
-    vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(verbose[0],), daemon=True)
+    mainThread = threading.Thread(target=mainThread, args=(verbose[0],))
+    vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(verbose[0],))
     recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
     sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
-    airNodeThread = threading.Thread(target=startAirNode, args=(verbose[0],), daemon=True)
+    airNodeThread = threading.Thread(target=startAirNode, args=(verbose[0],))
+    mainThread.start()
     vidStreamThread.start()
     recvDataThread.start()
     sendDataThread.start()
     airNodeThread.start()
 
     # Begin the Shutdown
-    while execute['streamVideo'] or execute['receiveData'] or execute['sendData']:
+    while execute['streamVideo'] or execute['receiveData'] or execute['sendData'] or execute['mainThread']:
         time.sleep(0.1)
+    mainThread.join()
     recvDataThread.join()
     sendDataThread.join()
     vidStreamThread.join()
