@@ -173,7 +173,7 @@ class IMUFusion():
                 state["imu"]["vel"]["y"] = self.calibration["last"]["vel"]["y"]
                 state["imu"]["vel"]["z"] = self.calibration["last"]["vel"]["z"]
             
-            if temp > -102:
+            if temp > 0:
                 state["temp"] = temp
                 self.calibration["last"]["temp"] = state["temp"]
             else:
