@@ -373,15 +373,15 @@
 
       function normalizeVector(vec) {
         var magnitude = vectorSize(vec);
+        var norm = []
         for (i = 0; i < vec.length; i++) {
-          vec[i] = vec[i] / magnitude;
+          norm.push(vec[i] / magnitude);
         }
-        return vec;
+        return norm;
       }
 
       function update3D(state) {
         if (sceneLoaded) {
-
           velVec = [state.vel.x, state.vel.y, state.vel.z];
           velNorm = normalizeVector(velVec);
 
@@ -391,7 +391,7 @@
           fullRobotBody.scene.children[arrowLoc].rotation.z = Math.atan(velNorm[2]);
 
           // Scale of Arrow
-          fullRobotBody.scene.children[arrowLoc].scale.y = (vectorSize(velVec) / 1.2) + 1.5;
+          fullRobotBody.scene.children[arrowLoc].scale.y = (vectorSize(velVec))/2 ;
 
           // Orientation of Camera
           //console.log(state.gyro);
