@@ -336,9 +336,6 @@
       renderer.setSize(w, h);
       container.appendChild(renderer.domElement);
 
-      renderer.shadowMapEnabled = true;
-      renderer.shadowMapType = THREE.PCFSoftShadowMap;
-
       camera = new THREE.PerspectiveCamera(70, w / h, 1, 1000);
 
       hlight = new THREE.AmbientLight(0x404040, 2);
@@ -360,8 +357,6 @@
       var fullRobotBody;
       var arrowLoc;
       loader.load("{{ url_for('static', filename='assets/Full-Robot-Body.gltf') }}", function (gltf) {
-        gltf.scene.recieveShadow = true;
-        gltf.scene.castShadow = true;
         scene.add(gltf.scene);
         fullRobotBody = gltf;
         arrowLoc = 20;
@@ -400,7 +395,7 @@
 
           // Orientation of Camera
           //console.log(state.gyro);
-          camera.rotation.x = state.gyro.y * DEGREES_TO_RADIANS;
+          camera.rotation.x = -state.gyro.y * DEGREES_TO_RADIANS;
           camera.rotation.y = state.gyro.z * DEGREES_TO_RADIANS;
           camera.rotation.z = state.gyro.x * DEGREES_TO_RADIANS;
           camera.position.x = 0;
@@ -421,10 +416,10 @@
       chassis.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-Chassis.svg') }}";
 
       var sideThruster = new Image();
-      sideThruster.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-sideThruster.svg') }}";
+      sideThruster.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-SideThruster.svg') }}";
 
       var sideThrusterPower = new Image();
-      sideThrusterPower.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-sideThrusterPower.svg') }}";
+      sideThrusterPower.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-SideThrusterPower.svg') }}";
 
       var upThruster = new Image();
       upThruster.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-UpThruster.svg') }}";
