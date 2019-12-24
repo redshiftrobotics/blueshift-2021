@@ -391,7 +391,7 @@
           fullRobotBody.scene.children[arrowLoc].rotation.z = Math.atan(velNorm[2]);
 
           // Scale of Arrow
-          fullRobotBody.scene.children[arrowLoc].scale.y = (vectorSize(velVec))/2 ;
+          fullRobotBody.scene.children[arrowLoc].scale.y = (vectorSize(velVec)) / 2;
 
           // Orientation of Camera
           camera.rotation.x = -state.gyro.y * DEGREES_TO_RADIANS;
@@ -513,7 +513,7 @@
           drawImg(downThruster, xLoc + x, yLoc + y, r, s, v, h);
         }
 
-        drawText(speed * 100.0, xLoc + x, yLoc + (y * 1.51), "Ubuntu-Title", 40, "#D1D1D1", "center");
+        drawText(Math.trunc(speed * 100.0), xLoc + x, yLoc + (y * 1.51), "Ubuntu-Title", 40, "#D1D1D1", "center");
       }
 
       function drawSideThruster(loc, speed, xLoc, yLoc) {
@@ -572,7 +572,7 @@
           drawImg(sideThrusterPower, x + xThrust, y + yThrust, rThrust, s, vThrust, hThrust);
         }
         drawImg(sideThruster, x, y, r, s, v, h);
-        drawText(speed * 100.0, x + (xThrust * 9), y + (yThrust * 9), "Ubuntu-Title", 40, "#D1D1D1", "center");
+        drawText(Math.trunc(speed * 100.0), x + (xThrust * 9), y + (yThrust * 9), "Ubuntu-Title", 40, "#D1D1D1", "center");
       }
 
       function drawDevice(devName, working, xLoc, yLoc) {
@@ -624,14 +624,10 @@
 
       function remapArray(arr, oldMin, oldMax, newMin, newMax) {
         mapped = [];
-        for (i=0;i<arr.length;i++) {
+        for (i = 0; i < arr.length; i++) {
           mapped.push(newMin + (newMax - newMin) * (arr[i] - oldMin) / (oldMax - oldMin));
         }
         return mapped;
-      }
-
-      function truncateNumber(num, length) {
-        return Math.round(num * 10**length) / 10**length;
       }
 
       function updateDiagram(speeds) {
@@ -645,15 +641,15 @@
 
         fixedSpeeds = remapArray(speeds, 0.0, 180.0, -1.0, 1.0);
 
-        drawSideThruster("TL", truncateNumber(fixedSpeeds[2], numLength), xLoc, yLoc);
-        drawSideThruster("TR", truncateNumber(fixedSpeeds[0], numLength), xLoc, yLoc);
-        drawSideThruster("BL", truncateNumber(fixedSpeeds[3], numLength), xLoc, yLoc);
-        drawSideThruster("BR", truncateNumber(fixedSpeeds[1], numLength), xLoc, yLoc);
+        drawSideThruster("TL", fixedSpeeds[2], xLoc, yLoc);
+        drawSideThruster("TR", fixedSpeeds[0], xLoc, yLoc);
+        drawSideThruster("BL", fixedSpeeds[3], xLoc, yLoc);
+        drawSideThruster("BR", fixedSpeeds[1], xLoc, yLoc);
 
-        drawTopThruster("TL", truncateNumber(fixedSpeeds[6], numLength), xLoc, yLoc);
-        drawTopThruster("TR", truncateNumber(fixedSpeeds[4], numLength), xLoc, yLoc);
-        drawTopThruster("BL", truncateNumber(fixedSpeeds[7], numLength), xLoc, yLoc);
-        drawTopThruster("BR", truncateNumber(fixedSpeeds[5], numLength), xLoc, yLoc);
+        drawTopThruster("TL", fixedSpeeds[6], xLoc, yLoc);
+        drawTopThruster("TR", fixedSpeeds[4], xLoc, yLoc);
+        drawTopThruster("BL", fixedSpeeds[7], xLoc, yLoc);
+        drawTopThruster("BR", fixedSpeeds[5], xLoc, yLoc);
 
         drawImg(chassis, xLoc, yLoc, 0, 1.5);
 
@@ -662,10 +658,7 @@
         drawDevice("IMU", true, xLoc, yLoc);
         drawDevice("PWM", true, xLoc, yLoc);
         drawDevice("RasPi", true, xLoc, yLoc);
-
-        requestAnimationFrame(updateDiagram);
       }
-      requestAnimationFrame(updateDiagram);
     </script>
     <script id="realtimeGraphs_Script">
       var layout = {
@@ -956,12 +949,13 @@
         updateAttitude(sensorData.imu.gyro);
         updateGraphs(sensorData);
         updateDiagram(drivetrainSpeeds);
+
         requestAnimationFrame(updateSite);
       }
 
       requestAnimationFrame(updateSite);
 
-      $('#imu-straighten').click(function() {
+      $('#imu-straighten').click(function () {
         var packet = {
           "tag": "settingChange",
           "data": sensorData.imu.gyro,

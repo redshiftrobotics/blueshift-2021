@@ -13,11 +13,9 @@ args = parser.parse_args()
 
 simpleMode = args.simple
 
-'''
 # Imports for Logging
 import logging
-from pythonjsonlogger import jsonlogger
-'''
+#from pythonjsonlogger import jsonlogger
 
 # Imports for Threading
 import threading
@@ -144,7 +142,7 @@ def mainThread(debug=False):
         try:
             gamepad = ControllerUtils.identifyController()
         except Exception as e:
-            pass #print(e)
+            print(e)
 
     newestImage = []
     newestGyroState = {
@@ -154,11 +152,14 @@ def mainThread(debug=False):
             "z": 0
         }
     }
+    lastMsgTime = time.time()
+    minTime = 1.0/10.0
     while execute['mainThread']:
         while not mainQueue.empty():
             recvMsg = mainQueue.get()
             if recvMsg['tag'] == 'cam':
-                newestImage = CommunicationUtils.decodeImage(recvMsg['data'])
+                #newestImage = CommunicationUtils.decodeImage(recvMsg['data'])
+                pass
             elif recvMsg['tag'] == 'sensor':
                 newestGyroState = recvMsg['data']
 
@@ -174,7 +175,8 @@ def mainThread(debug=False):
             else:
                 DC.updateState(event)
                 speeds = DC.calcThrust(event)
-                handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+                if (time.time() - lastMsgTime > minTime):
+                    handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
 
 def receiveVideoStreams(debug=False):
     """ Recieves and processes video from the Water Node then sends it to the Air Node
@@ -278,11 +280,9 @@ def sendData(debug=False):
 def startAirNode(debug=False):
     app = Flask(__name__)
 
-    '''
     # Disable Logging
     log = logging.getLogger('werkzeug')
     log.disabled = True
-    '''
     app.logger.disabled = True
 
     socketio = SocketIO(app)
@@ -298,10 +298,12 @@ def startAirNode(debug=False):
     def getAir(recv, methods=["GET","POST"]):
         while not airQueue.empty():
             tosend = airQueue.get()
-            socketio.emit("updateAirNode", tosend)
+            #print(tosend['timestamp']-time.time(), tosend['tag'])
+            if (tosend['timestamp'] - time.time() < 0.1):
+                socketio.emit("updateAirNode", tosend)
     
     @socketio.on('sendUpdate')
-    def getAir(recv, methods=["GET","POST"]):
+    def getUpdate(recv, methods=["GET","POST"]):
         handlePacket(recv)
         
 
