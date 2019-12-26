@@ -391,7 +391,7 @@
           fullRobotBody.scene.children[arrowLoc].rotation.z = Math.atan(velNorm[2]);
 
           // Scale of Arrow
-          fullRobotBody.scene.children[arrowLoc].scale.y = (vectorSize(velVec)) / 2;
+          fullRobotBody.scene.children[arrowLoc].scale.y = (vectorSize(velVec)) / 6 + 0.5;
 
           // Orientation of Camera
           camera.rotation.x = -state.gyro.y * DEGREES_TO_RADIANS;
@@ -735,7 +735,8 @@
           name: "Amps"
         }
       ];
-      Plotly.plot('amperageGraph', amperageData, layout, settings);
+      Plotly.plot('amperageGraph', amperageData, JSON.parse(JSON.stringify(layout)), settings);
+      Plotly.relayout('amperageGraph', {yaxis: {range: [0, 30]}});
 
       var voltageData = [
         {
@@ -749,7 +750,8 @@
           name: "Volts"
         }
       ];
-      Plotly.plot('voltageGraph', voltageData, layout, settings);
+      Plotly.plot('voltageGraph', voltageData, JSON.parse(JSON.stringify(layout)), settings);
+      Plotly.relayout('voltageGraph', {yaxis: {range: [0, 15]}});
 
       var speedData = [
         {
@@ -763,7 +765,8 @@
           name: "Speed"
         }
       ];
-      Plotly.plot('speedGraph', speedData, layout, settings);
+      Plotly.plot('speedGraph', speedData, JSON.parse(JSON.stringify(layout)), settings);
+      Plotly.relayout('speedGraph', {yaxis: {range: [0, 30]}});
 
       var temperatureData = [
         {
@@ -777,7 +780,8 @@
           name: "Temp"
         }
       ];
-      Plotly.plot('temperatureGraph', temperatureData, layout, settings);
+      Plotly.plot('temperatureGraph', temperatureData, JSON.parse(JSON.stringify(layout)), settings);
+      Plotly.relayout('temperatureGraph', {yaxis: {range: [10, 30]}});
 
       var cnt = 1;
       var maxCnt = 50;
