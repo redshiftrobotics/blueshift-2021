@@ -70,7 +70,6 @@ execute = {
 # Queue, Logger, and Class for Multithreaded Logging Communication
 lock = threading.Lock()
 restartCamStream = False
-earthQueue = Queue(0)
 
 # IMU and PWM interface classes
 IMU = HardwareUtils.IMUFusion()
@@ -227,7 +226,7 @@ def receiveData(debug=False):
 	logger.debug("Stopped recvData")
 	'''
 
-def sendData(sendQueue,debug=False):
+def sendData(debug=False):
 	""" Sends JSON data to the Water Node
 
 		Data will most likely be sensor data from an IMU and voltage/amperage sensor
@@ -250,23 +249,16 @@ def sendData(sendQueue,debug=False):
 		connected = False
 		print("inital connection check failed")
 	
+	lastMsgTime = time.time()
+	minTime = 1.0/30.0
+	
 	while execute['sendData']:
 		try:
 			# Get gyro, accel readings
 			sensors = IMU.get_full_state()
-			sendQueue.put(CommunicationUtils.packet(tag="sensor",data=sensors,timestamp=time.time()))
+			if (time.time() - lastMsgTime > minTime):
+				CommunicationUtils.sendMsg(snsr, CommunicationUtils.packet(tag="sensor",data=sensors))
 			time.sleep(1.0/100.0)
-			while not sendQueue.empty():
-				toSend = sendQueue.get()
-				sent = CommunicationUtils.sendMsg(snsr,toSend)
-				'''
-				if debug:
-					logger.debug("Sending: "+str(sent))
-				'''
-
-				'''
-					logger.warning("Couldn't send data: {}".format(e), exc_info=True)
-				'''
 		except (ConnectionResetError, BrokenPipeError, KeyboardInterrupt):
 			print("connection lost")
 			connected = False
@@ -311,7 +303,7 @@ if( __name__ == "__main__"):
 	'''
 	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose[0],))
 	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
-	sendDataThread = threading.Thread(target=sendData, args=(earthQueue,verbose[0],))
+	sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
 	vidStreamThread.start()
 	recvDataThread.start()
 	sendDataThread.start()
