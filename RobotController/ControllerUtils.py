@@ -9,7 +9,7 @@ import logging
 '''
 
 class DriveController():
-    def __init__(self, order=[0,1,2,3,4,5,6,7]):
+    def __init__(self, order=[0,1,2,3,4,5,6,7], flip=[0,0,0,0,0,0,0,0]):
         self.settings = {
             "motor_order": {
                 "frontLeft": order[0],
@@ -21,7 +21,8 @@ class DriveController():
                 "verticalBackLeft": order[6],
                 "verticalBackRight": order[7]
             },
-            "style": "holonomic"
+            "style": "holonomic",
+            "motor_flip": flip
         }
         self.joyHorizontal = 0
         self.joyForward = 0
@@ -50,14 +51,33 @@ class DriveController():
                 An array of calculated motors speed values
         """
         if self.settings["style"] == "holonomic":
-            self.mtrSpeeds[self.settings["motor_order"]["frontLeft"]] = 180-self.clamp(self.remapDeg(self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["frontLeft"]] = self.clamp(self.remapDeg(self.joyForward + self.joyHorizontal + self.joyRotation), 0, 180)
             self.mtrSpeeds[self.settings["motor_order"]["frontRight"]] = self.clamp(self.remapDeg(-self.joyForward + self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["backLeft"]] = 180-self.clamp(self.remapDeg(self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["backRight"]] = self.clamp(self.remapDeg(-self.joyForward + self.joyHorizontal + self.joyRotation), 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["backLeft"]] = self.clamp(self.remapDeg(self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["backRight"]] = self.clamp(self.remapDeg(-self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
             self.mtrSpeeds[self.settings["motor_order"]["verticalFrontLeft"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
             self.mtrSpeeds[self.settings["motor_order"]["verticalFrontRight"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
             self.mtrSpeeds[self.settings["motor_order"]["verticalBackLeft"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
             self.mtrSpeeds[self.settings["motor_order"]["verticalBackRight"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
+
+        for i in range(len(self.mtrSpeeds)):
+            if self.settings['motor_flip'][i]:
+                self.mtrSpeeds[i] = 180-self.mtrSpeeds[i]
+        return self.mtrSpeeds
+    
+    def calcPIDRot(self, x, y, z):
+        if self.settings["style"] == "holonomic":
+            self.mtrSpeeds[self.settings["motor_order"]["frontLeft"]] = self.clamp((z)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["frontRight"]] = self.clamp((z)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["backLeft"]] = self.clamp((z)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["backRight"]] = self.clamp((z)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontLeft"]] = self.clamp((x+y)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontRight"]] = self.clamp((-x+y)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalBackLeft"]] = self.clamp((x-y)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalBackRight"]] = self.clamp((-x-y)*90 + 90, 0, 180)
+        for i in range(len(self.mtrSpeeds)):
+            if self.settings['motor_flip'][i]:
+                self.mtrSpeeds[i] = 180-self.mtrSpeeds[i]
         return self.mtrSpeeds
     
     def remapDeg(self, val):
@@ -116,7 +136,7 @@ class DriveController():
         return [90]*len(self.mtrSpeeds)
 
 def isStopCode(event):
-    """ Checks if the input event is a stop code
+    """ Checks if the input event is a stop code (Back Button)
 
         Arguments:
             event: gamepad event to check
@@ -124,19 +144,45 @@ def isStopCode(event):
         Returns:
             Whether the event is a stop code
     """
-    return event.code == 316 and event.value == 1
+    return event.code == 314 and event.value == 1
 
 
 def isZeroMotorCode(event):
-    """ Checks if the input event is a stop code
+    """ Checks if the input event is a zero motor code (X Button)
 
         Arguments:
             event: gamepad event to check
 
         Returns:
-            Whether the event is a stop code
+            Whether the event is a zero motor code
+    """
+    return event.code == 307 and event.value == 1
+
+def isStabilizeCode(event):
+    """ Checks if the input event is a stop code (A Button)
+
+        Arguments:
+            event: gamepad event to check
+
+        Returns:
+            Whether the event is a stabilize code
     """
     return event.code == 304 and event.value == 1
+
+def isOverrideCode(event, action="down"):
+    """ Checks if the input event is a stop code (B Button)
+
+        Arguments:
+            event: gamepad event to check
+
+        Returns:
+            Whether the event is an override code
+    """
+    actions = {
+        "down": 1,
+        "up": 0
+    }
+    return event.code == 305 and event.value == actions[action]
 
 def identifyController():
         """ Searches the available devices for a controller and returns it
