@@ -353,9 +353,17 @@ def startAirNode(debug=False):
 
     socketio = SocketIO(app)
 
+    @app.route('/pilot')
+    def left():
+        return render_template('pilot.html')
+
     @app.route('/copilot')
     def copilot():
         return render_template('copilot.html')
+
+    @app.route('/cv')
+    def right():
+        return render_template('cv.html')
 
     def messageReceived(methods=['GET', 'POST']):
         print('message was received!!!')
@@ -390,14 +398,6 @@ def startAirNode(debug=False):
     @app.route('/videoFeed/<camName>')
     def videoFeed(camName):
         return Response(camGen(camName), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-    @app.route('/left')
-    def left():
-        return render_template('leftCam_logging.html')
-
-    @app.route('/right')
-    def right():
-        return render_template('rightCam_cv.html')
 
     app.jinja_env.auto_reload = True
     app.config['TEMPLATES_AUTO_RELOAD'] = True

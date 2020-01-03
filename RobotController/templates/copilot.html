@@ -78,7 +78,7 @@
 </head>
 
 <body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
     <a class="navbar-brand" href="#">Copilot</a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
       aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -98,13 +98,13 @@
       <div class="sidebar">
         <ul class="navbar-nav">
           <li class="nav-item">
-            <a href="#" class="nav-link px-2">
+            <a href="/pilot" class="nav-link px-2">
               <i class="material-icons icon">videocam</i>
-              <span class="text">Video</span>
+              <span class="text">Pilot</span>
             </a>
           </li>
           <li class="nav-item">
-            <a href="#" class="nav-link px-2">
+            <a href="/copilot" class="nav-link px-2">
               <i class="material-icons icon">videogame_asset</i>
               <span class="text">Copilot</span>
             </a>
@@ -139,7 +139,7 @@
               <div class="bg-mattBlackLight my-3 p-3 mx-0">
                 <div id="attitude" class="ml-3"></div>
               </div>
-              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+              <div class="bg-mattBlackLight mt-3 px-3 pt-0 pb-3 mx-0">
                 <div id="graphContainer">
                   <div id="amperageGraph"></div>
                   <div id="voltageGraph"></div>
@@ -157,14 +157,6 @@
                 </div>
               </div>
               <div class="bg-mattBlackLight my-3 p-3 mx-0">
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                sunt earum tempora veniam.
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                sunt earum tempora veniam.
                 Lorem ipsum, dolor sit amet consectetur adipisicing elit.
                 Ratione libero totam rerum eos nam ab perspiciatis voluptatum
                 in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
@@ -222,7 +214,7 @@
         </div>
       </main>
     </div>
-    <script id="attitude_Script"> 
+    <script id="attitude_Script">
       var width = 360;
       var height = 360;
       var cx = (width / 2);
@@ -984,7 +976,7 @@
         "temp": 0
       };
 
-      var drivetrainSpeeds = new Array(8).fill(0);
+      var drivetrainSpeeds = new Array(8).fill(90);
 
       function handleUpdates(parsed) {
         switch (parsed.tag) {
@@ -1094,6 +1086,13 @@
       window.onload = function () {
         drawRobotDiagramStatic();
       }
+
+      $(document).ready(function () {
+        //Minimize the menu (from dashboard.js)
+        $(".wrapper").toggleClass("active");
+      });
+
+
     </script>
 </body>
 
