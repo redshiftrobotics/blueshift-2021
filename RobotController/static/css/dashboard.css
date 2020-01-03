@@ -23,13 +23,13 @@
 }
 
 .bg-mattRed {
-  background-color: #ec6271;
+  background-color: #87ceeb;
 }
 
 .text-mattRed, .nav-link:hover .icon,
 .nav-link:hover .text, .nav-link.active .icon,
 .nav-link.active .text {
-  color: #ec6271;
+  color: #87ceeb;
 }
 
 .wrapper .sideMenu {

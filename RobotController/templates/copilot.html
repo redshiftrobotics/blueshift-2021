@@ -222,7 +222,7 @@
         </div>
       </main>
     </div>
-    <script id="attitude_Script">
+    <script id="attitude_Script"> 
       var width = 360;
       var height = 360;
       var cx = (width / 2);
@@ -241,7 +241,7 @@
       svgElement.setAttribute("viewBox", "0 0 360 360");
       svgElement.setAttribute("id", "attitudeSVG");
 
-      var groundInner = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#654321' }).stroke({ color: "#ffffff", width: lineWidth / 2 });
+      var groundInner = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#594218' }).stroke({ color: "#ffffff", width: lineWidth / 2 });
       var skyInner = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#87ceeb' }).stroke({ color: "#ffffff", width: lineWidth / 2 });
 
       var pitchMarkings = [
@@ -267,7 +267,7 @@
         attitudeDisplay.text("120").center(cx - 50, cy + (-120 * pitchScaleFactor)).fill("#ffffff"), attitudeDisplay.text("120").center(cx + 50, cy + (-120 * pitchScaleFactor)).fill("#ffffff")];
       var pitchMarkingLocs = [120, 120, 120, 90, 60, 60, 60, 45, 30, 30, 30, 20, 10, -10, -20, -30, -30, -30, -45, -60, -60, -60, -90, -120, -120, -120];
 
-      var groundOuter = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#654321' }).stroke({ color: "#ffffff", width: lineWidth });
+      var groundOuter = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#594218' }).stroke({ color: "#ffffff", width: lineWidth });
       var skyOuter = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#87ceeb' }).stroke({ color: "#ffffff", width: lineWidth });
 
       groundInner.move(xOffset, 180);
@@ -317,10 +317,11 @@
       var light = attitudeDisplay.circle(width).fill(lightGradient).opacity(0.5);
       light.maskWith(maskOuter);
 
-      var markerStand = attitudeDisplay.polyline([[cx - 10, height], [cx - 1, cy + 40], [cx + 1, cy + 40], [cx + 10, height]]).fill("#ffff00").stroke({ color: "#ffff00", width: lineWidth });
-      var markerLine = attitudeDisplay.line(cx, cy, cx, height).stroke({ color: "#ffff00", width: lineWidth / 1.5 });
-      var markerCircle = attitudeDisplay.circle(lineWidth * 2).center(cx, cy).fill("#ffff00");
-      var orientationGuide = attitudeDisplay.path("M 31.427734,270.96094 H 265.25781 c -4.4e-4,65.73748 53.28987,119.02865 119.02735,119.02929 65.73824,4.4e-4 119.02973,-53.29105 119.02929,-119.02929 h 233.82813").attr({ 'fill-opacity': 0, stroke: "#ffff00", 'stroke-width': lineWidth * 3.33 }).center(cx, cy + 18).scale(0.3);
+      var markerColor = "#fc4646";
+      var markerStand = attitudeDisplay.polyline([[cx - 10, height], [cx - 1, cy + 40], [cx + 1, cy + 40], [cx + 10, height]]).fill(markerColor).stroke({ color: markerColor, width: lineWidth });
+      var markerLine = attitudeDisplay.line(cx, cy, cx, height).stroke({ color: markerColor, width: lineWidth / 1.5 });
+      var markerCircle = attitudeDisplay.circle(lineWidth * 2).center(cx, cy).fill(markerColor);
+      var orientationGuide = attitudeDisplay.path("M 31.427734,270.96094 H 265.25781 c -4.4e-4,65.73748 53.28987,119.02865 119.02735,119.02929 65.73824,4.4e-4 119.02973,-53.29105 119.02929,-119.02929 h 233.82813").attr({ 'fill-opacity': 0, stroke: markerColor, 'stroke-width': lineWidth * 3.33 }).center(cx, cy + 18).scale(0.3);
 
       var lastRoll = 0;
       function updateAttitude(gyroData) {
@@ -817,7 +818,7 @@
           line: {
             shape: 'spline',
             smoothing: 1,
-            color: 'rgb(255, 157, 98)'
+            color: '#fcf046'
           },
           name: "Amps"
         }
@@ -832,7 +833,7 @@
           line: {
             shape: 'spline',
             smoothing: 1,
-            color: 'rgb(255, 98, 157)'
+            color: '#e08c3e'
           },
           name: "Volts"
         }
@@ -847,7 +848,7 @@
           line: {
             shape: 'spline',
             smoothing: 1,
-            color: 'rgb(98, 157, 255)'
+            color: '#fc4646'
           },
           name: "Speed"
         }
@@ -862,7 +863,7 @@
           line: {
             shape: 'spline',
             smoothing: 1,
-            color: 'rgb(157, 98, 255)'
+            color: '#46c8fc'
           },
           name: "Temp"
         }
