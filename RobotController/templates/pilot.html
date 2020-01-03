@@ -43,7 +43,7 @@
       </ul>
     </div>
   </nav>
-  <div class="wrapper d-flex">
+  <div class="wrapper active d-flex">
     <div class="sideMenu bg-mattBlackLight">
       <div class="sidebar">
         <ul class="navbar-nav">
@@ -62,7 +62,7 @@
             </li>
             <ul class="navbar-nav">
               <li class="nav-item">
-                <a href="#" class="nav-link px-2">
+                <a href="/cv" class="nav-link px-2">
                   <i class="material-icons icon">visibility</i>
                   <span class="text">Computer Vision</span>
                 </a>
@@ -95,10 +95,10 @@
                 <div class="text-center mt-3">
                   <div class="btn-group btn-group-toggle" data-toggle="buttons">
                     <label class="btn btn-secondary active">
-                      <input type="radio" name="camera" id="mainCam" autocomplete="off" checked> Front
+                      <input type="radio" name="camera-source" value="mainCam" autocomplete="off" checked> Front
                     </label>
                     <label class="btn btn-secondary">
-                      <input type="radio" name="options" id="bkpCam1" autocomplete="off"> Back
+                      <input type="radio" name="camera-source" value="bkpCam1" autocomplete="off"> Back
                     </label>
                   </div>
                 </div>
@@ -110,8 +110,16 @@
     </div>
     <script>
       $(document).ready(function () {
-        //Minimize the menu (from dashboard.js)
-        $(".wrapper").toggleClass("active");
+
+        // Switch image source based on radio buttons
+        $('input[type=radio][name=camera-source]').change(function () {
+          if (this.value == 'mainCam') {
+            $("#camDisplay").attr("src","/videoFeed/mainCam");
+          }
+          else if (this.value == 'bkpCam1') {
+            $("#camDisplay").attr("src","/videoFeed/bkpCam1");
+          }
+        });
       });
     </script>
 </body>
