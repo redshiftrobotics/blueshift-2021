@@ -27,13 +27,52 @@
       font-style: normal;
     }
 
-    #robotDiagram {
+    #robotDiagramContainer {
+      display: grid;
+    }
+
+    #robotDiagram-fg {
+      width: 100%;
+      height: auto;
+      z-index: 2;
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    #robotDiagram-mg {
+      width: 100%;
+      height: auto;
+      z-index: 1;
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    #robotDiagram-bg {
       background: #303337;
+      width: 100%;
+      height: auto;
+      z-index: 0;
+      grid-column: 1;
+      grid-row: 1;
     }
 
     #robot3D {
       width: 400px;
       height: 360px;
+    }
+
+    #attitudeSVG {
+      width: 100%;
+      height: auto;
+    }
+
+    #robot3d {
+      width: 100%;
+      height: auto;
+    }
+
+    #graphContainer {
+      width: 100%;
     }
   </style>
 </head>
@@ -101,15 +140,21 @@
                 <div id="attitude" class="ml-3"></div>
               </div>
               <div class="bg-mattBlackLight my-3 p-3 mx-0">
-                <div id="amperageGraph"></div>
-                <div id="voltageGraph"></div>
-                <div id="speedGraph"></div>
-                <div id="temperatureGraph"></div>
+                <div id="graphContainer">
+                  <div id="amperageGraph"></div>
+                  <div id="voltageGraph"></div>
+                  <div id="speedGraph"></div>
+                  <div id="temperatureGraph"></div>
+                </div>
               </div>
             </div>
             <div class="col-md-6">
               <div class="bg-mattBlackLight my-3 p-3 mx-0">
-                <canvas id="robotDiagram" width="860" height="500"></canvas>
+                <div id="robotDiagramContainer">
+                  <canvas id="robotDiagram-fg" width="600" height="400"></canvas>
+                  <canvas id="robotDiagram-mg" width="600" height="400"></canvas>
+                  <canvas id="robotDiagram-bg" width="600" height="400"></canvas>
+                </div>
               </div>
               <div class="bg-mattBlackLight my-3 p-3 mx-0">
                 Lorem ipsum, dolor sit amet consectetur adipisicing elit.
@@ -147,30 +192,30 @@
                 <div id="robot3D"></div>
               </div>
               <div class="bg-mattBlackLight my-3 p-3 mx-0">
-                <h2>IMU Calibration</h2>
+                <h3>IMU Calibration</h3>
                 <ul class="list-group">
                   <li
-                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h4"
+                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h5"
                     id="imu-calib-sys">
                     System<span class="badge badge-primary badge-pill" id="imu-span-sys">Failed</span>
                   </li>
                   <li
-                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h4"
+                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h5"
                     id="imu-calib-gyro">
                     Gyroscope<span class="badge badge-primary badge-pill" id="imu-span-gyro">Failed</span>
                   </li>
                   <li
-                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h4"
+                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h5"
                     id="imu-calib-accel">
                     Accelerometer<span class="badge badge-primary badge-pill" id="imu-span-accel">Failed</span>
                   </li>
                   <li
-                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h4"
+                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h5"
                     id="imu-calib-mag">
                     Magnetometer<span class="badge badge-primary badge-pill" id="imu-span-mag">Failed</span>
                   </li>
                 </ul>
-                <button type="button" class="btn btn-secondary btn-lg" id="imu-straighten">Straighten</button>
+                <button type="button" class="btn btn-secondary" id="imu-straighten">Straighten</button>
               </div>
             </div>
           </div>
@@ -188,13 +233,13 @@
       var lineWidth = 5;
       var pitchScaleFactor = (width - (2 * outerRadius)) / width;
 
-      /* SVG.js 2.7
-      var attitudeDisplay = SVG('attitude').size(width, height);
-      $("#SvgjsSvg1003").appendTo($("#attitude"));
-      */
-
       /* SVG.js 3.0 */
       var attitudeDisplay = SVG().addTo("#attitude").size(width, height);
+
+      // Setup the svg that was just created for responsive scaling
+      var svgElement = document.getElementById("attitude").children[0];
+      svgElement.setAttribute("viewBox", "0 0 360 360");
+      svgElement.setAttribute("id", "attitudeSVG");
 
       var groundInner = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#654321' }).stroke({ color: "#ffffff", width: lineWidth / 2 });
       var skyInner = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#87ceeb' }).stroke({ color: "#ffffff", width: lineWidth / 2 });
@@ -294,6 +339,7 @@
         skyOuter.rotate(roll, cx, cy);
 
         updateMarkers(roll);
+
         lastRoll = gyroData.x;
       }
 
@@ -332,7 +378,7 @@
       renderer.setPixelRatio(window.devicePixelRatio);
       var container = document.getElementById('robot3D');
       var w = container.offsetWidth;
-      var h = container.offsetHeight;
+      var h = container.offsetWidth;
       renderer.setSize(w, h);
       container.appendChild(renderer.domElement);
 
@@ -405,12 +451,28 @@
           renderer.render(scene, camera);
         }
       }
+
+      function resizeRobot3d() {
+        var w = container.offsetWidth;
+        var h = container.offsetWidth;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(w, h);
+      }
+
     </script>
     <script id="robotDiagram_Script">
       var numLength = 2;
 
-      var canvas = document.getElementById('robotDiagram');
-      var ctx = canvas.getContext('2d');
+      var canvasFg = document.getElementById('robotDiagram-fg');
+      var ctxFg = canvasFg.getContext('2d');
+
+      var canvasMg = document.getElementById('robotDiagram-mg');
+      var ctxMg = canvasMg.getContext('2d');
+
+      var canvasBg = document.getElementById('robotDiagram-bg');
+      var ctxBg = canvasBg.getContext('2d');
 
       var chassis = new Image();
       chassis.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-Chassis.svg') }}";
@@ -445,23 +507,31 @@
       var rasPi = new Image();
       rasPi.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-RasPi.svg') }}";
 
-      function drawImg(img, x, y, degrees = 0, scale = 1, hFlip = 1, vFlip = 1, tint) {
+      function drawImg(ctx, img, x, y, degrees = 0, scale = 1, hFlip = 1, vFlip = 1) {
         if (img.complete) {
           ctx.save();
           ctx.translate(x, y);
 
           ctx.scale(scale, scale);
-
-          //ctx.translate(canvas.width/2, canvas.height/2);
           ctx.rotate(degrees * Math.PI / 180);
           ctx.scale(hFlip, vFlip);
-          ctx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
+          var xCoord = roundNumber(-img.width / 2);
+          var yCoord = roundNumber(-img.height / 2);
+          ctx.drawImage(img, xCoord, yCoord, img.width, img.height);
 
           ctx.restore();
         }
       }
 
-      function drawText(text, x, y, font, size, color, align, style = "") {
+      // Efficient number rounding (https://www.html5rocks.com/en/tutorials/canvas/performance/)
+      function roundNumber(num) {
+        var rounded = (0.5 + num) | 0;
+        rounded = ~~(0.5 + num);
+        rounded = (0.5 + num) << 0;
+        return rounded
+      }
+
+      function drawText(ctx, text, x, y, font, size, color, align, style = "") {
         ctx.fillStyle = color;
         ctx.textAlign = align;
         ctx.font = size.toString() + "px  " + font + " " + style;
@@ -473,14 +543,14 @@
         ctx.fillText(text, x, y);
       }
 
-      function clearCanvas(clearTransforms) {
+      function clearCanvas(ctx, canvas, clearTransforms) {
         if (!clearTransforms) ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (!clearTransforms) ctx.restore();
       }
 
-      function drawTopThruster(loc, speed, xLoc, yLoc) {
+      function drawTopThruster(ctx, loc, speed, xLoc, yLoc) {
         s = 0.65;
         x = 39.5;
         y = 145;
@@ -506,17 +576,17 @@
         }
 
         if (speed > 0) {
-          drawImg(upThruster, xLoc + x, yLoc + y, r, s, v, h);
+          drawImg(ctx, upThruster, xLoc + x, yLoc + y, r, s, v, h);
         } else if (speed == 0) {
-          drawImg(stillThruster, xLoc + x, yLoc + y, r, s, v, h);
+          drawImg(ctx, stillThruster, xLoc + x, yLoc + y, r, s, v, h);
         } else {
-          drawImg(downThruster, xLoc + x, yLoc + y, r, s, v, h);
+          drawImg(ctx, downThruster, xLoc + x, yLoc + y, r, s, v, h);
         }
 
-        drawText(Math.trunc(speed * 100.0), xLoc + x, yLoc + (y * 1.51), "Ubuntu-Title", 40, "#D1D1D1", "center");
+        drawText(ctx, Math.trunc(speed * 100.0), xLoc + x, yLoc + (y * 1.51), "Ubuntu-Title", 40, "#D1D1D1", "center");
       }
 
-      function drawSideThruster(loc, speed, xLoc, yLoc) {
+      function drawSideThruster(ctx, loc, speed, xLoc, yLoc, toDraw) {
         s = 0.65;
         x = 0;
         y = 0;
@@ -562,20 +632,25 @@
             break;
         }
 
-        if (speed != 0) {
-          vThrust = Math.abs(speed);
-          if (speed < 0) {
-            rThrust = 180 + rThrust;
 
+
+        if (toDraw == "part") {
+          drawImg(ctx, sideThruster, x, y, r, s, v, h);
+        } else if (toDraw == "thrust") {
+          if (speed != 0) {
+            vThrust = Math.abs(speed);
+            if (speed < 0) {
+              rThrust = 180 + rThrust;
+
+            }
+
+            drawImg(ctx, sideThrusterPower, x + xThrust, y + yThrust, rThrust, s, vThrust, hThrust);
           }
-
-          drawImg(sideThrusterPower, x + xThrust, y + yThrust, rThrust, s, vThrust, hThrust);
+          drawText(ctx, Math.trunc(speed * 100.0), x + (xThrust * 9), y + (yThrust * 9), "Ubuntu-Title", 40, "#D1D1D1", "center");
         }
-        drawImg(sideThruster, x, y, r, s, v, h);
-        drawText(Math.trunc(speed * 100.0), x + (xThrust * 9), y + (yThrust * 9), "Ubuntu-Title", 40, "#D1D1D1", "center");
       }
 
-      function drawDevice(devName, working, xLoc, yLoc) {
+      function drawDevice(ctx, devName, working, xLoc, yLoc) {
         x = xLoc;
         y = yLoc;
         s = 1;
@@ -614,12 +689,13 @@
             break;
         }
 
-        ctx.filter = "sepia(100%) saturate(250%) hue-rotate(-50deg)";
         if (working) {
+          drawImg(ctx, image, x, y, r, s);
+        } else {
+          ctx.filter = "sepia(100%) saturate(250%) hue-rotate(-50deg)";
+          drawImg(ctx, image, x, y, r, s);
           ctx.filter = "none";
         }
-        drawImg(image, x, y, r, s);
-        ctx.filter = "none";
       }
 
       function remapArray(arr, oldMin, oldMax, newMin, newMax) {
@@ -630,43 +706,54 @@
         return mapped;
       }
 
+      scaleAmnt = 0.8;
+      xLoc = ((canvasFg.width / 2) / scaleAmnt);
+      yLoc = (canvasFg.height / 2) / scaleAmnt;
+
+      ctxMg.scale(scaleAmnt, scaleAmnt);
+
+      function drawRobotDiagramStatic() {
+        drawSideThruster(ctxMg, "TL", 0, xLoc, yLoc, "part");
+        drawSideThruster(ctxMg, "TR", 0, xLoc, yLoc, "part");
+        drawSideThruster(ctxMg, "BL", 0, xLoc, yLoc, "part");
+        drawSideThruster(ctxMg, "BR", 0, xLoc, yLoc, "part");
+        drawImg(ctxMg, chassis, xLoc, yLoc, 0, 1.5);
+      }
+
       function updateDiagram(speeds) {
-        clearCanvas(true);
+        clearCanvas(ctxFg, canvasFg, true);
+        clearCanvas(ctxBg, canvasBg, true);
 
-        scaleAmnt = 1;
-        ctx.scale(scaleAmnt, scaleAmnt);
-
-        xLoc = ((canvas.width / 2) / scaleAmnt); // * 0.7;
-        yLoc = (canvas.height / 2) / scaleAmnt;
+        ctxFg.scale(scaleAmnt, scaleAmnt);
+        ctxBg.scale(scaleAmnt, scaleAmnt);
 
         fixedSpeeds = remapArray(speeds, 0.0, 180.0, -1.0, 1.0);
 
-        drawSideThruster("TL", fixedSpeeds[2], xLoc, yLoc);
-        drawSideThruster("TR", fixedSpeeds[0], xLoc, yLoc);
-        drawSideThruster("BL", fixedSpeeds[3], xLoc, yLoc);
-        drawSideThruster("BR", fixedSpeeds[1], xLoc, yLoc);
+        drawSideThruster(ctxBg, "TL", fixedSpeeds[2], xLoc, yLoc, "thrust");
+        drawSideThruster(ctxBg, "TR", fixedSpeeds[0], xLoc, yLoc, "thrust");
+        drawSideThruster(ctxBg, "BL", fixedSpeeds[3], xLoc, yLoc, "thrust");
+        drawSideThruster(ctxBg, "BR", fixedSpeeds[1], xLoc, yLoc, "thrust");
 
-        drawTopThruster("TL", fixedSpeeds[6], xLoc, yLoc);
-        drawTopThruster("TR", fixedSpeeds[4], xLoc, yLoc);
-        drawTopThruster("BL", fixedSpeeds[7], xLoc, yLoc);
-        drawTopThruster("BR", fixedSpeeds[5], xLoc, yLoc);
+        drawTopThruster(ctxBg, "TL", fixedSpeeds[6], xLoc, yLoc);
+        drawTopThruster(ctxBg, "TR", fixedSpeeds[4], xLoc, yLoc);
+        drawTopThruster(ctxBg, "BL", fixedSpeeds[7], xLoc, yLoc);
+        drawTopThruster(ctxBg, "BR", fixedSpeeds[5], xLoc, yLoc);
 
-        drawImg(chassis, xLoc, yLoc, 0, 1.5);
-
-        drawDevice("ESC", true, xLoc, yLoc);
-        drawDevice("FathomX", true, xLoc, yLoc);
-        drawDevice("IMU", true, xLoc, yLoc);
-        drawDevice("PWM", true, xLoc, yLoc);
-        drawDevice("RasPi", true, xLoc, yLoc);
+        drawDevice(ctxFg, "ESC", true, xLoc, yLoc);
+        drawDevice(ctxFg, "FathomX", true, xLoc, yLoc);
+        drawDevice(ctxFg, "IMU", true, xLoc, yLoc);
+        drawDevice(ctxFg, "PWM", true, xLoc, yLoc);
+        drawDevice(ctxFg, "RasPi", true, xLoc, yLoc);
       }
     </script>
     <script id="realtimeGraphs_Script">
+      var graphContainer = document.getElementById("graphContainer");
       var layout = {
         showlegend: true,
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor: 'rgba(0,0,0,0)',
-        width: 400,
-        height: 120,
+        width: graphContainer.offsetWidth,
+        height: (window.innerHeight - window.innerWidth * 0.272) / 4,
         margin: {
           l: 25,
           r: 25,
@@ -736,7 +823,7 @@
         }
       ];
       Plotly.plot('amperageGraph', amperageData, JSON.parse(JSON.stringify(layout)), settings);
-      Plotly.relayout('amperageGraph', {yaxis: {range: [0, 30]}});
+      Plotly.relayout('amperageGraph', { yaxis: { range: [0, 30] } });
 
       var voltageData = [
         {
@@ -751,7 +838,7 @@
         }
       ];
       Plotly.plot('voltageGraph', voltageData, JSON.parse(JSON.stringify(layout)), settings);
-      Plotly.relayout('voltageGraph', {yaxis: {range: [0, 15]}});
+      Plotly.relayout('voltageGraph', { yaxis: { range: [0, 15] } });
 
       var speedData = [
         {
@@ -766,7 +853,7 @@
         }
       ];
       Plotly.plot('speedGraph', speedData, JSON.parse(JSON.stringify(layout)), settings);
-      Plotly.relayout('speedGraph', {yaxis: {range: [0, 30]}});
+      Plotly.relayout('speedGraph', { yaxis: { range: [0, 30] } });
 
       var temperatureData = [
         {
@@ -781,7 +868,7 @@
         }
       ];
       Plotly.plot('temperatureGraph', temperatureData, JSON.parse(JSON.stringify(layout)), settings);
-      Plotly.relayout('temperatureGraph', {yaxis: {range: [10, 30]}});
+      Plotly.relayout('temperatureGraph', { yaxis: { range: [10, 30] } });
 
       var cnt = 1;
       var maxCnt = 50;
@@ -842,6 +929,30 @@
 
         Plotly.relayout('temperatureGraph', {
           'xaxis.range': [cnt, 0]
+        });
+      }
+
+      function resizeGraphs() {
+        var w = graphContainer.offsetWidth;
+        var h = (window.innerHeight - window.innerWidth * 0.28) / 4;
+        Plotly.relayout('amperageGraph', {
+          'width': w,
+          'height': h
+        });
+
+        Plotly.relayout('voltageGraph', {
+          'width': w,
+          'height': h
+        });
+
+        Plotly.relayout('speedGraph', {
+          'width': w,
+          'height': h
+        });
+
+        Plotly.relayout('temperatureGraph', {
+          'width': w,
+          'height': h
         });
       }
     </script>
@@ -969,6 +1080,19 @@
         }
         socket.emit("sendUpdate", packet);
       });
+
+      // Auto resize canvas in case of window size change
+      window.addEventListener('resize', onWindowResize, false);
+
+      function onWindowResize() {
+        resizeRobot3d();
+        resizeGraphs();
+      }
+
+      // Draw static elements once they have been loaded
+      window.onload = function () {
+        drawRobotDiagramStatic();
+      }
     </script>
 </body>
 
