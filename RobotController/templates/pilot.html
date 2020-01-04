@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>Dashboard</title>
+  <title>Pilot Monitor</title>
   <!-- Utilites and Communication -->
   <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.4.1.min.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.slimscroll.min.js') }}"></script>
@@ -108,8 +108,10 @@
         </div>
       </main>
     </div>
-    <script>
+    <script id="main_Script">
       $(document).ready(function () {
+        // Set inital camera source
+        $("#camDisplay").attr("src","/videoFeed/mainCam");
 
         // Switch image source based on radio buttons
         $('input[type=radio][name=camera-source]').change(function () {

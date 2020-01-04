@@ -68,7 +68,8 @@ airQueue = Queue(0)
 airCamQueues = {
     "mainCam": Queue(0),
     "bkpCam1": Queue(0),
-    "bkpCam2": Queue(0)
+    "bkpCam2": Queue(0),
+    "cvCam": Queue(0)
 }
 recvDataQueue = Queue(0)
 sendDataQueue = Queue(0)
