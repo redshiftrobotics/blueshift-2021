@@ -17,16 +17,23 @@
 *  You should have received a copy of the GNU General Public License
 *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
+
+Short todo:
+-Create function to be called to read characters
 '''
 
 import serial
 import time
 import struct
 
-ser = serial.Serial('/dev/ttyACM0',9600,timeout=1)
-ser.flushOutput()
+def init():
+    ser = serial.Serial('/dev/ttyACM0',9600,timeout=1)
+    ser.flushOutput()
 
-print('Serial connected')
+    print('Serial connected')
+    '''Not sure if this fails to print in the case that Serial does not connect. Maybe change to "Listening on serial..."?'''
+
+init()
 
 while True:
     r = ser.read(1)
