@@ -60,6 +60,12 @@ def detectLines(img, debug=False):
         line_a_angle = np.degrees(np.arctan(lines[0][3]))
         line_b_angle = np.degrees(np.arctan(lines[1][3]))
 
+        # Fix negative Angles
+        if line_a_angle < 0:
+            line_a_angle += 180
+        if line_b_angle < 0:
+            line_b_angle += 180
+
         # Average the angles for a more accurate result
         avg_angle = (line_a_angle+line_b_angle)/2
 
