@@ -48,7 +48,7 @@ def detectLines(img, debug=False):
                     # Draw the line on the image
                     cv2.line(img, line_top,line_bottom, (0,0,0) ,5)
                     # Draw the center on the image
-                    cv2.line(img,(x,y),(x,y),(0,255,0),5)
+                    cv2.line(img,(x,y),(x,y),(0,255,0),10)
 
                 # Append the start, end, middle, and slope of each line to the array
                 lines.append([np.array(line_top), np.array(line_bottom), np.array([x,y]), slope])
@@ -69,13 +69,15 @@ def detectLines(img, debug=False):
         # Average the angles for a more accurate result
         avg_angle = (line_a_angle+line_b_angle)/2
 
+        # Display images for debugging
+        if debug:
+            cv2.imshow("Input", img)
+            cv2.moveWindow("Input", 50,50)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            
         return line_dist, avg_angle
-
-    if debug:
-        cv2.imshow("Input", img)
-        cv2.moveWindow("Input", 50,50)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+    return False
 
 img1 = cv2.imread("TL_1.png")
 img2 = cv2.imread("TL_2.png")
