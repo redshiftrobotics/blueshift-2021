@@ -13,11 +13,9 @@ args = parser.parse_args()
 
 simpleMode = args.simple
 
-'''
 # Imports for Logging
 import logging
-from pythonjsonlogger import jsonlogger
-'''
+#from pythonjsonlogger import jsonlogger
 
 # Imports for Threading
 import threading
@@ -37,6 +35,7 @@ import time
 
 # Imports for Controller Communication and Processing
 import ControllerUtils
+from simple_pid import PID
 
 if not simpleMode:
     import evdev
@@ -51,7 +50,6 @@ settings = {
     "maxCams": 3,
     "drive": "holonomic",
     "numMotors": 8,
-    "flipMotors": [1]*8,
     "minMotorSpeed": 0,
     "maxMotorSpeed": 180,
     "camStreamSleep": 1.0/30.0
@@ -61,7 +59,8 @@ settings = {
 execute = {
     "streamVideo": True,
     "receiveData": True,
-    "sendData": True
+    "sendData": True,
+    "mainThread": True
 }
 
 # Queues to send data to specific Threads
@@ -69,7 +68,8 @@ airQueue = Queue(0)
 airCamQueues = {
     "mainCam": Queue(0),
     "bkpCam1": Queue(0),
-    "bkpCam2": Queue(0)
+    "bkpCam2": Queue(0),
+    "cvCam": Queue(0)
 }
 recvDataQueue = Queue(0)
 sendDataQueue = Queue(0)
@@ -84,9 +84,10 @@ tags = {
         "bkpCam1": [airCamQueues["bkpCam1"]],
         "bkpCam2": [airCamQueues["bkpCam2"]],
         },
-    "motorData": [sendDataQueue],
+    "motorData": [sendDataQueue, airQueue],
     "log": [airQueue],
-    "stateChange": [airQueue,recvDataQueue,sendDataQueue,recvImageQueue,mainQueue]
+    "stateChange": [airQueue, recvDataQueue, sendDataQueue, recvImageQueue, mainQueue],
+    "settingChange": [mainQueue, sendDataQueue]
 }
 
 '''
@@ -107,6 +108,7 @@ def stopAllThreads(callback=0):
     execute['streamVideo'] = False
     execute['receiveData'] = False
     execute['sendData'] = False
+    execute['mainThread'] = False
     '''
     logger.debug("Stopping Threads")
     '''
@@ -124,6 +126,124 @@ def handlePacket(qData, debug=False):
         else:
             for threadQueue in tags[qData['tag']]:
                 threadQueue.put(qData)
+
+def mainThread(debug=False):
+    """ Controls the robot including joystick input, computer vision, line following, etc.
+
+        Arguments:
+            debug: (optional) log debugging data
+    """
+
+    DC = ControllerUtils.DriveController(flip=[1,0,1,0,0,0,0,0])
+
+    # Get Controller
+    gamepad = None
+    while (not gamepad) and execute['mainThread']:
+        time.sleep(5)
+        try:
+            gamepad = ControllerUtils.identifyController()
+        except Exception as e:
+            print(e)
+
+    newestImage = []
+    newestSensorState = {
+        'imu': {
+            'calibration': {
+                'sys': 2, 
+                'gyro': 3, 
+                'accel': 0, 
+                'mag': 0
+            }, 
+            'gyro': {
+                'x': 0, 
+                'y': 0, 
+                'z': 0
+            },
+            'vel': {
+                'x': -0.01,
+                'y': 0.0,
+                'z': -0.29
+            }
+        },
+        'temp': 25
+    }
+
+    # Initalize PID controllers
+    Kp = 1
+    Kd = 0.1
+    Ki = 0.05
+    xRotPID = PID(Kp, Kd, Ki, setpoint=0)
+    yRotPID = PID(Kp, Kd, Ki, setpoint=0)
+    zRotPID = PID(Kp, Kd, Ki, setpoint=0)
+
+    mode = "user-control"
+    override = False
+    print("mode:", mode)
+    print("override:", override)
+
+    lastMsgTime = time.time()
+    minTime = 1.0/10.0
+    while execute['mainThread']:
+        while not mainQueue.empty():
+            recvMsg = mainQueue.get()
+            if recvMsg['tag'] == 'cam':
+                #newestImage = CommunicationUtils.decodeImage(recvMsg['data'])
+                pass
+            elif recvMsg['tag'] == 'sensor':
+                newestSensorState = recvMsg['data']
+
+        # Get Joystick Input
+        event = gamepad.read_one()
+        if event:
+            if (ControllerUtils.isOverrideCode(event, action="down")):
+                override = True
+                print("override:", override)
+            elif (ControllerUtils.isOverrideCode(event, action="up") and override):
+                override = False
+                print("override:", override)
+            
+            if (ControllerUtils.isStopCode(event)):
+                handlePacket(CommunicationUtils.packet("stateChange", "close"))
+                time.sleep(1)
+                stopAllThreads()
+            elif (ControllerUtils.isZeroMotorCode(event)):
+                handlePacket(CommunicationUtils.packet("motorData", DC.zeroMotors(), metadata="drivetrain"))
+            elif (ControllerUtils.isStabilizeCode(event)):
+                if (mode != "stabilize"):
+                    # Reset PID controllers
+                    xRotPID.reset()
+                    yRotPID.reset()
+                    zRotPID.reset()
+                    xRotPID.tunings = (Kp, Ki, Kd)
+                    yRotPID.tunings = (Kp, Ki, Kd)
+                    zRotPID.tunings = (Kp, Ki, Kd)
+
+                    # Assuming the robot has been correctly calibrated, (0,0,0) should be upright
+                    xRotPID.setpoint = 0
+                    yRotPID.setpoint = 0
+                    zRotPID.setpoint = 0
+                    mode = "stabilize"
+                    print("mode:", mode)
+                else:
+                    mode = "user-control"
+                    print("mode:", mode)
+            if  (mode == "user-control" or override):
+                DC.updateState(event)
+                speeds = DC.calcThrust()
+                if (time.time() - lastMsgTime > minTime):
+                    handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+                    lastMsgTime = time.time()
+        elif (mode == "stabilize" and not override):
+            xTgt = xRotPID(newestSensorState["imu"]["gyro"]["x"])
+            yTgt = yRotPID(newestSensorState["imu"]["gyro"]["y"])
+            zTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
+            speeds = DC.calcPIDRot(xTgt,yTgt,zTgt)
+            if (time.time() - lastMsgTime > minTime):
+                handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+                lastMsgTime = time.time()
+            
+
+
 
 def receiveVideoStreams(debug=False):
     """ Recieves and processes video from the Water Node then sends it to the Air Node
@@ -227,18 +347,24 @@ def sendData(debug=False):
 def startAirNode(debug=False):
     app = Flask(__name__)
 
-    '''
     # Disable Logging
     log = logging.getLogger('werkzeug')
     log.disabled = True
-    '''
     app.logger.disabled = True
 
     socketio = SocketIO(app)
 
-    @app.route('/')
-    def index():
-        return render_template('mid_sensors.html')
+    @app.route('/pilot')
+    def left():
+        return render_template('pilot.html')
+
+    @app.route('/copilot')
+    def copilot():
+        return render_template('copilot.html')
+
+    @app.route('/cv')
+    def right():
+        return render_template('cv.html')
 
     def messageReceived(methods=['GET', 'POST']):
         print('message was received!!!')
@@ -247,7 +373,14 @@ def startAirNode(debug=False):
     def getAir(recv, methods=["GET","POST"]):
         while not airQueue.empty():
             tosend = airQueue.get()
-            socketio.emit("updateAirNode", tosend)
+            #print(tosend['timestamp']-time.time(), tosend['tag'])
+            if (tosend['timestamp'] - time.time() < 0.1):
+                socketio.emit("updateAirNode", tosend)
+    
+    @socketio.on('sendUpdate')
+    def getUpdate(recv, methods=["GET","POST"]):
+        handlePacket(recv)
+        
 
     def camGen(camName):
         myCamStream = airCamQueues[camName]
@@ -266,14 +399,6 @@ def startAirNode(debug=False):
     @app.route('/videoFeed/<camName>')
     def videoFeed(camName):
         return Response(camGen(camName), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-    @app.route('/left')
-    def left():
-        return render_template('leftCam_logging.html')
-
-    @app.route('/right')
-    def right():
-        return render_template('rightCam_cv.html')
 
     app.jinja_env.auto_reload = True
     app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -305,21 +430,23 @@ if( __name__ == "__main__"):
     logger.info("Starting Earth Node")
     logger.debug("Started all Threads")
     '''
-
-    vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(verbose[0],), daemon=True)
+    mainThread = threading.Thread(target=mainThread, args=(verbose[0],))
+    vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(verbose[0],))
     recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
     sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
-    airNodeThread = threading.Thread(target=startAirNode, args=(verbose[0],), daemon=True)
+    airNodeThread = threading.Thread(target=startAirNode, args=(verbose[0],))
+    mainThread.start()
     vidStreamThread.start()
-    #recvDataThread.start()
-    #sendDataThread.start()
+    recvDataThread.start()
+    sendDataThread.start()
     airNodeThread.start()
 
     # Begin the Shutdown
-    while execute['streamVideo'] or execute['receiveData'] or execute['sendData']:
+    while execute['streamVideo'] or execute['receiveData'] or execute['sendData'] or execute['mainThread']:
         time.sleep(0.1)
-    #recvDataThread.join()
-    #sendDataThread.join()
+    mainThread.join()
+    recvDataThread.join()
+    sendDataThread.join()
     vidStreamThread.join()
     airNodeThread.join()
     '''

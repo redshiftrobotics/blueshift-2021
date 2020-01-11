@@ -11,7 +11,7 @@ try:
 	device = devices[len(devices)-int(choice)-1].path
 	dev = InputDevice(device)
 	for event in dev.read_loop():
-		if event.type == ecodes.EV_KEY:
+		if event:
 			print(str(categorize(event))+" "+str(event.value))
 except:
 	print("Quitting...")
