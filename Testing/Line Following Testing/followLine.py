@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 # Computer Vision Settings
-lower_blue = np.array([66,44,39])
+lower_blue = np.array([70,119,87])
 upper_blue = np.array([109,255,225])
 kernel = np.ones((3,3), np.uint8)
 min_countour_area = 20000.0
@@ -23,7 +23,7 @@ def detectLines(img, debug=False):
     mask = cv2.inRange(hsv, lower_blue, upper_blue)
 
     filtered = cv2.erode(mask, kernel, iterations=1)
-    filtered = cv2.dilate(filtered, kernel, iterations=10)
+    filtered = cv2.dilate(filtered, kernel, iterations=15)
     filtered = cv2.erode(filtered, kernel, iterations=9)
 
     contours, hierarchy = cv2.findContours(filtered, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -53,6 +53,17 @@ def detectLines(img, debug=False):
                 # Append the start, end, middle, and slope of each line to the array
                 lines.append([np.array(line_top), np.array(line_bottom), np.array([x,y]), slope])
         
+        # Display images for debugging
+        if debug:
+            cv2.imshow("Input", img)
+            cv2.moveWindow("Input", 50,50)
+
+            cv2.imshow("Mask", filtered)
+            cv2.moveWindow("Mask", 500,50)
+
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+        
         # Find the distance between the centers of both lines
         line_dist = np.linalg.norm(lines[0][2]-lines[1][2])
 
@@ -68,19 +79,16 @@ def detectLines(img, debug=False):
 
         # Average the angles for a more accurate result
         avg_angle = (line_a_angle+line_b_angle)/2
-
-        # Display images for debugging
-        if debug:
-            cv2.imshow("Input", img)
-            cv2.moveWindow("Input", 50,50)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
             
         return line_dist, avg_angle
-    return False
+    return None
 
 img1 = cv2.imread("TL_1.png")
 img2 = cv2.imread("TL_2.png")
+img1_uw = cv2.imread("TL_1_UW.png")
+img2_uw = cv2.imread("TL_2_UW.png")
 
 print(detectLines(img1))
+print(detectLines(img1_uw))
 print(detectLines(img2))
+print(detectLines(img2_uw, debug=True))
