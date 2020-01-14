@@ -10,6 +10,7 @@
   <script type="text/javascript" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
 
   <!-- Visualization and Display -->
+  <script type="text/javascript" src="{{ url_for('static', filename='js/popper.min.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 
@@ -99,7 +100,7 @@
             </div>
             <div class="col-md-2">
               <div class="bg-mattBlackLight my-3 p-3 mx-0">
-                <h4>Camera</h4>
+                <h5>Camera</h5>
                 <div class="btn-group btn-group-toggle" data-toggle="buttons">
                   <label class="btn btn-secondary active">
                     <input type="radio" name="camera-source" value="mainCam" autocomplete="off" checked> Front
@@ -108,20 +109,34 @@
                     <input type="radio" name="camera-source" value="bkpCam1" autocomplete="off"> Back
                   </label>
                 </div>
-                <button type="button" class="btn btn-secondary" id="screenshotBtn">Screenshot</button>
-                <h3 class="mt-5">Computer Vision</h3>
-                <h6>Transect Line Visualization Level</h6>
-                <div class="btn-group btn-group-sm" role="group">
-                  <button type="button" class="btn btn-secondary">Original</button>
-                  <button type="button" class="btn btn-secondary">Mask</button>
-                  <button type="button" class="btn btn-secondary">Smooth</button>
-                  <button type="button" class="btn btn-secondary active">Contours</button>
+                <button type="button" class="btn btn-secondary my-1 mb-2" id="screenshotBtn">Screenshot</button>
+                <h5>Computer Vision</h5>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Button group with nested dropdown">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown"
+                      aria-haspopup="true" aria-expanded="false">
+                      Transect Line
+                    </button>
+                    <div class="dropdown-menu" id="transectLineDropdown">
+                      <a class="dropdown-item" href="#">Original</a>
+                      <a class="dropdown-item" href="#">Mask</a>
+                      <a class="dropdown-item" href="#">Smooth</a>
+                      <a class="dropdown-item" href="#">Contours</a>
+                    </div>
+                  </div>
                 </div>
-                <h6 class="mt-3">Coral Health Visualization Level</h6>
-                <div class="btn-group btn-group-sm" role="group">
-                  <button type="button" class="btn btn-secondary">Difference</button>
-                  <button type="button" class="btn btn-secondary">Smooth</button>
-                  <button type="button" class="btn btn-secondary active">Change</button>
+                <div class="btn-group btn-group-sm mt-1" role="group" aria-label="Button group with nested dropdown">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown"
+                      aria-haspopup="true" aria-expanded="false">
+                      Coral Health
+                    </button>
+                    <div class="dropdown-menu" id="coralHealthDropdown">
+                      <a class="dropdown-item" href="#">Difference</a>
+                      <a class="dropdown-item" href="#">Smooth</a>
+                      <a class="dropdown-item" href="#">Change</a>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -224,7 +239,7 @@
       }
 
       function takeScreenshot() {
-        img.src = "/videoFeed/"+selectedCamera;
+        img.src = "/videoFeed/" + selectedCamera;
 
         img.onload = function () {
           ctxScreenshot.drawImage(img, 0, 0);
@@ -232,6 +247,7 @@
       }
     </script>
     <script id="main_Script">
+      var socket = io.connect('http://' + document.domain + ':' + location.port);
       $(document).ready(function () {
         $("#screenshotBtn").click(function () {
           takeScreenshot();
@@ -245,6 +261,32 @@
           else if (this.value == 'bkpCam1') {
             selectedCamera = "bkpCam1";
           }
+        });
+
+        // Switch transect line debug levl based on drop down
+        $("#transectLineDropdown a").on("click", function () {
+          var id = $(this).text();
+          var packet = {
+            "tag": "settingChange",
+            "data": id,
+            "timestamp": Date.now() / 1000 | 0,
+            "metadata": "transectLine",
+            "highPriority": false
+          }
+          socket.emit("sendUpdate", packet);
+        });
+
+        // Switch coral health debug levl based on drop down
+        $("#coralHealthDropdown a").on("click", function () {
+          var id = $(this).text();
+          var packet = {
+            "tag": "settingChange",
+            "data": id,
+            "timestamp": Date.now() / 1000 | 0,
+            "metadata": "coralHealth",
+            "highPriority": false
+          }
+          socket.emit("sendUpdate", packet);
         });
 
         // Set inital computer vision display source

@@ -4,10 +4,6 @@ try:
 except:
     simpleMode = True
 
-'''
-import logging
-'''
-
 class DriveController():
     def __init__(self, order=[0,1,2,3,4,5,6,7], flip=[0,0,0,0,0,0,0,0]):
         self.settings = {
@@ -24,10 +20,6 @@ class DriveController():
             "style": "holonomic",
             "motor_flip": flip
         }
-        self.joyHorizontal = 0
-        self.joyForward = 0
-        self.joyRotation = 0
-        self.joyVertical = 0
         self.mtrSpeeds = [0]*len(order)
     
     def updateState(self, event):
@@ -43,27 +35,6 @@ class DriveController():
                 self.joyRotation = self.deadzoneCorrect(value)
             if code == 4:
                 self.joyVertical = self.deadzoneCorrect(value)
-
-    def calcThrust(self, style="holonomic"):
-        """ Calculates the speed for each motor based on stored controller inputs
-
-            Returns:
-                An array of calculated motors speed values
-        """
-        if self.settings["style"] == "holonomic":
-            self.mtrSpeeds[self.settings["motor_order"]["frontLeft"]] = self.clamp(self.remapDeg(self.joyForward + self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["frontRight"]] = self.clamp(self.remapDeg(-self.joyForward + self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["backLeft"]] = self.clamp(self.remapDeg(self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["backRight"]] = self.clamp(self.remapDeg(-self.joyForward - self.joyHorizontal + self.joyRotation), 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontLeft"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontRight"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["verticalBackLeft"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["verticalBackRight"]] = self.clamp(self.remapDeg(self.joyVertical), 0, 180)
-
-        for i in range(len(self.mtrSpeeds)):
-            if self.settings['motor_flip'][i]:
-                self.mtrSpeeds[i] = 180-self.mtrSpeeds[i]
-        return self.mtrSpeeds
 
     def calcMotorValues(self, xm, ym, zm, xr, yr, zr):
         """ Calculates the speed for each motor 6 inputs, each representing a degree of freedom
@@ -85,34 +56,7 @@ class DriveController():
             if self.settings['motor_flip'][i]:
                 self.mtrSpeeds[i] = 180-self.mtrSpeeds[i]
         return self.mtrSpeeds
-
-    def calcPIDRot(self, x, y, z):
-        if self.settings["style"] == "holonomic":
-            self.mtrSpeeds[self.settings["motor_order"]["frontLeft"]] = self.clamp((z)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["frontRight"]] = self.clamp((z)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["backLeft"]] = self.clamp((z)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["backRight"]] = self.clamp((z)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontLeft"]] = self.clamp((x+y)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontRight"]] = self.clamp((-x+y)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["verticalBackLeft"]] = self.clamp((x-y)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["verticalBackRight"]] = self.clamp((-x-y)*90 + 90, 0, 180)
-        for i in range(len(self.mtrSpeeds)):
-            if self.settings['motor_flip'][i]:
-                self.mtrSpeeds[i] = 180-self.mtrSpeeds[i]
-        return self.mtrSpeeds
     
-    def remapDeg(self, val):
-        """ Remaps a controller input to servo range
-
-            Arguments:
-                val: value to remap
-
-            Returns:
-                The remapped value
-        """
-        deg = -val/32768.0 * 90.0 + 90.0
-        return deg
-
     def clamp(self, n, minn, maxn):
         """ Clamps a number in a range
 
@@ -140,81 +84,134 @@ class DriveController():
         else:
             return val
 
-    def checkArrayValue(self, arry, val):
-        """ Checks if each item in array is equal to an input value
-
-            Arguments:
-                arry: array to check
-                val: value to check againts the array
-
-            Returns:
-                True if each item in the array was equal to the val
-                Otherwise False
-        """
-        return all(item==val for item in arry)
-
     def zeroMotors(self):
         return [90]*len(self.mtrSpeeds)
 
-def isStopCode(event):
-    """ Checks if the input event is a stop code (Back Button)
+def updateGamepadState(gamepadOut, device, stop):
+    """ Updates the state of a gamepad object to based on evdev events
 
         Arguments:
-            event: gamepad event to check
-
-        Returns:
-            Whether the event is a stop code
+            gamepadOut: gamepad object to update
+            device: evdev device to read updates from 
+            stop: reference to variable that can stop the loop
     """
-    return event.code == 314 and event.value == 1
+    stickScale = 32768.0
+    triggerScale = 255.0
+    for event in device.read_loop():
+        if not stop:
+            break
+        if event.type !=0:
+            code = event.code
+            value = event.value
 
+            if code == 0:
+                gamepadOut.left["stick"]["x"] = -value/stickScale
+            elif code == 1:
+                gamepadOut.left["stick"]["y"] = value/stickScale
+            elif code == 3:
+                gamepadOut.right["stick"]["x"] = value/stickScale
+            elif code == 4:
+                gamepadOut.right["stick"]["y"] = -value/stickScale
+            elif code == 2:
+                gamepadOut.left["trigger"] = value/triggerScale
+            elif code == 5:
+                gamepadOut.right["trigger"] = value/triggerScale
+            elif code == 16:
+                if value == -1:
+                    gamepadOut.d_pad["left"] = 1
+                    gamepadOut.d_pad["right"] = 0
+                elif value == 1:
+                    gamepadOut.d_pad["left"] = 0
+                    gamepadOut.d_pad["right"] = 1
+                else:
+                    gamepadOut.d_pad["left"] = 0
+                    gamepadOut.d_pad["right"] = 0
+            elif code == 17:
+                if value == -1:
+                    gamepadOut.d_pad["up"] = 1
+                    gamepadOut.d_pad["down"] = 0
+                elif value == 1:
+                    gamepadOut.d_pad["up"] = 0
+                    gamepadOut.d_pad["down"] = 1
+                else:
+                    gamepadOut.d_pad["up"] = 0
+                    gamepadOut.d_pad["down"] = 0
+            elif code == 304:
+                if value == 1:
+                    gamepadOut.buttons["a"] = 1
+                else:
+                    gamepadOut.buttons["a"] = 0
+            elif code == 305:
+                if value == 1:
+                    gamepadOut.buttons["b"] = 1
+                else:
+                    gamepadOut.buttons["b"] = 0
+            elif code == 307:
+                if value == 1:
+                    gamepadOut.buttons["x"] = 1
+                else:
+                    gamepadOut.buttons["x"] = 0
+            elif code == 308:
+                if value == 1:
+                    gamepadOut.buttons["y"] = 1
+                else:
+                    gamepadOut.buttons["y"] = 0
+            elif code == 310:
+                if value == 1:
+                    gamepadOut.left["bumper"] = 1
+                else:
+                    gamepadOut.left["bumper"] = 0
+            elif code == 311:
+                if value == 1:
+                    gamepadOut.right["bumper"] = 1
+                else:
+                    gamepadOut.right["bumper"] = 0
+            elif code == 317:
+                if value == 1:
+                    gamepadOut.left["stick"]["bumper"] = 1
+                else:
+                    gamepadOut.left["stick"]["bumper"] = 0
+            elif code == 318:
+                if value == 1:
+                    gamepadOut.left["stick"]["bumper"] = 1
+                else:
+                    gamepadOut.left["stick"]["bumper"] = 0
 
-def isZeroMotorCode(event):
-    """ Checks if the input event is a zero motor code (X Button)
-
-        Arguments:
-            event: gamepad event to check
-
-        Returns:
-            Whether the event is a zero motor code
-    """
-    return event.code == 307 and event.value == 1
-
-def isStabilizeCode(event):
-    """ Checks if the input event is a stabilize code (A Button)
-
-        Arguments:
-            event: gamepad event to check
-
-        Returns:
-            Whether the event is a stabilize code
-    """
-    return event.code == 304 and event.value == 1
-
-def isFollowLineCode(event):
-    """ Checks if the input event is a stop code (A Button)
-
-        Arguments:
-            event: gamepad event to check
-
-        Returns:
-            Whether the event is a stabilize code
-    """
-    return event.code == 303 and event.value == 1
-
-def isOverrideCode(event, action="down"):
-    """ Checks if the input event is a stop code (B Button)
-
-        Arguments:
-            event: gamepad event to check
-
-        Returns:
-            Whether the event is an override code
-    """
-    actions = {
-        "down": 1,
-        "up": 0
-    }
-    return event.code == 305 and event.value == actions[action]
+class Gamepad:
+    def __init__(self):
+        self.left = {
+            "stick": {
+                "x": 0,
+                "y": 0,
+                "button": 0
+            },
+            "bumper": 0,
+            "trigger": 0
+        }
+        self.right = {
+            "stick": {
+                "x": 0,
+                "y": 0,
+                "button": 0
+            },
+            "bumper": 0,
+            "trigger": 0
+        }
+        self.d_pad = {
+            "up": 0,
+            "down": 0,
+            "left": 0,
+            "right": 0
+        }
+        self.buttons = {
+            "back": 0,
+            "start": 0,
+            "home": 0,
+            "a": 0,
+            "b": 0,
+            "x": 0,
+            "y": 0
+        }
 
 def identifyController():
         """ Searches the available devices for a controller and returns it
