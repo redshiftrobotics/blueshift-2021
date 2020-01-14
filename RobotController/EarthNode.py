@@ -44,6 +44,9 @@ if not simpleMode:
 from flask import Flask, render_template, Response
 from flask_socketio import SocketIO
 
+# Imports for Computer Vision
+import ComputerVisionUtils
+
 # Settings Dict to keep track of editable settings for data processing
 settings = {
     "numCams": 3,
@@ -145,7 +148,7 @@ def mainThread(debug=False):
         except Exception as e:
             print(e)
 
-    newestImage = []
+    newestImage = np.array([])
     newestSensorState = {
         'imu': {
             'calibration': {
@@ -168,13 +171,25 @@ def mainThread(debug=False):
         'temp': 25
     }
 
-    # Initalize PID controllers
-    Kp = 1
-    Kd = 0.1
-    Ki = 0.05
-    xRotPID = PID(Kp, Kd, Ki, setpoint=0)
-    yRotPID = PID(Kp, Kd, Ki, setpoint=0)
-    zRotPID = PID(Kp, Kd, Ki, setpoint=0)
+    # Initalize PID Rotation controllers
+    rot = {
+        "Kp": 1,
+        "Kd": 0.1,
+        "Ki": 0.05
+    }
+    xRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
+    yRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
+    zRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
+
+    # Initalize PID Positoin controllers
+    pos = {
+        "Kp": 1,
+        "Kd": 0.1,
+        "Ki": 0.05
+    }
+    xPosPID = PID(pos["Kp"], pos["Kd"], pos["Ki"], setpoint=0)
+    yPosPID = PID(pos["Kp"], pos["Kd"], pos["Ki"], setpoint=0)
+    zPosPID = PID(pos["Kp"], pos["Kd"], pos["Ki"], setpoint=0)
 
     mode = "user-control"
     override = False
@@ -210,19 +225,47 @@ def mainThread(debug=False):
                 handlePacket(CommunicationUtils.packet("motorData", DC.zeroMotors(), metadata="drivetrain"))
             elif (ControllerUtils.isStabilizeCode(event)):
                 if (mode != "stabilize"):
-                    # Reset PID controllers
+                    # Reset PID rotation controllers
                     xRotPID.reset()
                     yRotPID.reset()
                     zRotPID.reset()
-                    xRotPID.tunings = (Kp, Ki, Kd)
-                    yRotPID.tunings = (Kp, Ki, Kd)
-                    zRotPID.tunings = (Kp, Ki, Kd)
+                    xRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+                    yRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+                    zRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
 
                     # Assuming the robot has been correctly calibrated, (0,0,0) should be upright
                     xRotPID.setpoint = 0
                     yRotPID.setpoint = 0
                     zRotPID.setpoint = 0
                     mode = "stabilize"
+                    print("mode:", mode)
+                else:
+                    mode = "user-control"
+                    print("mode:", mode)
+            elif (ControllerUtils.isFollowLineCode(event)):
+                if (mode != "stabilize"):
+                    # Reset PID rotation controllers
+                    xRotPID.reset()
+                    yRotPID.reset()
+                    zRotPID.reset()
+                    xRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+                    yRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+                    zRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+
+                    # Assuming the robot has been correctly calibrated, (0,90,0) should be pointed at the ground
+                    xRotPID.setpoint = 0
+                    yRotPID.setpoint = 90
+                    zRotPID.setpoint = 0
+
+                    # Reset PID rotation controllers
+                    xPosPID.reset()
+                    xPosPID.tunings = (pos["Kp"], pos["Kd"], pos["Ki"])
+                    if newestImage:
+                        xPosPID.setpoint = newestImage.shape[0]*ComputerVisionUtils.lf_percent_of_image_blue_lines_should_fill
+                    else:
+                        xPosPID.setpoint = 1920*ComputerVisionUtils.lf_percent_of_image_blue_lines_should_fill
+
+                    mode = "follow-line"
                     print("mode:", mode)
                 else:
                     mode = "user-control"
@@ -241,9 +284,24 @@ def mainThread(debug=False):
             if (time.time() - lastMsgTime > minTime):
                 handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
                 lastMsgTime = time.time()
-            
+        elif (mode == "follow-line" and not override):
+            if newestImage:
+                dist, angle = ComputerVisionUtils.detectLines(newestImage)
+                
+                # Rotation around the x axis aligns to the line
+                xRotTgt = xRotPID(angle)
 
+                # Rotation around the Y and Z axes keep the robot upright
+                yRotTgt = yRotPID(newestSensorState["imu"]["gyro"]["y"])
+                zRotTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
 
+                # Movement on the x axis keeps a specific distance from the line
+                xPosTgt = xPosPID(dist)
+
+                speeds = DC.calcMotorValues(xPosTgt, 0, 1, xRotTgt, yRotTgt, zRotTgt)
+                if (time.time() - lastMsgTime > minTime):
+                    handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+                    lastMsgTime = time.time()
 
 def receiveVideoStreams(debug=False):
     """ Recieves and processes video from the Water Node then sends it to the Air Node

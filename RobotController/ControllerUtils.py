@@ -64,7 +64,28 @@ class DriveController():
             if self.settings['motor_flip'][i]:
                 self.mtrSpeeds[i] = 180-self.mtrSpeeds[i]
         return self.mtrSpeeds
-    
+
+    def calcMotorValues(self, xm, ym, zm, xr, yr, zr):
+        """ Calculates the speed for each motor 6 inputs, each representing a degree of freedom
+
+            Returns:
+                An array of calculated motors speed values
+        """
+        if self.settings["style"] == "holonomic":
+            self.mtrSpeeds[self.settings["motor_order"]["frontLeft"]] = self.clamp((xm+ym+zr)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["frontRight"]] = self.clamp((-xm+ym+zr)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["backLeft"]] = self.clamp((xm-ym+zr)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["backRight"]] = self.clamp((-xm-ym+zr)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontLeft"]] = self.clamp((zm+xr+yr)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontRight"]] = self.clamp((zm-xr+yr)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalBackLeft"]] = self.clamp((zm+xr-yr)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalBackRight"]] = self.clamp((zm-xr-yr)*90 + 90, 0, 180)
+        
+        for i in range(len(self.mtrSpeeds)):
+            if self.settings['motor_flip'][i]:
+                self.mtrSpeeds[i] = 180-self.mtrSpeeds[i]
+        return self.mtrSpeeds
+
     def calcPIDRot(self, x, y, z):
         if self.settings["style"] == "holonomic":
             self.mtrSpeeds[self.settings["motor_order"]["frontLeft"]] = self.clamp((z)*90 + 90, 0, 180)
@@ -159,7 +180,7 @@ def isZeroMotorCode(event):
     return event.code == 307 and event.value == 1
 
 def isStabilizeCode(event):
-    """ Checks if the input event is a stop code (A Button)
+    """ Checks if the input event is a stabilize code (A Button)
 
         Arguments:
             event: gamepad event to check
@@ -168,6 +189,17 @@ def isStabilizeCode(event):
             Whether the event is a stabilize code
     """
     return event.code == 304 and event.value == 1
+
+def isFollowLineCode(event):
+    """ Checks if the input event is a stop code (A Button)
+
+        Arguments:
+            event: gamepad event to check
+
+        Returns:
+            Whether the event is a stabilize code
+    """
+    return event.code == 303 and event.value == 1
 
 def isOverrideCode(event, action="down"):
     """ Checks if the input event is a stop code (B Button)
