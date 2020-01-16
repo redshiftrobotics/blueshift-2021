@@ -17,7 +17,7 @@ def point_slope_line(pt,sl,num,given_axis):
     elif given_axis == "y":
         return (int((num-pt[1])/sl + pt[0]), num)
 
-def detectLines(img, debug=False):
+def detectLines(img, cvOutLevel=False, debug=False):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, lf_lower_blue, lf_upper_blue)
 
@@ -78,6 +78,16 @@ def detectLines(img, debug=False):
 
         # Average the angles for a more accurate result
         avg_angle = (line_a_angle+line_b_angle)/2.0
-        
-        return line_dist, avg_angle-lf_target_angle
+
+        if cvOutLevel:
+            if cvOutLevel == "Original":
+                return line_dist, avg_angle-lf_target_angle, img
+            elif cvOutLevel == "Mask":
+                return line_dist, avg_angle-lf_target_angle, mask
+            elif cvOutLevel == "Smooth":
+                return line_dist, avg_angle-lf_target_angle, filtered
+            elif cvOutLevel == "Contours":
+                return line_dist, avg_angle-lf_target_angle, cv2.drawContours(img, contours, -1, (0,255,0), 3)
+        else:
+            return line_dist, avg_angle-lf_target_angle
     return None

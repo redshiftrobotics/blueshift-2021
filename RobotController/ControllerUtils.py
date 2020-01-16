@@ -21,20 +21,6 @@ class DriveController():
             "motor_flip": flip
         }
         self.mtrSpeeds = [0]*len(order)
-    
-    def updateState(self, event):
-        code = event.code
-        value = event.value
-        
-        if ((value <= -50 or value >= 50) and (code == 0 or code == 1 or code == 3 or code == 4) and event.type !=0):
-            if code == 0:
-                self.joyHorizontal = self.deadzoneCorrect(value)
-            if code == 1:
-                self.joyForward = self.deadzoneCorrect(value)
-            if code == 3:
-                self.joyRotation = self.deadzoneCorrect(value)
-            if code == 4:
-                self.joyVertical = self.deadzoneCorrect(value)
 
     def calcMotorValues(self, xm, ym, zm, xr, yr, zr):
         """ Calculates the speed for each motor 6 inputs, each representing a degree of freedom
@@ -43,18 +29,18 @@ class DriveController():
                 An array of calculated motors speed values
         """
         if self.settings["style"] == "holonomic":
-            self.mtrSpeeds[self.settings["motor_order"]["frontLeft"]] = self.clamp((xm+ym+zr)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["frontRight"]] = self.clamp((-xm+ym+zr)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["backLeft"]] = self.clamp((xm-ym+zr)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["backRight"]] = self.clamp((-xm-ym+zr)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontLeft"]] = self.clamp((zm+xr+yr)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontRight"]] = self.clamp((zm-xr+yr)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["verticalBackLeft"]] = self.clamp((zm+xr-yr)*90 + 90, 0, 180)
-            self.mtrSpeeds[self.settings["motor_order"]["verticalBackRight"]] = self.clamp((zm-xr-yr)*90 + 90, 0, 180)
+            self.mtrSpeeds[self.settings["motor_order"]["frontLeft"]] = self.clamp((xm+ym+zr), -1, 1)
+            self.mtrSpeeds[self.settings["motor_order"]["frontRight"]] = self.clamp((-xm+ym+zr), -1, 1)
+            self.mtrSpeeds[self.settings["motor_order"]["backLeft"]] = self.clamp((xm-ym+zr), -1, 1)
+            self.mtrSpeeds[self.settings["motor_order"]["backRight"]] = self.clamp((-xm-ym+zr), -1, 1)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontLeft"]] = self.clamp((zm+xr+yr), -1, 1)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalFrontRight"]] = self.clamp((zm-xr+yr), -1, 1)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalBackLeft"]] = self.clamp((zm+xr-yr), -1, 1)
+            self.mtrSpeeds[self.settings["motor_order"]["verticalBackRight"]] = self.clamp((zm-xr-yr), -1, 1)
         
         for i in range(len(self.mtrSpeeds)):
             if self.settings['motor_flip'][i]:
-                self.mtrSpeeds[i] = 180-self.mtrSpeeds[i]
+                self.mtrSpeeds[i] = -1 * self.mtrSpeeds[i]
         return self.mtrSpeeds
     
     def clamp(self, n, minn, maxn):
@@ -70,22 +56,8 @@ class DriveController():
         """
         return max(min(maxn, n), minn)
 
-    def deadzoneCorrect(self, val, deadzone_range=150):
-        """ Corrects a value if it is in the controller's deadzone
-
-            Argument:
-                val: value to correct
-
-            Returns:
-                the corrected value
-        """
-        if deadzone_range > val > -deadzone_range:
-            return 0
-        else:
-            return val
-
     def zeroMotors(self):
-        return [90]*len(self.mtrSpeeds)
+        return [0]*len(self.mtrSpeeds)
 
 def updateGamepadState(gamepadOut, device, stop):
     """ Updates the state of a gamepad object to based on evdev events
@@ -168,14 +140,14 @@ def updateGamepadState(gamepadOut, device, stop):
                     gamepadOut.right["bumper"] = 0
             elif code == 317:
                 if value == 1:
-                    gamepadOut.left["stick"]["bumper"] = 1
+                    gamepadOut.left["stick"]["button"] = 1
                 else:
-                    gamepadOut.left["stick"]["bumper"] = 0
+                    gamepadOut.left["stick"]["button"] = 0
             elif code == 318:
                 if value == 1:
-                    gamepadOut.left["stick"]["bumper"] = 1
+                    gamepadOut.right["stick"]["button"] = 1
                 else:
-                    gamepadOut.left["stick"]["bumper"] = 0
+                    gamepadOut.right["stick"]["button"] = 0
 
 class Gamepad:
     def __init__(self):

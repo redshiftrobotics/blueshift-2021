@@ -157,8 +157,7 @@ def mainThread(debug=False):
     updateGamepadStateThreads = threading.Thread(target=ControllerUtils.updateGamepadState, args=(gamepad, dev, execute['mainThread'],), daemon=True)
     updateGamepadStateThreads.start()
 
-    newestImage = []
-    newestImageRaw = ""
+    newestImage = np.array([])
     newestSensorState = {
         'imu': {
             'calibration': {
@@ -211,7 +210,9 @@ def mainThread(debug=False):
     mode = "user-control"
 
     cvDebugAlgorithm = "cam"
-    cvDebugLevel = "final"
+    cvDebugLevel = "Original"
+
+    cvImage = np.array([])
 
     lastMsgTime = time.time()
     minTime = 1.0/10.0
@@ -219,8 +220,7 @@ def mainThread(debug=False):
         while not mainQueue.empty():
             recvMsg = mainQueue.get()
             if recvMsg['tag'] == 'cam':
-                #newestImage = CommunicationUtils.decodeImage(recvMsg['data'])
-                newestImageRaw = recvMsg['data']
+                newestImage = CommunicationUtils.decodeImage(recvMsg['data'])
             elif recvMsg['tag'] == 'sensor':
                 newestSensorState = recvMsg['data']
             elif recvMsg['tag'] == 'stateChange':
@@ -239,6 +239,7 @@ def mainThread(debug=False):
         
         override = False
 
+        # Set mode based on gamepad state
         if (gamepad.left["stick"]["button"] and gamepad.right["stick"]["button"]): # Enable Override
             override = True
         elif (gamepad.buttons["back"]): # Stop the program
@@ -251,7 +252,8 @@ def mainThread(debug=False):
         elif (gamepad.buttons["y"]): # Activate stabilize mode
             if (mode != "stabilize" and mode != "stabilize-init"):
                 mode = "stabilize-init"
-        
+
+        # Run the selected mode
         if (not override):
             if (mode == "stabilize-init"): # Initialize stabilize mode
                 # Reset PID rotation controllers
@@ -274,8 +276,14 @@ def mainThread(debug=False):
                 speeds = DC.calcMotorValues(0, 0, 0, xTgt, yTgt, zTgt)
                 if (time.time() - lastMsgTime > minTime):
                     handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+                    handlePacket(CommunicationUtils.packet(tag="stateChange", data=mode, metadata="mode"))
+                    handlePacket(CommunicationUtils.packet(tag="stateChange", data=override, metadata="override"))
                     lastMsgTime = time.time()
             elif (mode == "follow-line-init"): # Initialize line following mode
+                # Set up CV debugging
+                cvDebugAlgorithm = "transectLine"
+                cvDebugLevel = "Contours"
+
                 # Reset PID rotation controllers
                 xRotPID.reset()
                 yRotPID.reset()
@@ -300,7 +308,11 @@ def mainThread(debug=False):
                     mode = "user-control"
             elif (mode == "follow-line"): # Run line following mode
                 if newestImage:
-                    dist, angle = ComputerVisionUtils.detectLines(newestImage)
+                    dist, angle = 0, 0
+                    if cvDebugAlgorithm == "transectLine":
+                        dist, angle, cvImage = ComputerVisionUtils.detectLines(newestImage, cvOutLevel=cvDebugLevel)
+                    else:
+                        dist, angle = ComputerVisionUtils.detectLines(newestImage)
                     
                     # Rotation around the x axis aligns to the line
                     xRotTgt = xRotPID(angle)
@@ -315,13 +327,29 @@ def mainThread(debug=False):
                     speeds = DC.calcMotorValues(xPosTgt, 0, 1, xRotTgt, yRotTgt, zRotTgt)
                     if (time.time() - lastMsgTime > minTime):
                         handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+                        handlePacket(CommunicationUtils.packet(tag="stateChange", data=mode, metadata="mode"))
+                        handlePacket(CommunicationUtils.packet(tag="stateChange", data=override, metadata="override"))
                         lastMsgTime = time.time()
-        else:
-            if (mode == "user-control"): # Run user control mode
-                speeds = DC.calcThrust()
-                if (time.time() - lastMsgTime > minTime):
-                    handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
-                    lastMsgTime = time.time()
+                        
+        if (mode == "user-control" or override): # Run user control mode
+            speeds = DC.calcMotorValues(gamepad.left["stick"]["x"],
+                                        gamepad.left["stick"]["y"],
+                                        -gamepad.left["bumper"]+gamepad.right["bumper"],
+                                        gamepad.right["stick"]["x"],
+                                        gamepad.right["stick"]["y"],
+                                        -gamepad.left["trigger"]+gamepad.right["trigger"])
+            
+            if (time.time() - lastMsgTime > minTime):
+                handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+                handlePacket(CommunicationUtils.packet(tag="stateChange", data=mode, metadata="mode"))
+                handlePacket(CommunicationUtils.packet(tag="stateChange", data=override, metadata="override"))
+                lastMsgTime = time.time()
+        
+        
+        if cvImage.size > 0:# Send a computer vision debugging image if available
+            imgPacket = CommunicationUtils.packet(tag="cam", data=CommunicationUtils.encodeImage(cvImage))
+            airCamQueues["cvCam"].put(imgPacket)
+            cvImage = ""
 
 def receiveVideoStreams(debug=False):
     """ Recieves and processes video from the Water Node then sends it to the Air Node
@@ -461,25 +489,7 @@ if( __name__ == "__main__"):
     # Setup Logging preferences
     verbose = [False,True]
 
-    '''
-    # Setup the logger
-    logger.setLevel(logging.DEBUG)
-    jsonLogHandler = nodeHandler()
-    jsonFormatter = jsonlogger.JsonFormatter("%(asctime)s %(name)s %(threadName)s %(levelname)s %(message)s")
-    jsonLogHandler.setFormatter(jsonFormatter)
-    jsonLogHandler.setLevel(logging.DEBUG)
-    logger.addHandler(jsonLogHandler)
-    logHandler = logging.StreamHandler()
-    logFormatter = logging.Formatter("%(asctime)s - %(name)s - %(threadName)s - %(levelname)s - %(message)s")
-    logHandler.setFormatter(logFormatter)
-    logHandler.setLevel(logging.INFO)
-    logger.addHandler(logHandler)
-    
-    time.sleep(2)
-    # Start each thread
-    logger.info("Starting Earth Node")
-    logger.debug("Started all Threads")
-    '''
+    # Start all necessary threads
     mainThread = threading.Thread(target=mainThread, args=(verbose[0],))
     vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(verbose[0],))
     recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))

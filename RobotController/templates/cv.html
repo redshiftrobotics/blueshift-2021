@@ -23,6 +23,10 @@
       width: 100%;
       height: auto;
     }
+    #camDisplay {
+      width: 100%;
+      height: auto;
+    }
 
     #screenshotCnvs {
       width: 100%;
@@ -92,14 +96,17 @@
         <div class="container-fluid">
           <div class="row">
             <div class="col-md-5">
-              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded">
+                <div class="text-center">
+                  <img id="camDisplay" src="{{ url_for('static', filename='assets/noCamera.png') }}">
+                </div>
                 <div class="text-center">
                   <img id="cvCamDisplay" src="{{ url_for('static', filename='assets/noCamera.png') }}">
                 </div>
               </div>
             </div>
             <div class="col-md-2">
-              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded">
                 <h5>Camera</h5>
                 <div class="btn-group btn-group-toggle" data-toggle="buttons">
                   <label class="btn btn-secondary active">
@@ -107,6 +114,9 @@
                   </label>
                   <label class="btn btn-secondary">
                     <input type="radio" name="camera-source" value="bkpCam1" autocomplete="off"> Back
+                  </label>
+                  <label class="btn btn-secondary">
+                    <input type="radio" name="camera-source" value="cvCam" autocomplete="off"> CV
                   </label>
                 </div>
                 <button type="button" class="btn btn-secondary my-1 mb-2" id="screenshotBtn">Screenshot</button>
@@ -141,7 +151,7 @@
               </div>
             </div>
             <div class="col-md-5">
-              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded">
                 <div class="text-center">
                   <canvas id="screenshotCnvs" width="1920" height="1080"></canvas>
                 </div>
@@ -150,7 +160,7 @@
           </div>
           <div class="row">
             <div class="col-md-4">
-              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded">
                 Lorem ipsum, dolor sit amet consectetur adipisicing elit.
                 Ratione libero totam rerum eos nam ab perspiciatis voluptatum
                 in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
@@ -174,7 +184,7 @@
               </div>
             </div>
             <div class="col-md-4">
-              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded">
                 Lorem ipsum, dolor sit amet consectetur adipisicing elit.
                 Ratione libero totam rerum eos nam ab perspiciatis voluptatum
                 in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
@@ -198,7 +208,7 @@
               </div>
             </div>
             <div class="col-md-4">
-              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded">
                 Lorem ipsum, dolor sit amet consectetur adipisicing elit.
                 Ratione libero totam rerum eos nam ab perspiciatis voluptatum
                 in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
@@ -242,6 +252,8 @@
         img.src = "/videoFeed/" + selectedCamera;
 
         img.onload = function () {
+          ctxScreenshot.canvas.width = this.width;
+          ctxScreenshot.canvas.height = this.height;
           ctxScreenshot.drawImage(img, 0, 0);
         }
       }
@@ -249,17 +261,38 @@
     <script id="main_Script">
       var socket = io.connect('http://' + document.domain + ':' + location.port);
       $(document).ready(function () {
+        // Hide the cvCamera Display
+        $('#cvCamDisplay').hide();
+
         $("#screenshotBtn").click(function () {
           takeScreenshot();
         });
 
         // Switch computer vision source based on radio buttons
         $('input[type=radio][name=camera-source]').change(function () {
-          if (this.value == 'mainCam') {
-            selectedCamera = "mainCam";
-          }
-          else if (this.value == 'bkpCam1') {
-            selectedCamera = "bkpCam1";
+          if (this.value != 'cvCam') {
+            $('#camDisplay').show()
+            $('#cvCamDisplay').hide()
+
+            // Reset source incase camera is not yet available
+            $("#camDisplay").attr("src","{{ url_for('static', filename='assets/noCamera.png') }}");
+
+            if (this.value == 'mainCam') {
+              $("#camDisplay").attr("src","/videoFeed/mainCam");
+              selectedCamera = "mainCam";
+            }
+            else if (this.value == 'bkpCam1') {
+              $("#camDisplay").attr("src","/videoFeed/bkpCam1");
+              selectedCamera = "bkpCam1";
+            }
+          } else {
+            $('#cvCamDisplay').show()
+            $('#camDisplay').hide()
+            
+            // Reset source incase camera is not yet available
+            $("#cvCamDisplay").attr("src","{{ url_for('static', filename='assets/noCamera.png') }}");
+            $("#cvCamDisplay").attr("src","/videoFeed/cvCam");
+            selectedCamera = "cvCam";
           }
         });
 
@@ -291,6 +324,7 @@
 
         // Set inital computer vision display source
         $("#cvCamDisplay").attr("src", "/videoFeed/cvCam");
+        $("#camDisplay").attr("src", "/videoFeed/"+selectedCamera);
       });
     </script>
 </body>
