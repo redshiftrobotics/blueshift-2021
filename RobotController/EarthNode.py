@@ -190,6 +190,7 @@ def mainThread(debug=False):
     yRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
     zRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
 
+    # Store the target rotation
     stabilizeRot = {
         "x": 0,
         "y": 0,
@@ -202,20 +203,25 @@ def mainThread(debug=False):
         "Kd": 0.1,
         "Ki": 0.05
     }
-
     xPosPID = PID(pos["Kp"], pos["Kd"], pos["Ki"], setpoint=0)
     yPosPID = PID(pos["Kp"], pos["Kd"], pos["Ki"], setpoint=0)
     zPosPID = PID(pos["Kp"], pos["Kd"], pos["Ki"], setpoint=0)
 
+    # Stores the current and previous modes
     mode = "user-control"
+    override = False
+    lastMode = "user-control"
+    lastOverride = False
 
+    # Stores the currently running CV algorithm and debug level
     cvDebugAlgorithm = "cam"
     cvDebugLevel = "Original"
 
     cvImage = np.array([])
+    
+    # This is the fastest speed that the loop should run at in seconds
+    loopFrequency = 1.0/15.0
 
-    lastMsgTime = time.time()
-    minTime = 1.0/10.0
     while execute['mainThread']:
         while not mainQueue.empty():
             recvMsg = mainQueue.get()
@@ -226,9 +232,19 @@ def mainThread(debug=False):
             elif recvMsg['tag'] == 'stateChange':
                 if recvMsg['metadata'] == "followLine":
                     mode = "follow-line-init"
+                elif recvMsg['metadata'] == "stop-motors":
+                    handlePacket(CommunicationUtils.packet("motorData", DC.zeroMotors(), metadata="drivetrain"))
+                    mode = "user-control"
                 elif recvMsg['metadata'] == "stabilize":
-                    stabilizeRot = recvMsg["data"]
+                    stabilizeRot["x"] = recvMsg["data"]["x"]
+                    stabilizeRot["y"] = recvMsg["data"]["y"]
+                    stabilizeRot["z"] = recvMsg["data"]["z"]
                     mode = "stabilize-init"
+                elif recvMsg['metadata'] == "hold-angle":
+                    stabilizeRot["x"] = recvMsg["data"]["x"]
+                    stabilizeRot["y"] = recvMsg["data"]["y"]
+                    stabilizeRot["z"] = recvMsg["data"]["z"]
+                    mode = "hold-angle-init"
             elif recvMsg['tag'] == 'settingChange':
                 if recvMsg['metadata'] == "transectLine":
                     cvDebugAlgorithm = "transectLine"
@@ -238,6 +254,16 @@ def mainThread(debug=False):
                     cvDebugLevel = recvMsg['data']
         
         override = False
+
+        # Edit this to change the gamepad mapping
+        gamepadMapping = {
+            "x-mov": gamepad.left["stick"]["x"],
+            "y-mov": gamepad.left["stick"]["y"],
+            "z-mov": -gamepad.left["bumper"]+gamepad.right["bumper"],
+            "x-rot": gamepad.right["stick"]["x"],
+            "y-rot": gamepad.right["stick"]["y"],
+            "z-rot": -gamepad.left["trigger"]+gamepad.right["trigger"]
+        }
 
         # Set mode based on gamepad state
         if (gamepad.left["stick"]["button"] and gamepad.right["stick"]["button"]): # Enable Override
@@ -251,6 +277,9 @@ def mainThread(debug=False):
             mode = "user-control"
         elif (gamepad.buttons["y"]): # Activate stabilize mode
             if (mode != "stabilize" and mode != "stabilize-init"):
+                stabilizeRot["x"] = 0
+                stabilizeRot["y"] = 0
+                stabilizeRot["z"] = 0
                 mode = "stabilize-init"
 
         # Run the selected mode
@@ -273,12 +302,10 @@ def mainThread(debug=False):
                 xTgt = xRotPID(newestSensorState["imu"]["gyro"]["x"])
                 yTgt = yRotPID(newestSensorState["imu"]["gyro"]["y"])
                 zTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
+
                 speeds = DC.calcMotorValues(0, 0, 0, xTgt, yTgt, zTgt)
-                if (time.time() - lastMsgTime > minTime):
-                    handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
-                    handlePacket(CommunicationUtils.packet(tag="stateChange", data=mode, metadata="mode"))
-                    handlePacket(CommunicationUtils.packet(tag="stateChange", data=override, metadata="override"))
-                    lastMsgTime = time.time()
+
+                handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
             elif (mode == "follow-line-init"): # Initialize line following mode
                 # Set up CV debugging
                 cvDebugAlgorithm = "transectLine"
@@ -325,31 +352,74 @@ def mainThread(debug=False):
                     xPosTgt = xPosPID(dist)
 
                     speeds = DC.calcMotorValues(xPosTgt, 0, 1, xRotTgt, yRotTgt, zRotTgt)
-                    if (time.time() - lastMsgTime > minTime):
-                        handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
-                        handlePacket(CommunicationUtils.packet(tag="stateChange", data=mode, metadata="mode"))
-                        handlePacket(CommunicationUtils.packet(tag="stateChange", data=override, metadata="override"))
-                        lastMsgTime = time.time()
-                        
-        if (mode == "user-control" or override): # Run user control mode
-            speeds = DC.calcMotorValues(gamepad.left["stick"]["x"],
-                                        gamepad.left["stick"]["y"],
-                                        -gamepad.left["bumper"]+gamepad.right["bumper"],
-                                        gamepad.right["stick"]["x"],
-                                        gamepad.right["stick"]["y"],
-                                        -gamepad.left["trigger"]+gamepad.right["trigger"])
-            
-            if (time.time() - lastMsgTime > minTime):
+
+                    handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+            elif (mode == "hold-angle-init"): # Initialize hold angle mode
+                # Reset PID rotation controllers
+                xRotPID.reset()
+                yRotPID.reset()
+                zRotPID.reset()
+                xRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+                yRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+                zRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+
+                # Assuming the robot has been correctly calibrated, (0,0,0) should be upright
+                xRotPID.setpoint = stabilizeRot["x"]
+                yRotPID.setpoint = stabilizeRot["y"]
+                zRotPID.setpoint = stabilizeRot["z"]
+                mode = "hold-angle"
+            elif (mode == "hold-angle"): # Run hold angle mode
+                # Update the PID controllers
+                xTgt = xRotPID(newestSensorState["imu"]["gyro"]["x"])
+                yTgt = yRotPID(newestSensorState["imu"]["gyro"]["y"])
+                zTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
+
+                # Calculate new motor values
+                speeds = DC.calcMotorValues(gamepadMapping["x-mov"],
+                                            gamepadMapping["y-mov"],
+                                            gamepadMapping["z-mov"],
+                                            xTgt,
+                                            yTgt,
+                                            zTgt)
+
                 handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
-                handlePacket(CommunicationUtils.packet(tag="stateChange", data=mode, metadata="mode"))
-                handlePacket(CommunicationUtils.packet(tag="stateChange", data=override, metadata="override"))
-                lastMsgTime = time.time()
+        
+        if (mode == "user-control" or override): # Run user control mode
+            # Calculate new motor values
+            speeds = DC.calcMotorValues(gamepadMapping["x-mov"],
+                                        gamepadMapping["y-mov"],
+                                        gamepadMapping["z-mov"],
+                                        gamepadMapping["x-rot"],
+                                        gamepadMapping["y-rot"],
+                                        gamepadMapping["z-rot"])
+            
+            handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
         
         
-        if cvImage.size > 0:# Send a computer vision debugging image if available
+        if cvImage.size > 0: # Send a computer vision debugging image if available
             imgPacket = CommunicationUtils.packet(tag="cam", data=CommunicationUtils.encodeImage(cvImage))
             airCamQueues["cvCam"].put(imgPacket)
             cvImage = ""
+
+        # Update the mode and override state that the AirNode displays
+        # * Stabilization is a special case because one mode in code is used to represent two robot modes
+        # * If the target angle is anything other than, the robot is in "rotate-to-angle" mode
+        if (stabilizeRot["x"] != 0 and
+            stabilizeRot["x"] != 0 and
+            stabilizeRot["x"] != 0 and
+            mode == "stabilize"): # Check if the target angle is not 0,0,0
+                handlePacket(CommunicationUtils.packet(tag="stateChange", data="rotate-to-angle", metadata="mode"))
+                lastMode = "rotate-to-angle"
+        elif (mode != lastMode):
+            handlePacket(CommunicationUtils.packet(tag="stateChange", data=mode, metadata="mode"))
+            lastMode = mode
+        
+        if (override != lastOverride):
+            handlePacket(CommunicationUtils.packet(tag="stateChange", data=override, metadata="override"))
+            lastOverride = override
+
+        # Sleep to control the loop speed
+        time.sleep(loopFrequency)
 
 def receiveVideoStreams(debug=False):
     """ Recieves and processes video from the Water Node then sends it to the Air Node

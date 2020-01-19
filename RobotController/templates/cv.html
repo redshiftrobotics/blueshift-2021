@@ -259,8 +259,8 @@
       }
     </script>
     <script id="main_Script">
-      var socket = io.connect('http://' + document.domain + ':' + location.port);
       $(document).ready(function () {
+      var socket = io.connect('http://' + document.domain + ':' + location.port);
         // Hide the cvCamera Display
         $('#cvCamDisplay').hide();
 
