@@ -2,6 +2,11 @@
 
 <head>
   <title>Copilot Monitor</title>
+  <!-- CSS Styling -->
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap.min.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/iconfont/material-icons.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+
   <!-- Utilites and Communication -->
   <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.4.1.min.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.slimscroll.min.js') }}"></script>
@@ -14,10 +19,6 @@
   <script type="text/javascript" src="{{ url_for('static', filename='js/three.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/GLTFLoader.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/plotly-latest.min.js') }}"></script>
-
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap.min.css') }}" />
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/iconfont/material-icons.css') }}" />
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/dashboard.css') }}" />
 
   <style>
     @font-face {
@@ -73,6 +74,22 @@
 
     #graphContainer {
       width: 100%;
+    }
+
+    #statDisplay {
+      color: #87ceeb;
+    }
+
+    .bg-redDarkMode {
+      background-color: #fc4646;
+    }
+
+    .bg-yellowDarkMode {
+      background-color: gold;
+    }
+
+    .bg-greenDarkMode {
+      background-color: green;
     }
   </style>
 </head>
@@ -130,60 +147,90 @@
         </ul>
       </div>
     </div>
-
     <div class="content">
       <main>
+        <div style="position: relative; z-index: 1500;">
+          <div id="invalidAngleToast" class="toast" data-delay="1000" style="position: absolute; top: 7.5; left: 43%;">
+            <div class="toast-header" style="background-color: #6c757d; color: white; border: #6c757d;">
+              <h5 class="mr-auto">Please enter a valid angle.</h5>
+              <button type="button" class="ml-2 mb-1 close" data-dismiss="toast">
+                <span>&times;</span>
+              </button>
+            </div>
+          </div>
+        </div>
         <div class="container-fluid">
           <div class="row">
             <div class="col-md-3">
-              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded">
                 <div id="attitude" class="ml-3"></div>
               </div>
-              <div class="bg-mattBlackLight mt-3 px-3 pt-0 pb-3 mx-0">
+              <div class="bg-mattBlackLight mt-3 px-3 pt-0 pb-3 mx-0 rounded">
                 <div id="graphContainer">
-                  <div id="amperageGraph"></div>
-                  <div id="voltageGraph"></div>
-                  <div id="speedGraph"></div>
                   <div id="temperatureGraph"></div>
+                  <div id="speedGraph"></div>
+                  <div id="voltageGraph"></div>
+                  <div id="amperageGraph"></div>
                 </div>
               </div>
             </div>
             <div class="col-md-6">
-              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded">
                 <div id="robotDiagramContainer">
                   <canvas id="robotDiagram-fg" width="600" height="400"></canvas>
                   <canvas id="robotDiagram-mg" width="600" height="400"></canvas>
                   <canvas id="robotDiagram-bg" width="600" height="400"></canvas>
                 </div>
               </div>
-              <div class="bg-mattBlackLight my-3 p-3 mx-0">
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                sunt earum tempora veniam.
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                sunt earum tempora veniam.
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                sunt earum tempora veniam.
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                sunt earum tempora veniam.
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                sunt earum tempora veniam.
+              <div class="bg-mattBlackLight my-3 p-3 pb-1 mx-0 rounded">
+                <div class="row">
+                  <div class="col-md-12">
+                    <div class="row mx-3 mb-3 p- bg-mattBlackDark rounded">
+                      <div class="col-md-3">
+                        <h3 id="statDisplay">FPS: <span id="fpsCounter">0</span></h3>
+                      </div>
+                      <div class="col-md-5">
+                        <h3 id="statDisplay">Mode: <span id="modeDisplay">user-control</span></h3>
+                      </div>
+                      <div class="col-md-4">
+                        <h3 id="statDisplay">Override: <span id="overrideDisplay">false</span></h3>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <button type="button" id="stopMotorsButton" class="btn btn-secondary btn-lg ml-3" style="background-color: #fc4646;"><i class="material-icons icon" style=" font-size: 60px;">block</i></button>
+                  </div>
+                  <div class="col-md-5">
+                    <div class="input-group input-group-lg mb-2">
+                      <input type="text" class="form-control" id="xRotInput" placeholder="X: 0">
+                      <input type="text" class="form-control" id="yRotInput" placeholder="Y: 0">
+                      <input type="text" class="form-control" id="zRotInput" placeholder="Z: 0">
+                    </div>
+                    <div class="row">
+                      <div class="col-md-5">
+                        <button type="button" class="btn btn-secondary btn-lg px-0 mx-0" id="holdAngleButton" style="width:100%">Hold
+                          Angle</button>
+                      </div>
+                      <div class="col-md-7">
+                        <button type="button" class="btn btn-secondary btn-lg px-0 mx-0" id="rotateToAngleButton" style="width:100%">Rotate
+                          To Angle</button>
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-lg mt-2" id="stabilizeButton">Normalize
+                      Rotation</button>
+                  </div>
+                  <div class="col-md-4">
+                    <button type="button" class="btn btn-secondary btn-lg mb-2">Follow Transect Line</button>
+                    <button type="button" class="btn btn-secondary btn-lg">Analyze Coral Reef</button>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded">
                 <div id="robot3D"></div>
               </div>
-              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded ">
                 <h3>IMU Calibration</h3>
                 <ul class="list-group">
                   <li
@@ -699,7 +746,7 @@
         return mapped;
       }
 
-      scaleAmnt = 0.8;
+      scaleAmnt = 0.7;
       xLoc = ((canvasFg.width / 2) / scaleAmnt);
       yLoc = (canvasFg.height / 2) / scaleAmnt;
 
@@ -713,6 +760,14 @@
         drawImg(ctxMg, chassis, xLoc, yLoc, 0, 1.5);
       }
 
+      function truncateArrayEntries(arr, decimals = 2) {
+        var pow = Math.pow(10, decimals);
+        for (var i = 0; i < arr.length; i++) {
+          arr[i] = Math.trunc(arr[i] * pow) / pow;
+        }
+        return arr
+      }
+
       function updateDiagram(speeds) {
         clearCanvas(ctxFg, canvasFg, true);
         clearCanvas(ctxBg, canvasBg, true);
@@ -720,17 +775,16 @@
         ctxFg.scale(scaleAmnt, scaleAmnt);
         ctxBg.scale(scaleAmnt, scaleAmnt);
 
-        fixedSpeeds = remapArray(speeds, 0.0, 180.0, -1.0, 1.0);
 
-        drawSideThruster(ctxBg, "TL", fixedSpeeds[2], xLoc, yLoc, "thrust");
-        drawSideThruster(ctxBg, "TR", fixedSpeeds[0], xLoc, yLoc, "thrust");
-        drawSideThruster(ctxBg, "BL", fixedSpeeds[3], xLoc, yLoc, "thrust");
-        drawSideThruster(ctxBg, "BR", fixedSpeeds[1], xLoc, yLoc, "thrust");
+        drawSideThruster(ctxBg, "TL", speeds[2], xLoc, yLoc, "thrust");
+        drawSideThruster(ctxBg, "TR", speeds[0], xLoc, yLoc, "thrust");
+        drawSideThruster(ctxBg, "BL", speeds[3], xLoc, yLoc, "thrust");
+        drawSideThruster(ctxBg, "BR", speeds[1], xLoc, yLoc, "thrust");
 
-        drawTopThruster(ctxBg, "TL", fixedSpeeds[6], xLoc, yLoc);
-        drawTopThruster(ctxBg, "TR", fixedSpeeds[4], xLoc, yLoc);
-        drawTopThruster(ctxBg, "BL", fixedSpeeds[7], xLoc, yLoc);
-        drawTopThruster(ctxBg, "BR", fixedSpeeds[5], xLoc, yLoc);
+        drawTopThruster(ctxBg, "TL", speeds[6], xLoc, yLoc);
+        drawTopThruster(ctxBg, "TR", speeds[4], xLoc, yLoc);
+        drawTopThruster(ctxBg, "BL", speeds[7], xLoc, yLoc);
+        drawTopThruster(ctxBg, "BR", speeds[5], xLoc, yLoc);
 
         drawDevice(ctxFg, "ESC", true, xLoc, yLoc);
         drawDevice(ctxFg, "FathomX", true, xLoc, yLoc);
@@ -810,7 +864,7 @@
           line: {
             shape: 'spline',
             smoothing: 1,
-            color: '#fcf046'
+            color: '#6efc46'
           },
           name: "Amps"
         }
@@ -825,7 +879,7 @@
           line: {
             shape: 'spline',
             smoothing: 1,
-            color: '#e08c3e'
+            color: '#fcf046'
           },
           name: "Volts"
         }
@@ -840,7 +894,7 @@
           line: {
             shape: 'spline',
             smoothing: 1,
-            color: '#fc4646'
+            color: '#e08c3e'
           },
           name: "Speed"
         }
@@ -855,7 +909,7 @@
           line: {
             shape: 'spline',
             smoothing: 1,
-            color: '#46c8fc'
+            color: '#fc4646'
           },
           name: "Temp"
         }
@@ -949,143 +1003,257 @@
         });
       }
     </script>
-    <script id="main_Script">
-      var socket = io.connect('http://' + document.domain + ':' + location.port);
+    <script id="console_Script">
+      // Timestamp to keep track of FPS
+      var lastLoop = new Date();
 
-      socket.on('updateAirNode', handleUpdates);
-
-      var sensorData = {
-        "imu": {
-          "calibration": {
-            "sys": 0,
-            "gyro": 0,
-            "accel": 0,
-            "mag": 0
-          },
-          "gyro": {
-            "x": 0,
-            "y": 0,
-            "z": 0,
-          },
-          "vel": {
-            "x": 0,
-            "y": 0,
-            "z": 0,
-          }
-        },
-        "temp": 0
-      };
-
-      var drivetrainSpeeds = new Array(8).fill(90);
-
-      function handleUpdates(parsed) {
-        switch (parsed.tag) {
-          case "log":
-            console.log(parsed.data);
-            break;
-          case "sensor":
-            sensorData = parsed.data;
-            break;
-          case "motorData":
-            if (parsed.metadata == "drivetrain") {
-              drivetrainSpeeds = parsed.data;
-            }
-            break;
-        }
+      function updateConsole(mode, override) {
+        var thisLoop = new Date();
+        var fps = 1000 / (thisLoop - lastLoop);
+        lastLoop = thisLoop;
+        $("#fpsCounter").text(fps.toFixed(2));
+        $("#modeDisplay").text(mode);
+        $("#overrideDisplay").text(override);
       }
+    </script>
+    <script id="main_Script">
+      $(document).ready(function () {
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
 
-      // List elements to display the IMU calibration status
-      var imuCalibSys = document.getElementById("imu-calib-sys");
-      var imuSpanSys = document.getElementById("imu-span-sys");
+        socket.on('updateAirNode', handleUpdates);
 
-      var imuCalibGyro = document.getElementById("imu-calib-gyro");
-      var imuSpanGyro = document.getElementById("imu-span-gyro");
+        var controlMode = "user-control";
+        var userOverride = "false";
+        var sensorData = {
+          "imu": {
+            "calibration": {
+              "sys": 0,
+              "gyro": 0,
+              "accel": 0,
+              "mag": 0
+            },
+            "gyro": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+            },
+            "vel": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+            }
+          },
+          "temp": 0
+        };
 
-      var imuCalibAccel = document.getElementById("imu-calib-accel");
-      var imuSpanAccel = document.getElementById("imu-span-accel");
+        var drivetrainSpeeds = new Array(8).fill(0);
 
-      var imuCalibMag = document.getElementById("imu-calib-mag");
-      var imuSpanMag = document.getElementById("imu-span-mag");
-
-      function updateSite() {
-        socket.emit("getAirNodeUpdates", Date.now());
-
-        for (const [part, status] of Object.entries(sensorData.imu.calibration)) {
-          var selectedCalib;
-          var selectedSpan;
-
-          switch (part) {
-            case "sys":
-              selectedCalib = imuCalibSys;
-              selectedSpan = imuSpanSys;
+        function handleUpdates(parsed) {
+          switch (parsed.tag) {
+            case "log":
+              console.log(parsed.data);
               break;
-            case "gyro":
-              selectedCalib = imuCalibGyro;
-              selectedSpan = imuSpanGyro;
+            case "sensor":
+              sensorData = parsed.data;
               break;
-            case "accel":
-              selectedCalib = imuCalibAccel;
-              selectedSpan = imuSpanAccel;
+            case "motorData":
+              if (parsed.metadata == "drivetrain") {
+                drivetrainSpeeds = truncateArrayEntries(parsed.data);
+              }
               break;
-            case "mag":
-              selectedCalib = imuCalibMag;
-              selectedSpan = imuSpanMag;
-              break;
-          }
-          selectedCalib.classList.remove("list-group-item-warning");
-          selectedCalib.classList.remove("list-group-item-success");
-          selectedCalib.classList.remove("list-group-item-danger");
-
-          switch (status) {
-            case 0:
-              selectedCalib.classList.add("list-group-item-danger");
-              selectedSpan.innerHTML = "Failed";
-              break;
-            case 1:
-            case 2:
-              selectedCalib.classList.add("list-group-item-warning");
-              selectedSpan.innerHTML = "Working";
-              break;
-            case 3:
-              selectedCalib.classList.add("list-group-item-success");
-              selectedSpan.innerHTML = "Calibrated";
+            case "stateChange":
+              if (parsed.metadata == "mode") {
+                controlMode = parsed.data;
+              } else if (parsed.metadata == "override") {
+                userOverride = parsed.data;
+              }
               break;
           }
         }
 
-        update3D(sensorData.imu);
-        updateAttitude(sensorData.imu.gyro);
-        updateGraphs(sensorData);
-        updateDiagram(drivetrainSpeeds);
+        // List elements to display the IMU calibration status
+        var imuCalibSys = document.getElementById("imu-calib-sys");
+        var imuSpanSys = document.getElementById("imu-span-sys");
+
+        var imuCalibGyro = document.getElementById("imu-calib-gyro");
+        var imuSpanGyro = document.getElementById("imu-span-gyro");
+
+        var imuCalibAccel = document.getElementById("imu-calib-accel");
+        var imuSpanAccel = document.getElementById("imu-span-accel");
+
+        var imuCalibMag = document.getElementById("imu-calib-mag");
+        var imuSpanMag = document.getElementById("imu-span-mag");
+
+        function updateSite() {
+          socket.emit("getAirNodeUpdates", Date.now());
+
+          for (const [part, status] of Object.entries(sensorData.imu.calibration)) {
+            var selectedCalib;
+            var selectedSpan;
+
+            switch (part) {
+              case "sys":
+                selectedCalib = imuCalibSys;
+                selectedSpan = imuSpanSys;
+                break;
+              case "gyro":
+                selectedCalib = imuCalibGyro;
+                selectedSpan = imuSpanGyro;
+                break;
+              case "accel":
+                selectedCalib = imuCalibAccel;
+                selectedSpan = imuSpanAccel;
+                break;
+              case "mag":
+                selectedCalib = imuCalibMag;
+                selectedSpan = imuSpanMag;
+                break;
+            }
+            selectedCalib.classList.remove("list-group-item-warning");
+            selectedCalib.classList.remove("list-group-item-success");
+            selectedCalib.classList.remove("list-group-item-danger");
+
+            switch (status) {
+              case 0:
+                selectedCalib.classList.add("list-group-item-danger");
+                selectedSpan.innerHTML = "Failed";
+                break;
+              case 1:
+              case 2:
+                selectedCalib.classList.add("list-group-item-warning");
+                selectedSpan.innerHTML = "Working";
+                break;
+              case 3:
+                selectedCalib.classList.add("list-group-item-success");
+                selectedSpan.innerHTML = "Calibrated";
+                break;
+            }
+          }
+
+          // Update Visualizations
+          update3D(sensorData.imu);
+          updateAttitude(sensorData.imu.gyro);
+          updateGraphs(sensorData);
+          updateDiagram(drivetrainSpeeds);
+          updateConsole(controlMode, userOverride);
+
+          requestAnimationFrame(updateSite);
+        }
 
         requestAnimationFrame(updateSite);
-      }
 
-      requestAnimationFrame(updateSite);
+        // IMU Calibration Event Handler
+        $('#imu-straighten').click(function () {
+          var packet = {
+            "tag": "settingChange",
+            "data": sensorData.imu.gyro,
+            "timestamp": Date.now() / 1000 | 0,
+            "metadata": "imuStraighten",
+            "highPriority": false
+          }
+          socket.emit("sendUpdate", packet);
+        });
 
-      $('#imu-straighten').click(function () {
-        var packet = {
-          "tag": "settingChange",
-          "data": sensorData.imu.gyro,
-          "timestamp": Date.now() / 1000 | 0,
-          "metadata": "imuStraighten",
-          "highPriority": false
+        // Rotate Robot to Specific Angle event handler
+        $('#rotateToAngleButton').click(function () {
+          var xAngle = Number($('#xRotInput').val());
+          var yAngle = Number($('#yRotInput').val());
+          var zAngle = Number($('#zRotInput').val());
+
+          // Make sure that each of the text boxes actually contain a number
+          if (!Number.isNaN(xAngle) && !Number.isNaN(yAngle) && !Number.isNaN(zAngle)) {
+            var packet = {
+              "tag": "stateChange",
+              "data": {
+                "x": xAngle,
+                "y": yAngle,
+                "z": zAngle
+              },
+              "timestamp": Date.now() / 1000 | 0,
+              "metadata": "stabilize",
+              "highPriority": false
+            }
+            socket.emit("sendUpdate", packet);
+          } else {
+            $('#invalidAngleToast').toast('show');
+          }
+        });
+
+        $('#stabilizeButton').click(function () {
+          var packet = {
+            "tag": "stateChange",
+            "data": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "timestamp": Date.now() / 1000 | 0,
+            "metadata": "stabilize",
+            "highPriority": false
+          }
+          socket.emit("sendUpdate", packet);
+        });
+
+        $('#stopMotorsButton').click(function () {
+          var packet = {
+            "tag": "stateChange",
+            "data": "",
+            "timestamp": Date.now() / 1000 | 0,
+            "metadata": "stop-motors",
+            "highPriority": false
+          }
+          socket.emit("sendUpdate", packet);
+        });
+
+        $('#holdAngleButton').click(function () {
+          if (controlMode != "hold-angle") {
+            var xAngle = Number($('#xRotInput').val());
+            var yAngle = Number($('#yRotInput').val());
+            var zAngle = Number($('#zRotInput').val());
+
+            // Make sure that each of the text boxes actually contain a number
+            if (!Number.isNaN(xAngle) && !Number.isNaN(yAngle) && !Number.isNaN(zAngle)) {
+              var packet = {
+                "tag": "stateChange",
+                "data": {
+                  "x": xAngle,
+                  "y": yAngle,
+                  "z": zAngle
+                },
+                "timestamp": Date.now() / 1000 | 0,
+                "metadata": "hold-angle",
+                "highPriority": false
+              }
+              socket.emit("sendUpdate", packet);
+            } else {
+              $('#invalidAngleToast').toast('show');
+            }
+          } else {
+            var packet = {
+              "tag": "stateChange",
+              "data": "",
+              "timestamp": Date.now() / 1000 | 0,
+              "metadata": "stop-motors",
+              "highPriority": false
+            }
+            socket.emit("sendUpdate", packet);
+          }
+
+        });
+
+        // Auto resize canvas in case of window size change
+        window.addEventListener('resize', onWindowResize, false);
+
+        function onWindowResize() {
+          resizeRobot3d();
+          resizeGraphs();
         }
-        socket.emit("sendUpdate", packet);
+
+        // Draw static elements once they have been loaded
+        window.onload = function () {
+          drawRobotDiagramStatic();
+        }
       });
-
-      // Auto resize canvas in case of window size change
-      window.addEventListener('resize', onWindowResize, false);
-
-      function onWindowResize() {
-        resizeRobot3d();
-        resizeGraphs();
-      }
-
-      // Draw static elements once they have been loaded
-      window.onload = function () {
-        drawRobotDiagramStatic();
-      }
     </script>
 </body>
 

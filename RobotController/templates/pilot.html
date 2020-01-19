@@ -20,9 +20,38 @@
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/dashboard.css') }}" />
 
   <style>
-    #camDisplay {
-      width: 77%;
+    #camDisplayFront {
+      width: 87%;
       height: auto;
+    }
+
+    #camDisplayBack {
+      width: 87%;
+      height: auto;
+    }
+
+    @media (min-width: 1281px) and (max-width: 1920px) {
+      #camDisplayFront {
+        width: 90%;
+        height: auto;
+      }
+
+      #camDisplayBack {
+        width: 90%;
+        height: auto;
+      }
+    }
+
+    @media (min-width: 1921px) and (max-width: 2560px) {
+      #camDisplayFront {
+        width: 77%;
+        height: auto;
+      }
+
+      #camDisplayBack {
+        width: 77%;
+        height: auto;
+      }
     }
   </style>
 </head>
@@ -88,9 +117,10 @@
         <div class="container-fluid">
           <div class="row">
             <div class="col-md-12">
-              <div class="bg-mattBlackLight my-3 p-3 mx-0">
+              <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded">
                 <div class="text-center">
-                  <img id="camDisplay" src="{{ url_for('static', filename='assets/noCamera.png') }}">
+                  <img id="camDisplayBack" src="{{ url_for('static', filename='assets/noCamera.png') }}">
+                  <img id="camDisplayFront" src="{{ url_for('static', filename='assets/noCamera.png') }}">
                 </div>
                 <div class="text-center mt-3">
                   <div class="btn-group btn-group-toggle" data-toggle="buttons">
@@ -111,15 +141,29 @@
     <script id="main_Script">
       $(document).ready(function () {
         // Set inital camera source
-        $("#camDisplay").attr("src","/videoFeed/mainCam");
+        $("#camDisplayFront").attr("src", "/videoFeed/mainCam");
+        $("#camDisplayBack").attr("src", "/videoFeed/bkpCam1");
+
+        // Make the back camera invisible
+        $("#camDisplayBack").hide();
 
         // Switch image source based on radio buttons
         $('input[type=radio][name=camera-source]').change(function () {
           if (this.value == 'mainCam') {
-            $("#camDisplay").attr("src","/videoFeed/mainCam");
+            $("#camDisplayFront").show();
+            $("#camDisplayBack").hide();
+
+            // Reset camera sources incase it is not available
+            $("#camDisplayFront").attr("src", "{{ url_for('static', filename='assets/noCamera.png') }}");
+            $("#camDisplayFront").attr("src", "/videoFeed/mainCam");
           }
           else if (this.value == 'bkpCam1') {
-            $("#camDisplay").attr("src","/videoFeed/bkpCam1");
+            $("#camDisplayBack").show();
+            $("#camDisplayFront").hide();
+
+            // Reset camera sources incase it is not available
+            $("#camDisplayBack").attr("src", "{{ url_for('static', filename='assets/noCamera.png') }}");
+            $("#camDisplayBack").attr("src", "/videoFeed/bkpCam1");
           }
         });
       });

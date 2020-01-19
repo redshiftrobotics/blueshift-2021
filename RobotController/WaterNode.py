@@ -72,18 +72,8 @@ lock = threading.Lock()
 restartCamStream = False
 
 # IMU and PWM interface classes
-IMU = HardwareUtils.IMUFusion()
+#IMU = HardwareUtils.IMUFusion()
 #SD = HardwareUtils.ServoDriver(enumerate(["T100"]*8))
-'''
-class nodeHandler(logging.Handler):
-	def emit(self, record):
-		global earthQueue
-
-		logEntry = self.format(record)
-		earthQueue.put([json.loads(logEntry),"log",False,False])
-
-logger = logging.getLogger("WaterNode")
-'''
 
 def stopAllThreads(callback=0):
 	""" Stops all currently running threads
@@ -95,9 +85,6 @@ def stopAllThreads(callback=0):
 	execute['streamVideo'] = False
 	execute['receiveData'] = False
 	execute['sendData'] = False
-	'''
-	logger.debug("Stopping Threads")
-	'''
 	time.sleep(0.5)
 
 def sendVideoStreams(debug=False):
@@ -108,9 +95,6 @@ def sendVideoStreams(debug=False):
 	"""
 	global restartCamStream
 	sender = imagezmq.ImageSender(connect_to='tcp://'+ (CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP) +':'+str(CommunicationUtils.CAM_PORT))
-	'''
-	logger.debug("Sending images to port: "+'tcp://'+CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP+':'+str(CommunicationUtils.CAM_PORT))
-	'''
 
 	camNames = ["mainCam"]
 	camCaps = []
@@ -122,13 +106,11 @@ def sendVideoStreams(debug=False):
 	for i in range(1,settings['numCams']):
 		camNames.append("bkpCam"+str(i))
 		if not simpleMode:
-			camCaps.append(camCaps[0]) #v4l2_camera.Camera("/dev/video"+str(i), settings["bkpCameraResolution"]["x"],settings["bkpCameraResolution"]["y"], settings["v4l2QueueNum"])) ### UPDATE LATER TO USE ADDITIONAL CAMERAS
+			#camCaps.append(v4l2_camera.Camera("/dev/video"+str(i), settings["bkpCameraResolution"]["x"],settings["bkpCameraResolution"]["y"], settings["v4l2QueueNum"]))
+			camCaps.append(camCaps[0])
 		else:
 			camCaps.append(camCaps[0])
 	numCams = len(camCaps)
-	'''
-	logger.debug('Cam names and Objects: '+str(camNames)+', '+str(camCaps))
-	'''
 
 	time.sleep(2.0)
 	while execute['streamVideo']:
@@ -140,10 +122,7 @@ def sendVideoStreams(debug=False):
 			else:
 				_, img = camCaps[i].read()
 				sender.send_image(camNames[i]+"|"+str(time.time()), img)
-			'''
-			if debug:
-				logger.debug("Sent Image: "+str(jpg_img))
-			'''
+			 
 		if restartCamStream:
 				sender = imagezmq.ImageSender(connect_to='tcp://'+ (CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP) +':'+str(CommunicationUtils.CAM_PORT))
 				lock.acquire()
@@ -163,7 +142,7 @@ def receiveData(debug=False):
 			debug: (optional) log debugging data
 	"""
 	global restartCamStream
-	#global SD
+	global SD
 
 
 	HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
@@ -196,17 +175,11 @@ def receiveData(debug=False):
 			elif recv['tag'] == 'settingChange':
 				if recv['metadata'] == 'imuStraighten':
 					IMU.set_offset(recv["data"])
-			#elif recv['tag'] == "motorData":
-				#if recv['metadata'] == "drivetrain":
-					#for loc,spd in enumerate(recv['data']):
-						#SD.set_servo(loc,spd)
+			elif recv['tag'] == "motorData":
+				if recv['metadata'] == "drivetrain":
+					for loc,spd in enumerate(recv['data']):
+						SD.set_servo(loc,spd)
 
-
-			'''
-			if debug:
-				logger.debug("Raw receive: "+str(recv))
-				logger.debug("TtS: "+str(time.time()-float(j['timestamp'])))
-			'''
 		except (OSError, KeyboardInterrupt):
 			print("connection lost")
 			connected = False
@@ -220,11 +193,6 @@ def receiveData(debug=False):
 					print("reconnect failed. trying in 2 seconds")
 					time.sleep(2)
 	cntlr.close()
-
-	'''
-		logger.error("Receive Thread Exception Occurred", exc_info=True)
-	logger.debug("Stopped recvData")
-	'''
 
 def sendData(debug=False):
 	""" Sends JSON data to the Water Node
@@ -272,50 +240,21 @@ def sendData(debug=False):
 					print("reconnect failed. trying in 2 seconds")
 					time.sleep(2)
 	snsr.close()
-	'''
-		logger.error("Send Thread Exception Occurred: {}".format(e), exc_info=True)
-	logger.debug("Stopped sendData")
-	'''
 
 if( __name__ == "__main__"):
 	# Setup Logging preferences
 	verbose = [False,True]
-
-	'''
-	# Setup the logger
-	logger.setLevel(logging.DEBUG)
-
-	jsonLogHandler = nodeHandler()
-	jsonFormatter = jsonlogger.JsonFormatter("%(asctime)s %(name)s %(threadName)s %(levelname)s %(message)s")
-	jsonLogHandler.setFormatter(jsonFormatter)
-	jsonLogHandler.setLevel(logging.DEBUG)
-	logger.addHandler(jsonLogHandler)
-
-	logHandler = logging.StreamHandler()
-	logFormatter = logging.Formatter("%(asctime)s - %(name)s - %(threadName)s - %(levelname)s - %(message)s")
-	logHandler.setFormatter(logFormatter)
-	logHandler.setLevel(logging.INFO)
-	logger.addHandler(logHandler)
-
-	# Start each thread
-	logger.info("Starting Water Node")
-	logger.debug("Started all Threads")
-	'''
+	
 	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose[0],))
 	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
 	sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
 	vidStreamThread.start()
-	recvDataThread.start()
-	sendDataThread.start()
+	#recvDataThread.start()
+	#sendDataThread.start()
 
 	# Begin the Shutdown
 	while execute['streamVideo'] and execute['receiveData'] and execute['sendData']:
 		time.sleep(0.1)
 	recvDataThread.join()
-	sendDataThread.join()
-	vidStreamThread.join()
-	'''
-	logger.debug("Stopped all Threads")
-	logger.info("Shutting Down Water Node")
-	CommunicationUtils.clearQueue(earthQueue)
-	'''
+	#sendDataThread.join()
+	#vidStreamThread.join()

@@ -4,6 +4,8 @@ import socket
 import base64
 import cv2
 import time
+import numpy as np
+from copy import copy
 
 CAM_PORT = 6666
 CNTLR_PORT = 6665
@@ -20,7 +22,7 @@ LENGTH_MARKER = b'|'
 def packet(tag="",data="",timestamp=False,metadata="",highPriority=False):
 	dataPacket = {
 		"tag": tag,
-		"data": data,
+		"data": copy(data),
 		"timestamp": float(timestamp if timestamp else time.time()),
 		"metadata": metadata,
 		"highPriority": highPriority
@@ -88,10 +90,9 @@ def encodeImage(image):
     return bffr.tobytes()
 
 def decodeImage(uri):
-   encoded_data = uri.split(',')[1]
-   nparr = np.fromstring(base64.b64decode(encoded_data), np.uint8)
-   img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-   return img
+	nparr = np.fromstring(uri, np.uint8)
+	img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+	return img
 
 
 def clearQueue(qToClear, debug=False):

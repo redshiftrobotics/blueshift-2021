@@ -91,35 +91,20 @@ py::array_t<int8_t> Camera::get_frame() {
         // throw error
     }
 
-    /*
-    char filename[32];
-    snprintf(filename, sizeof(filename), "out-%d.jpg", frame_count);
-    FILE *fp = fopen(filename, "w");
-    fwrite(image_buf[index], len, 1, fp);
-    fclose(fp);
-    */
-
-    //int8_t (*img_array)[len] = (int8_t (*)[len]) image_buf[index];
     int8_t* img_array = (int8_t *) image_buf[index];
     py::array_t<int8_t> img = py::array_t<int8_t>(len);
 
     //cout << "len: " << len << endl;
 
-    //void* img_array = image_buf[index];
+    
     auto img_data = img.mutable_data();
+    /*
     for (int i=0; i<len-1; i++) {
-        //img_data[i] = 0;//*(signed char *) img_array[index][i];
-        //cout << "i: " << i << endl;
-        //cout << "img_array[i]: " << *(img_array + i) << endl;
-        //cout << "img_array[i]: " << img_array[i] << endl;
-        //printf((const char*)img_array[i]);
-        //printf("\n");
         img_data[i] = *(img_array + i);
     }
-    //img = py::cast((int8_t*) image_buf[index]);
-    //char* ptr = (char*) image_buf[index];
-    //memcpy(image, (char**) ptr, len);
-    //memcpy((void *) img,image_buf[index],len);
+    */
+
+    memcpy(img_data, img_array, len);
 
     rv = q_buffer(fd, &buf);
     if (rv) {
