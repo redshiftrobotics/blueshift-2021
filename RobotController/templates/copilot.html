@@ -2,6 +2,11 @@
 
 <head>
   <title>Copilot Monitor</title>
+  <!-- CSS Styling -->
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap.min.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/iconfont/material-icons.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+
   <!-- Utilites and Communication -->
   <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.4.1.min.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.slimscroll.min.js') }}"></script>
@@ -14,10 +19,6 @@
   <script type="text/javascript" src="{{ url_for('static', filename='js/three.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/GLTFLoader.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/plotly-latest.min.js') }}"></script>
-
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap.min.css') }}" />
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/iconfont/material-icons.css') }}" />
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/dashboard.css') }}" />
 
   <style>
     @font-face {
@@ -76,7 +77,19 @@
     }
 
     #statDisplay {
-      color: #6efc46;
+      color: #87ceeb;
+    }
+
+    .bg-redDarkMode {
+      background-color: #fc4646;
+    }
+
+    .bg-yellowDarkMode {
+      background-color: gold;
+    }
+
+    .bg-greenDarkMode {
+      background-color: green;
     }
   </style>
 </head>
@@ -154,10 +167,10 @@
               </div>
               <div class="bg-mattBlackLight mt-3 px-3 pt-0 pb-3 mx-0 rounded">
                 <div id="graphContainer">
-                  <div id="amperageGraph"></div>
-                  <div id="voltageGraph"></div>
-                  <div id="speedGraph"></div>
                   <div id="temperatureGraph"></div>
+                  <div id="speedGraph"></div>
+                  <div id="voltageGraph"></div>
+                  <div id="amperageGraph"></div>
                 </div>
               </div>
             </div>
@@ -185,7 +198,7 @@
                     </div>
                   </div>
                   <div class="col-md-3">
-                    <button type="button" id="stopMotorsButton" class="btn btn-secondary btn-lg">Stop Motors</button>
+                    <button type="button" id="stopMotorsButton" class="btn btn-secondary btn-lg ml-3" style="background-color: #fc4646;"><i class="material-icons icon" style=" font-size: 60px;">block</i></button>
                   </div>
                   <div class="col-md-5">
                     <div class="input-group input-group-lg mb-2">
@@ -193,11 +206,18 @@
                       <input type="text" class="form-control" id="yRotInput" placeholder="Y: 0">
                       <input type="text" class="form-control" id="zRotInput" placeholder="Z: 0">
                     </div>
-                    <button type="button" class="btn btn-secondary btn-lg mb-3" id="rotateToAngleButton">Rotate To
-                      Angle</button>
-                    <button type="button" class="btn btn-secondary btn-lg mb-3" id="stabilizeButton">Stabilize</button>
-                    <button type="button" class="btn btn-secondary btn-lg mb-0 pb-1" id="holdCurrentAngleButton">Hold
-                      Current Angle</button>
+                    <div class="row">
+                      <div class="col-md-5">
+                        <button type="button" class="btn btn-secondary btn-lg px-0 mx-0" id="holdAngleButton" style="width:100%">Hold
+                          Angle</button>
+                      </div>
+                      <div class="col-md-7">
+                        <button type="button" class="btn btn-secondary btn-lg px-0 mx-0" id="rotateToAngleButton" style="width:100%">Rotate
+                          To Angle</button>
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-lg mt-2" id="stabilizeButton">Normalize
+                      Rotation</button>
                   </div>
                   <div class="col-md-4">
                     <button type="button" class="btn btn-secondary btn-lg mb-2">Follow Transect Line</button>
@@ -844,7 +864,7 @@
           line: {
             shape: 'spline',
             smoothing: 1,
-            color: '#fcf046'
+            color: '#6efc46'
           },
           name: "Amps"
         }
@@ -859,7 +879,7 @@
           line: {
             shape: 'spline',
             smoothing: 1,
-            color: '#e08c3e'
+            color: '#fcf046'
           },
           name: "Volts"
         }
@@ -874,7 +894,7 @@
           line: {
             shape: 'spline',
             smoothing: 1,
-            color: '#fc4646'
+            color: '#e08c3e'
           },
           name: "Speed"
         }
@@ -889,7 +909,7 @@
           line: {
             shape: 'spline',
             smoothing: 1,
-            color: '#46c8fc'
+            color: '#fc4646'
           },
           name: "Temp"
         }
@@ -1185,28 +1205,40 @@
           socket.emit("sendUpdate", packet);
         });
 
-        $('#holdCurrentAngleButton').click(function () {
-          var xAngle = Number($('#xRotInput').val());
-          var yAngle = Number($('#yRotInput').val());
-          var zAngle = Number($('#zRotInput').val());
+        $('#holdAngleButton').click(function () {
+          if (controlMode != "hold-angle") {
+            var xAngle = Number($('#xRotInput').val());
+            var yAngle = Number($('#yRotInput').val());
+            var zAngle = Number($('#zRotInput').val());
 
-          // Make sure that each of the text boxes actually contain a number
-          if (!Number.isNaN(xAngle) && !Number.isNaN(yAngle) && !Number.isNaN(zAngle)) {
+            // Make sure that each of the text boxes actually contain a number
+            if (!Number.isNaN(xAngle) && !Number.isNaN(yAngle) && !Number.isNaN(zAngle)) {
+              var packet = {
+                "tag": "stateChange",
+                "data": {
+                  "x": xAngle,
+                  "y": yAngle,
+                  "z": zAngle
+                },
+                "timestamp": Date.now() / 1000 | 0,
+                "metadata": "hold-angle",
+                "highPriority": false
+              }
+              socket.emit("sendUpdate", packet);
+            } else {
+              $('#invalidAngleToast').toast('show');
+            }
+          } else {
             var packet = {
               "tag": "stateChange",
-              "data": {
-                "x": xAngle,
-                "y": yAngle,
-                "z": zAngle
-              },
+              "data": "",
               "timestamp": Date.now() / 1000 | 0,
-              "metadata": "hold-angle",
+              "metadata": "stop-motors",
               "highPriority": false
             }
             socket.emit("sendUpdate", packet);
-          } else {
-            $('#invalidAngleToast').toast('show');
           }
+
         });
 
         // Auto resize canvas in case of window size change
