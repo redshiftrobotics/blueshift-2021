@@ -217,6 +217,10 @@ def mainThread(debug=False):
     cvDebugAlgorithm = "cam"
     cvDebugLevel = "Original"
 
+    # Store the result of coral reef analysis
+    coralReefOutPath = "static/assets/coralHealth/"
+    coralReefDone = False
+
     cvImage = np.array([])
     
     # This is the fastest speed that the loop should run at in seconds
@@ -230,11 +234,18 @@ def mainThread(debug=False):
             elif recvMsg['tag'] == 'sensor':
                 newestSensorState = recvMsg['data']
             elif recvMsg['tag'] == 'stateChange':
-                if recvMsg['metadata'] == "followLine":
-                    mode = "follow-line-init"
-                elif recvMsg['metadata'] == "stop-motors":
+                if recvMsg['metadata'] == "stop-motors":
                     handlePacket(CommunicationUtils.packet("motorData", DC.zeroMotors(), metadata="drivetrain"))
                     mode = "user-control"
+                elif recvMsg['metadata'] == "follow-line":
+                    mode = "follow-line-init"
+                elif recvMsg['metadata'] == "analyze-coral-reef":
+                    if recvMsg['data'] = "run":
+                        if newestImage:
+                            analyzeCoralReefThread = threading.Thread(target=ComputerVisionUtils.findCoralHealth, args=(newestImage, coralReefOutPath, coralReefDone,), daemon=True)
+                            analyzeCoralReefThread.start()
+                        else:
+                            handlePacket(CommunicationUtils.packet(tag="stateChange", data="noCamera", metadata="followLine"))
                 elif recvMsg['metadata'] == "stabilize":
                     stabilizeRot["x"] = recvMsg["data"]["x"]
                     stabilizeRot["y"] = recvMsg["data"]["y"]
@@ -248,9 +259,6 @@ def mainThread(debug=False):
             elif recvMsg['tag'] == 'settingChange':
                 if recvMsg['metadata'] == "transectLine":
                     cvDebugAlgorithm = "transectLine"
-                    cvDebugLevel = recvMsg['data']
-                elif recvMsg['metadata'] == "coralHealth":
-                    cvDebugAlgorithm = "coralHealth"
                     cvDebugLevel = recvMsg['data']
         
         override = False
@@ -383,7 +391,6 @@ def mainThread(debug=False):
                                             zTgt)
 
                 handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
-        
         if (mode == "user-control" or override): # Run user control mode
             # Calculate new motor values
             speeds = DC.calcMotorValues(gamepadMapping["x-mov"],
@@ -395,11 +402,14 @@ def mainThread(debug=False):
             
             handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
         
+        # Handle coral reef algorthim
+        if coralReefDone:
+            handlePacket(CommunicationUtils.packet(tag="stateChange", data="done", metadata="analyze-coral-reef"))
         
         if cvImage.size > 0: # Send a computer vision debugging image if available
             imgPacket = CommunicationUtils.packet(tag="cam", data=CommunicationUtils.encodeImage(cvImage))
             airCamQueues["cvCam"].put(imgPacket)
-            cvImage = ""
+            cvImage = np.array([])
 
         # Update the mode and override state that the AirNode displays
         # * Stabilization is a special case because one mode in code is used to represent two robot modes

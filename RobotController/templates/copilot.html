@@ -224,8 +224,8 @@
                       Rotation</button>
                   </div>
                   <div class="col-md-4">
-                    <button type="button" class="btn btn-secondary btn-lg mb-2">Follow Transect Line</button>
-                    <button type="button" class="btn btn-secondary btn-lg">Analyze Coral Reef</button>
+                    <button type="button" class="btn btn-secondary btn-lg mb-2" id="followTransectLineButton">Follow Transect Line</button>
+                    <button type="button" class="btn btn-secondary btn-lg" id="coralReefButton">Analyze Coral Reef</button>
                   </div>
                 </div>
               </div>
@@ -1221,6 +1221,28 @@
             "data": "",
             "timestamp": Date.now() / 1000 | 0,
             "metadata": "stop-motors",
+            "highPriority": false
+          }
+          socket.emit("sendUpdate", packet);
+        });
+
+        $('#followTransectLineButton').click(function () {
+          var packet = {
+            "tag": "stateChange",
+            "data": "",
+            "timestamp": Date.now() / 1000 | 0,
+            "metadata": "follow-line",
+            "highPriority": false
+          }
+          socket.emit("sendUpdate", packet);
+        });
+        
+        $('#coralReefButton').click(function () {
+          var packet = {
+            "tag": "stateChange",
+            "data": "run",
+            "timestamp": Date.now() / 1000 | 0,
+            "metadata": "analyze-coral-reef",
             "highPriority": false
           }
           socket.emit("sendUpdate", packet);

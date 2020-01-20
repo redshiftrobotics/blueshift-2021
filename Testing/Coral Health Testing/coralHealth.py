@@ -1,17 +1,7 @@
 import cv2
 import numpy as np
- 
-def cropImage(img, x1,y1,x2,y2):
-    return img[y1:y2, x1:x2]
 
 def overlay_image_alpha(img, img_overlay, pos, alpha_mask):
-    """Overlay img_overlay on top of img at the position specified by
-    pos and blend using alpha_mask.
-
-    Alpha mask must contain values within the range [0, 1] and be the
-    same size as img_overlay.
-    """
-
     img = img.copy()
 
     x, y = pos
@@ -30,7 +20,7 @@ def overlay_image_alpha(img, img_overlay, pos, alpha_mask):
 
     channels = img.shape[2]
 
-    alpha = alpha_mask#[y1o:y2o, x1o:x2o]
+    alpha = alpha_mask #This allows alpha_mask to be a full image [y1o:y2o, x1o:x2o]
     alpha_inv = 1.0 - alpha
 
     for c in range(channels):
@@ -38,27 +28,13 @@ def overlay_image_alpha(img, img_overlay, pos, alpha_mask):
                                 alpha_inv * img[y1:y2, x1:x2, c])
     return img
 
-def posterizeImage(img, level):
-    indices = np.arange(0,256)   # List of all colors 
-    divider = np.linspace(0,255,level+1)[1] # we get a divider
-    quantiz = np.int0(np.linspace(0,255,level)) # we get quantization colors
-    color_levels = np.clip(np.int0(indices/divider),0,level-1) # color levels 0,1,2..
-    palette = quantiz[color_levels] # Creating the palette
-    im2 = palette[img]  # Applying palette on image
-    im2 = cv2.convertScaleAbs(im2) # Converting image back to uint8
-    return im2
-    
 def alignImages(reference, toAlign, toAlignMask):
     # Convert images to grayscale
     im1Gray = cv2.cvtColor(toAlign, cv2.COLOR_BGR2GRAY)
     im2Gray = cv2.cvtColor(reference, cv2.COLOR_BGR2GRAY)
 
     # Detect ORB features and compute descriptors.
-    detector = None
-    try:
-        detector = cv2.xfeatures2d.SIFT_create()
-    except:
-        detector = cv2.ORB_create(MAX_FEATURES)
+    detector = cv2.ORB_create(max_features)
     keypoints1, descriptors1 = detector.detectAndCompute(im1Gray, mask=toAlignMask)
     keypoints2, descriptors2 = detector.detectAndCompute(im2Gray, mask=None)
 
@@ -70,7 +46,7 @@ def alignImages(reference, toAlign, toAlignMask):
     matches.sort(key=lambda x: x.distance, reverse=False)
 
     # Remove not so good matches
-    numGoodMatches = int(len(matches) * GOOD_MATCH_PERCENT)
+    numGoodMatches = int(len(matches) * good_match_percent)
     matches = matches[:numGoodMatches]
 
     # Draw top matches
@@ -99,8 +75,93 @@ def smoothImage(img, dilate, erode):
     smoothed = cv2.erode(smoothed, kernel, erode)
     return smoothed
 
-MAX_FEATURES = 10000
-GOOD_MATCH_PERCENT = 0.15
+def findCoralHealth(coral_reference, coral_to_align):
+    outImages = {
+        "backgroundMask": None,
+        "features": None,
+        "alignment": None,
+        "subtraction": None,
+        "final": None
+    }
+
+    # Generate a background mask for the coral to be aligned
+    #  * The coral reef has two colors, pink (healthy) and white (bleached), so two separate masks are combined for greater accuracy
+    coral_to_align_mask = (HSVThreshold(coral_to_align, background_mask["bleached"]["lower"], background_mask["bleached"]["upper"]) +
+                       HSVThreshold(coral_to_align, background_mask["healthy"]["lower"], background_mask["healthy"]["upper"]))
+
+    # Smooth the mask
+    coral_to_align_mask = cv2.erode(coral_to_align_mask, kernel, 1)
+    coral_to_align_mask = cv2.dilate(coral_to_align_mask, kernel, 10)
+    coral_to_align_mask = cv2.dilate(coral_to_align_mask, kernel, 1)
+
+    # Apply the mask
+    coral_to_align_masked = cv2.bitwise_and(coral_to_align, coral_to_align, mask=coral_to_align_mask)
+    outImages["backgroundMask"] = coral_to_align_masked
+
+    # Calculate homography for the reference and target images
+    #  * Homography is calculated using the unmasked image, but a mask is passed in to limit feature locations
+    coral_matches, h = alignImages(coral_reference, coral_to_align, coral_to_align_mask)
+    outImages["features"] = coral_matches
+
+    # Apply homography
+    #  * The homography is applied to both the image with and without the mask
+    #  * The image with the mask is used in subtraction to calculate differences
+    #  * The image without the mask is the image that the rectangles are drawn on
+    coral_aligned_mask = cv2.warpPerspective(coral_to_align_masked, h, (width, height))
+    coral_aligned = cv2.warpPerspective(coral_to_align, h, (width, height))
+
+    # Overlay the aligned and masked image on the reference image to check alignment
+    outImages["alignment"] = overlay_image_alpha(coral_reference, coral_aligned_mask[:, :, 0:3], (0, 0), 0.5)
+
+    # Subtract the two images to find differences in the coral
+    #  * The images are converted to float16 from uint8 so they can represent negative numbers
+    #    They need to be converted back before they can be used in opencv
+    coral_subtracted = cv2.GaussianBlur(coral_reference, blurKSize, blurAmmount).astype("float16") - cv2.GaussianBlur(coral_aligned_mask, blurKSize, blurAmmount).astype("float16")
+    outImages["subtraction"] = coral_subtracted
+
+    # In order to be able to work with negative numbers, a constant, 64, is added to everything
+    #  * This affects the color filtering, so if the constant is adjusted, the filters will need be re-tuned
+    #  * Finally the image is clipped within range and converted back to uint8
+    coral_subtracted = np.clip(np.abs(coral_subtracted+64), 0, 255).astype("uint8")
+
+
+    # Mark Changes on the reef
+    #  * This is done by looping through each of the 4 kinds of change
+    #    Applying the corresponding color filter, and looking for large contours
+    for key in changes:
+        # Each type of change will have at least one color filter
+        mask = HSVThreshold(coral_subtracted, changes[key]["filters"][0]["lower"], changes[key]["filters"][0]["upper"])
+
+        # Because red's hue is ~0 and ~180, some types of change will have more than one filter
+        #  * This loops through any additional filters and adds them
+        if len(changes[key]["filters"]) > 1:
+            for colorFilter in changes[key]["filters"]:
+                mask += HSVThreshold(coral_subtracted, colorFilter["lower"], colorFilter["upper"])
+        
+        # Smooth the mask
+        mask_smooth = cv2.erode(mask, kernel, 1)
+        mask_smooth = cv2.dilate(mask_smooth, kernel, 1)
+        mask_smooth = cv2.dilate(mask_smooth, kernel, 1)
+
+        # Calculate contours
+        contours, hierarchy = cv2.findContours(mask_smooth, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Loop through each contour, filtering out the small ones
+        # Draw boxes of the corresponding color
+        for contour in contours:
+            if cv2.contourArea(contour) > min_countour_area:
+                (x,y,w,h) = cv2.boundingRect(contour)
+                x -= expand_amount
+                y -= expand_amount
+                w += expand_amount*2
+                h += expand_amount*2
+                cv2.rectangle(coral_aligned, (x,y), (x+w,y+h), changes[key]["color"], 2)
+    
+    outImages["final"] = coral_aligned
+    return outImages
+
+max_features = 10000
+good_match_percent = 0.15
 
 width = 1920
 height = 1080
@@ -111,6 +172,8 @@ blurAmmount = 10
 min_countour_area = 2000.0
 
 kernel = np.ones((9,9))
+
+expand_amount = 10
 
 background_mask = {
     "bleached": {
@@ -166,52 +229,9 @@ changes =  {
     }
 }
 
-expand_amount = 10
-
 coral_reference = cv2.imread("coral_7.png")
 
 coral_to_align = cv2.imread("coral_7-difficult.png")
-coral_to_align_mask = (HSVThreshold(coral_to_align, background_mask["bleached"]["lower"], background_mask["bleached"]["upper"]) +
-                       HSVThreshold(coral_to_align, background_mask["healthy"]["lower"], background_mask["healthy"]["upper"]))
-
-coral_to_align_mask = cv2.erode(coral_to_align_mask, kernel, 1)
-coral_to_align_mask = cv2.dilate(coral_to_align_mask, kernel, 10)
-coral_to_align_mask = cv2.dilate(coral_to_align_mask, kernel, 1)
-coral_to_align_masked = cv2.bitwise_and(coral_to_align, coral_to_align, mask=coral_to_align_mask)
-
-coral_matches, h = alignImages(coral_reference, coral_to_align, coral_to_align_mask)
-
-# Apply homography
-coral_aligned_mask = cv2.warpPerspective(coral_to_align_masked, h, (width, height))
-coral_aligned = cv2.warpPerspective(coral_to_align, h, (width, height))
-
-coral_subtracted = cv2.GaussianBlur(coral_reference, blurKSize, blurAmmount).astype("float16") - cv2.GaussianBlur(coral_aligned_mask, blurKSize, blurAmmount).astype("float16")
-
-coral_subtracted = np.clip(np.abs(coral_subtracted+64), 0, 255).astype("uint8")
-
-
-# Mark Changes on the reef
-for key in changes:
-    mask = HSVThreshold(coral_subtracted, changes[key]["filters"][0]["lower"], changes[key]["filters"][0]["upper"])
-
-    if len(changes[key]["filters"]) > 1:
-        for colorFilter in changes[key]["filters"]:
-            mask = cv2.bitwise_or(mask, HSVThreshold(coral_subtracted, colorFilter["lower"], colorFilter["upper"]))
-    
-    mask_smooth = cv2.erode(mask, kernel, 1)
-    mask_smooth = cv2.dilate(mask_smooth, kernel, 1)
-    mask_smooth = cv2.dilate(mask_smooth, kernel, 1)
-
-    contours, hierarchy = cv2.findContours(mask_smooth, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    for contour in contours:
-        if cv2.contourArea(contour) > min_countour_area:
-            (x,y,w,h) = cv2.boundingRect(contour)
-            x -= expand_amount
-            y -= expand_amount
-            w += expand_amount*2
-            h += expand_amount*2
-            cv2.rectangle(coral_aligned, (x,y), (x+w,y+h), changes[key]["color"], 2)
 
 # cv2.imshow("coral_reference ", coral_reference)
 # cv2.imshow("coral_to_align ", coral_to_align)
@@ -221,7 +241,7 @@ for key in changes:
 # cv2.imshow("aligned overlay", overlay_image_alpha(coral_reference, coral_aligned_mask[:, :, 0:3], (0, 0), 0.5))
 # cv2.imshow("subtraction", coral_subtracted)
 
-cv2.imshow("coral_annotated", coral_aligned)
+cv2.imshow("coral_annotated", findCoralHealth(coral_reference, coral_to_align)["final"])
 cv2.moveWindow("coral_annotated", 1000,50)
 
 cv2.imshow("coral_reference", coral_reference)
