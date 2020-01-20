@@ -1,0 +1,65 @@
+<grip:Pipeline>
+  <sources>
+    <grip:MultiImageFile>
+      <property name="path[9]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\old_reef_square.jpg"/>
+      <property name="path[6]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_6.png"/>
+      <property name="path[3]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_3.png"/>
+      <property name="path[0]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\all_coral_square.jpg"/>
+      <property name="path[8]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_7-difficult.png"/>
+      <property name="index" value="8"/>
+      <property name="numImages" value="10"/>
+      <property name="path[5]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_5.png"/>
+      <property name="path[2]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_2.png"/>
+      <property name="path[7]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_7.png"/>
+      <property name="path[4]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_4.png"/>
+      <property name="path[1]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_1.png"/>
+    </grip:MultiImageFile>
+  </sources>
+  <steps>
+    <grip:Step name="HSV Threshold">
+      <grip:Input step="0" socket="0"/>
+      <grip:Input step="0" socket="1">
+        <value>
+          <double>25.899280575539567</double>
+          <double>119.3939393939394</double>
+        </value>
+      </grip:Input>
+      <grip:Input step="0" socket="2">
+        <value>
+          <double>48.156474820143885</double>
+          <double>96.16161616161615</double>
+        </value>
+      </grip:Input>
+      <grip:Input step="0" socket="3">
+        <value>
+          <double>149.05575539568343</double>
+          <double>246.41414141414143</double>
+        </value>
+      </grip:Input>
+      <grip:Output step="0" socket="0" previewed="true"/>
+    </grip:Step>
+  </steps>
+  <connections>
+    <grip:Connection>
+      <grip:Output source="0" socket="0" previewed="true"/>
+      <grip:Input step="0" socket="0"/>
+    </grip:Connection>
+  </connections>
+  <settings>
+    <teamNumber>0</teamNumber>
+    <publishAddress>roboRIO-0-FRC.local</publishAddress>
+    <deployAddress>roboRIO-0-FRC.local</deployAddress>
+    <deployDir>/home/lvuser</deployDir>
+    <deployUser>lvuser</deployUser>
+    <deployJavaHome>/usr/local/frc/JRE/</deployJavaHome>
+    <deployJvmOptions>-Xmx50m -XX:-OmitStackTraceInFastThrow -XX:+HeapDumpOnOutOfMemoryError -XX:MaxNewSize=16m</deployJvmOptions>
+  </settings>
+  <codeGenerationSettings>
+    <language>Java</language>
+    <className>GripPipeline</className>
+    <implementWpilibPipeline>false</implementWpilibPipeline>
+    <saveDir>C:\Users\LionHeart\GRIP</saveDir>
+    <packageName></packageName>
+    <moduleName>grip</moduleName>
+  </codeGenerationSettings>
+</grip:Pipeline>

@@ -7,9 +7,12 @@ GOOD_MATCH_PERCENT = 0.15
 def cropImage(img, x1,y1,x2,y2):
     return img[y1:y2, x1:x2]
 
-def overlay_image_alpha(img, img_overlay, pos, alpha):
+def overlay_image_alpha(img, img_overlay, pos, alpha_mask):
     """Overlay img_overlay on top of img at the position specified by
-    pos and blend using alpha.
+    pos and blend using alpha_mask.
+
+    Alpha mask must contain values within the range [0, 1] and be the
+    same size as img_overlay.
     """
 
     img = img.copy()
@@ -30,12 +33,12 @@ def overlay_image_alpha(img, img_overlay, pos, alpha):
 
     channels = img.shape[2]
 
+    alpha = alpha_mask#[y1o:y2o, x1o:x2o]
     alpha_inv = 1.0 - alpha
 
     for c in range(channels):
         img[y1:y2, x1:x2, c] = (alpha * img_overlay[y1o:y2o, x1o:x2o, c] +
                                 alpha_inv * img[y1:y2, x1:x2, c])
-    
     return img
 
 def posterizeImage(img, level):
@@ -48,15 +51,15 @@ def posterizeImage(img, level):
     im2 = cv2.convertScaleAbs(im2) # Converting image back to uint8
     return im2
     
-def alignImages(reference, toAlign):
+def alignImages(reference, toAlign, toAlignMask):
     # Convert images to grayscale
     im1Gray = cv2.cvtColor(toAlign, cv2.COLOR_BGR2GRAY)
     im2Gray = cv2.cvtColor(reference, cv2.COLOR_BGR2GRAY)
 
     # Detect ORB features and compute descriptors.
     orb = cv2.ORB_create(MAX_FEATURES)
-    keypoints1, descriptors1 = orb.detectAndCompute(im1Gray, None)
-    keypoints2, descriptors2 = orb.detectAndCompute(im2Gray, None)
+    keypoints1, descriptors1 = orb.detectAndCompute(im1Gray, mask=toAlignMask)
+    keypoints2, descriptors2 = orb.detectAndCompute(im2Gray, mask=None)
 
     # Match features.
     matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
@@ -91,7 +94,6 @@ def HSVThreshold(img, lower, upper):
     return mask
 
 def smoothImage(img, dilate, erode):
-    smoothed = img
     smoothed = cv2.dilate(img, kernel, dilate)
     smoothed = cv2.erode(smoothed, kernel, erode)
     return smoothed
@@ -106,46 +108,62 @@ min_countour_area = 2000.0
 
 kernel = np.ones((9,9))
 
+background_mask = {
+    "bleached": {
+        "lower": (26, 0, 149),
+        "upper": (107, 81, 255)
+    },
+    "healthy": {
+        "lower": (117, 55, 112),
+        "upper": (180, 255, 255)
+    }
+}
+
 changes =  {
     "death": {
-        "lower": (50, 188, 174),
-        "upper": (98, 255, 238),
+        "lower": (115, 14, 216),
+        "upper": (180, 96, 255), 
         "color": (0, 255, 255)
     },
     "growth": {
-        "lower": (99, 211, 186),
-        "upper": (153, 255, 238),
+        "lower": (66, 46, 126),
+        "upper": (74, 206, 180),
         "color": (0, 255, 0)
     },
     "bleached": {
-        "lower": (149, 64, 179),
-        "upper": (180, 158, 255),
+        "lower": (0, 190, 41),
+        "upper": (180, 255, 137),
         "color": (0, 0, 255)
     },
     "healed": {
-        "lower": (0, 151, 108),
-        "upper": (53, 238, 255),
+        "lower": (74, 78, 195),
+        "upper": (103, 173, 255),
         "color": (255, 0, 0)
     }
 }
 expand_amount = 10
 
 coral_reference = cv2.imread("coral_1.png")
-coral_to_align = cv2.imread("coral_6.png")
 
-coral_matches, h = alignImages(coral_reference, coral_to_align)
+coral_to_align = cv2.imread("coral_7.png")
+coral_to_align_mask = (HSVThreshold(coral_to_align, background_mask["bleached"]["lower"], background_mask["bleached"]["upper"]) +
+                       HSVThreshold(coral_to_align, background_mask["healthy"]["lower"], background_mask["healthy"]["upper"]))
+
+coral_to_align_mask = cv2.erode(coral_to_align_mask, kernel, 1)
+coral_to_align_point_mask = coral_to_align_mask.copy()
+coral_to_align_mask = cv2.dilate(coral_to_align_mask, kernel, 10)
+coral_to_align_masked = cv2.bitwise_and(coral_to_align, coral_to_align, mask=coral_to_align_mask)
+
+coral_to_align_point_mask = cv2.erode(coral_to_align_mask, kernel, 5)
+coral_matches, h = alignImages(coral_reference, coral_to_align, coral_to_align_mask)
 
 # Apply homography
-coral_alinged = cv2.warpPerspective(coral_to_align, h, (width, height))
+coral_aligned_mask = cv2.warpPerspective(coral_to_align_masked, h, (width, height))
+coral_aligned = cv2.warpPerspective(coral_to_align, h, (width, height))
 
-# cv2.imshow("coral_reference ", coral_reference)
-# cv2.imshow("coral_to_align ", coral_to_align)
-# cv2.imshow("matches ", coral_matches)
-# cv2.imshow("aligned", coral_alinged)
-# cv2.imshow("aligned overlay", overlay_image_alpha(coral_reference, coral_alinged[:, :, 0:3], (0, 0), 0.5))
-#cv2.imshow("subtraction", coral_subtracted)
+coral_subtracted = cv2.GaussianBlur(coral_reference, blurKSize, blurAmmount).astype("float16") - cv2.GaussianBlur(coral_aligned_mask, blurKSize, blurAmmount).astype("float16")
 
-coral_subtracted = cv2.GaussianBlur(coral_reference, blurKSize, blurAmmount) - cv2.GaussianBlur(coral_alinged, blurKSize, blurAmmount)
+coral_subtracted = np.clip(np.abs(coral_subtracted+128), 0, 255).astype("uint8")
 
 # Mark Changes on the reef
 for key in changes:
@@ -161,14 +179,22 @@ for key in changes:
             y -= expand_amount
             w += expand_amount*2
             h += expand_amount*2
-            cv2.rectangle(coral_alinged, (x,y), (x+w,y+h), changes[key]["color"], 2)
+            cv2.rectangle(coral_aligned, (x,y), (x+w,y+h), changes[key]["color"], 2)
 
-cv2.imshow("coral_annotated", coral_alinged)
+# cv2.imshow("coral_reference ", coral_reference)
+# cv2.imshow("coral_to_align ", coral_to_align)
+# cv2.imshow("coral_to_align_point_mask", coral_to_align_point_mask)
+# cv2.imshow("coral_to_align_masked", coral_to_align_masked)
+cv2.imshow("matches ", coral_matches)
+# cv2.imshow("aligned", coral_aligned_mask)
+# cv2.imshow("aligned overlay", overlay_image_alpha(coral_reference, coral_aligned_mask[:, :, 0:3], (0, 0), 0.5))
+# cv2.imshow("subtraction", coral_subtracted)
+
+cv2.imshow("coral_annotated", coral_aligned)
 cv2.moveWindow("coral_annotated", 1000,50)
 
 cv2.imshow("coral_reference", coral_reference)
 cv2.moveWindow("coral_reference", -500,50)
-
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
