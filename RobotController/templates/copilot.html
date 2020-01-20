@@ -80,16 +80,16 @@
       color: #87ceeb;
     }
 
-    .bg-redDarkMode {
-      background-color: #fc4646;
+    .text-redDarkMode {
+      color: #fc4646;
     }
 
-    .bg-yellowDarkMode {
-      background-color: gold;
+    .text-yellowDarkMode {
+      color: #fcf046;
     }
 
-    .bg-greenDarkMode {
-      background-color: green;
+    .text-greenDarkMode {
+      color: #6efc46;
     }
   </style>
 </head>
@@ -185,7 +185,7 @@
               <div class="bg-mattBlackLight my-3 p-3 pb-1 mx-0 rounded">
                 <div class="row">
                   <div class="col-md-12">
-                    <div class="row mx-3 mb-3 p- bg-mattBlackDark rounded">
+                    <div class="row mx-3 mb-3 pt-1 bg-mattBlackDark rounded">
                       <div class="col-md-3">
                         <h3 id="statDisplay">FPS: <span id="fpsCounter">0</span></h3>
                       </div>
@@ -198,7 +198,9 @@
                     </div>
                   </div>
                   <div class="col-md-3">
-                    <button type="button" id="stopMotorsButton" class="btn btn-secondary btn-lg ml-3" style="background-color: #fc4646;"><i class="material-icons icon" style=" font-size: 60px;">block</i></button>
+                    <button type="button" id="stopMotorsButton" class="btn btn-secondary btn-lg ml-3"
+                      style="background-color: #fc4646;"><i class="material-icons icon"
+                        style=" font-size: 60px;">block</i></button>
                   </div>
                   <div class="col-md-5">
                     <div class="input-group input-group-lg mb-2">
@@ -208,11 +210,13 @@
                     </div>
                     <div class="row">
                       <div class="col-md-5">
-                        <button type="button" class="btn btn-secondary btn-lg px-0 mx-0" id="holdAngleButton" style="width:100%">Hold
+                        <button type="button" class="btn btn-secondary btn-lg px-0 mx-0" id="holdAngleButton"
+                          style="width:100%">Hold
                           Angle</button>
                       </div>
                       <div class="col-md-7">
-                        <button type="button" class="btn btn-secondary btn-lg px-0 mx-0" id="rotateToAngleButton" style="width:100%">Rotate
+                        <button type="button" class="btn btn-secondary btn-lg px-0 mx-0" id="rotateToAngleButton"
+                          style="width:100%">Rotate
                           To Angle</button>
                       </div>
                     </div>
@@ -232,29 +236,45 @@
               </div>
               <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded ">
                 <h3>IMU Calibration</h3>
-                <ul class="list-group">
-                  <li
-                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h5"
-                    id="imu-calib-sys">
-                    System<span class="badge badge-primary badge-pill" id="imu-span-sys">Failed</span>
-                  </li>
-                  <li
-                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h5"
-                    id="imu-calib-gyro">
-                    Gyroscope<span class="badge badge-primary badge-pill" id="imu-span-gyro">Failed</span>
-                  </li>
-                  <li
-                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h5"
-                    id="imu-calib-accel">
-                    Accelerometer<span class="badge badge-primary badge-pill" id="imu-span-accel">Failed</span>
-                  </li>
-                  <li
-                    class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center h5"
-                    id="imu-calib-mag">
-                    Magnetometer<span class="badge badge-primary badge-pill" id="imu-span-mag">Failed</span>
-                  </li>
-                </ul>
-                <button type="button" class="btn btn-secondary" id="imu-straighten">Straighten</button>
+                <div class="row">
+                  <div class="col-md-12">
+                    <div id="imu-calib-sys" class="row bg-mattBlackDark rounded my-1 mx-3">
+                      <div class="col-md-9">
+                        <h1 class="mx-1">System:</h1>
+                      </div>
+                      <div class="col-md-2">
+                        <i class="material-icons icon" id="imu-span-sys" style="font-size: 4em;">block</i>
+                      </div>
+                    </div>
+                    <div id="imu-calib-gyro" class="row bg-mattBlackDark rounded my-1 mx-3">
+                      <div class="col-md-9">
+                        <h1 class="mx-1">Gyroscope:</h1>
+                      </div>
+                      <div class="col-md-2">
+                        <i class="material-icons icon" id="imu-span-gyro" style="font-size: 4em;">block</i>
+                      </div>
+                    </div>
+                    <div id="imu-calib-accel" class="row bg-mattBlackDark rounded my-1 mx-3">
+                      <div class="col-md-9">
+                        <h1 class="mx-1">Accelerometer:</h1>
+                      </div>
+                      <div class="col-md-2">
+                        <i class="material-icons icon" id="imu-span-accel" style="font-size: 4em;">block</i>
+                      </div>
+                    </div>
+                    <div id="imu-calib-mag" class="row bg-mattBlackDark rounded my-1 mx-3">
+                      <div class="col-md-9">
+                        <h1 class="mx-1">Magnetometer:</h1>
+                      </div>
+                      <div class="col-md-2">
+                        <i class="material-icons icon" id="imu-span-mag" style="font-size: 4em;">block</i>
+                      </div>
+                    </div>
+                    <div class="row ml-1 mt-3">
+                      <button type="button" class="btn btn-secondary" id="imu-straighten">Straighten</button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1109,23 +1129,24 @@
                 selectedSpan = imuSpanMag;
                 break;
             }
-            selectedCalib.classList.remove("list-group-item-warning");
-            selectedCalib.classList.remove("list-group-item-success");
-            selectedCalib.classList.remove("list-group-item-danger");
+
+            selectedCalib.classList.remove("text-greenDarkMode");
+            selectedCalib.classList.remove("text-yellowDarkMode");
+            selectedCalib.classList.remove("text-redDarkMode");
 
             switch (status) {
               case 0:
-                selectedCalib.classList.add("list-group-item-danger");
-                selectedSpan.innerHTML = "Failed";
+                selectedCalib.classList.add("text-redDarkMode");
+                selectedSpan.innerHTML = "cancel";
                 break;
               case 1:
               case 2:
-                selectedCalib.classList.add("list-group-item-warning");
-                selectedSpan.innerHTML = "Working";
+                selectedCalib.classList.add("text-yellowDarkMode");
+                selectedSpan.innerHTML = "cached";
                 break;
               case 3:
-                selectedCalib.classList.add("list-group-item-success");
-                selectedSpan.innerHTML = "Calibrated";
+                selectedCalib.classList.add("text-greenDarkMode");
+                selectedSpan.innerHTML = "check";
                 break;
             }
           }
