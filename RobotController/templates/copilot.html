@@ -158,6 +158,14 @@
               </button>
             </div>
           </div>
+          <div id="noCameraToast" class="toast" data-delay="1000" style="position: absolute; top: 7.5; left: 43%;">
+            <div class="toast-header" style="background-color: #6c757d; color: white; border: #6c757d;">
+              <h5 class="mr-auto">No camera is connected.</h5>
+              <button type="button" class="ml-2 mb-1 close" data-dismiss="toast">
+                <span>&times;</span>
+              </button>
+            </div>
+          </div>
         </div>
         <div class="container-fluid">
           <div class="row">
@@ -186,13 +194,16 @@
                 <div class="row">
                   <div class="col-md-12">
                     <div class="row mx-3 mb-3 pt-1 bg-mattBlackDark rounded">
-                      <div class="col-md-3">
+                      <div class="col-md-2">
                         <h3 id="statDisplay">FPS: <span id="fpsCounter">0</span></h3>
                       </div>
-                      <div class="col-md-5">
+                      <div class="col-md-3">
+                        <h3 id="statDisplay">Control FPS: <span id="earthFpsCounter">0</span></h3>
+                      </div>
+                      <div class="col-md-3">
                         <h3 id="statDisplay">Mode: <span id="modeDisplay">user-control</span></h3>
                       </div>
-                      <div class="col-md-4">
+                      <div class="col-md-3">
                         <h3 id="statDisplay">Override: <span id="overrideDisplay">false</span></h3>
                       </div>
                     </div>
@@ -1027,11 +1038,12 @@
       // Timestamp to keep track of FPS
       var lastLoop = new Date();
 
-      function updateConsole(mode, override) {
+      function updateConsole(mode, override, earthFpsCounter) {
         var thisLoop = new Date();
         var fps = 1000 / (thisLoop - lastLoop);
         lastLoop = thisLoop;
-        $("#fpsCounter").text(fps.toFixed(2));
+        $("#fpsCounter").text(fps.toFixed(1));
+        $("#earthFpsCounter").text(earthFpsCounter.toFixed(1));
         $("#modeDisplay").text(mode);
         $("#overrideDisplay").text(override);
       }
@@ -1039,11 +1051,11 @@
     <script id="main_Script">
       $(document).ready(function () {
         var socket = io.connect('http://' + document.domain + ':' + location.port);
-
         socket.on('updateAirNode', handleUpdates);
 
         var controlMode = "user-control";
         var userOverride = "false";
+        var earthFps = 0;
         var sensorData = {
           "imu": {
             "calibration": {
@@ -1086,6 +1098,12 @@
                 controlMode = parsed.data;
               } else if (parsed.metadata == "override") {
                 userOverride = parsed.data;
+              } else if (parsed.metadata == "earth-fps") {
+                earthFps = parsed.data;
+              } else if (parsed.metadata == "follow-line") {
+                if (parsed.data == "noCamera") {
+                  $('#noCameraToast').toast('show');
+                }
               }
               break;
           }
@@ -1156,7 +1174,7 @@
           updateAttitude(sensorData.imu.gyro);
           updateGraphs(sensorData);
           updateDiagram(drivetrainSpeeds);
-          updateConsole(controlMode, userOverride);
+          updateConsole(controlMode, userOverride, earthFps);
 
           requestAnimationFrame(updateSite);
         }
@@ -1229,11 +1247,12 @@
         $('#followTransectLineButton').click(function () {
           var packet = {
             "tag": "stateChange",
-            "data": "",
+            "data": "run",
             "timestamp": Date.now() / 1000 | 0,
             "metadata": "follow-line",
             "highPriority": false
           }
+          console.log(packet)
           socket.emit("sendUpdate", packet);
         });
         

@@ -213,9 +213,8 @@ def mainThread(debug=False):
     lastMode = "user-control"
     lastOverride = False
 
-    # Stores the currently running CV algorithm and debug level
-    cvDebugAlgorithm = "cam"
-    cvDebugLevel = "Original"
+    # Stores the currently running CV debug level
+    lineFollowingDebugLevel = "Mask"
 
     # Store the result of coral reef analysis
     coralReefOutPath = "static/assets/coralHealth/"
@@ -224,7 +223,8 @@ def mainThread(debug=False):
     cvImage = np.array([])
     
     # This is the fastest speed that the loop should run at in seconds
-    loopFrequency = 1.0/15.0
+    loopFrequency = 1.0/25.0
+    lastLoop = time.time()
 
     while execute['mainThread']:
         while not mainQueue.empty():
@@ -238,14 +238,15 @@ def mainThread(debug=False):
                     handlePacket(CommunicationUtils.packet("motorData", DC.zeroMotors(), metadata="drivetrain"))
                     mode = "user-control"
                 elif recvMsg['metadata'] == "follow-line":
-                    mode = "follow-line-init"
+                    if recvMsg['data'] == "run":
+                        mode = "follow-line-init"
                 elif recvMsg['metadata'] == "analyze-coral-reef":
-                    if recvMsg['data'] = "run":
-                        if newestImage:
+                    if recvMsg['data'] == "run":
+                        if newestImage.size > 0:
                             analyzeCoralReefThread = threading.Thread(target=ComputerVisionUtils.findCoralHealth, args=(newestImage, coralReefOutPath, coralReefDone,), daemon=True)
                             analyzeCoralReefThread.start()
                         else:
-                            handlePacket(CommunicationUtils.packet(tag="stateChange", data="noCamera", metadata="followLine"))
+                            handlePacket(CommunicationUtils.packet(tag="stateChange", data="noCamera", metadata="analyze-coral-reef"))
                 elif recvMsg['metadata'] == "stabilize":
                     stabilizeRot["x"] = recvMsg["data"]["x"]
                     stabilizeRot["y"] = recvMsg["data"]["y"]
@@ -257,9 +258,8 @@ def mainThread(debug=False):
                     stabilizeRot["z"] = recvMsg["data"]["z"]
                     mode = "hold-angle-init"
             elif recvMsg['tag'] == 'settingChange':
-                if recvMsg['metadata'] == "transectLine":
-                    cvDebugAlgorithm = "transectLine"
-                    cvDebugLevel = recvMsg['data']
+                if recvMsg['metadata'] == "follow-line":
+                    lineFollowingDebugLevel = recvMsg['data']
         
         override = False
 
@@ -315,53 +315,56 @@ def mainThread(debug=False):
 
                 handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
             elif (mode == "follow-line-init"): # Initialize line following mode
-                # Set up CV debugging
-                cvDebugAlgorithm = "transectLine"
-                cvDebugLevel = "Contours"
+                if newestImage.size > 0:
+                    # Reset PID rotation controllers
+                    xRotPID.reset()
+                    yRotPID.reset()
+                    zRotPID.reset()
+                    xRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+                    yRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+                    zRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
 
-                # Reset PID rotation controllers
-                xRotPID.reset()
-                yRotPID.reset()
-                zRotPID.reset()
-                xRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
-                yRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
-                zRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+                    # Assuming the robot has been correctly calibrated, (0,90,0) should be pointed at the ground
+                    xRotPID.setpoint = 0
+                    yRotPID.setpoint = 90
+                    zRotPID.setpoint = 0
 
-                # Assuming the robot has been correctly calibrated, (0,90,0) should be pointed at the ground
-                xRotPID.setpoint = 0
-                yRotPID.setpoint = 90
-                zRotPID.setpoint = 0
-
-                # Reset PID rotation controllers
-                xPosPID.reset()
-                xPosPID.tunings = (pos["Kp"], pos["Kd"], pos["Ki"])
-                if newestImage:
+                    # Reset PID rotation controllers
+                    xPosPID.reset()
+                    xPosPID.tunings = (pos["Kp"], pos["Kd"], pos["Ki"])
                     xPosPID.setpoint = newestImage.shape[0]*ComputerVisionUtils.lf_percent_of_image_blue_lines_should_fill
                     mode = "follow-line"
                 else:
-                    handlePacket(CommunicationUtils.packet(tag="stateChange", data="noCamera", metadata="followLine"))
+                    handlePacket(CommunicationUtils.packet(tag="stateChange", data="noCamera", metadata="follow-line"))
                     mode = "user-control"
             elif (mode == "follow-line"): # Run line following mode
-                if newestImage:
-                    dist, angle = 0, 0
-                    if cvDebugAlgorithm == "transectLine":
-                        dist, angle, cvImage = ComputerVisionUtils.detectLines(newestImage, cvOutLevel=cvDebugLevel)
+                if newestImage.size > 0:
+                    cvOut = ComputerVisionUtils.detectLines(newestImage, cvOutLevel=lineFollowingDebugLevel)
+                    if cvOut:
+                        print("success")
+                        dist, angle, cvImage = cvOut
+                        
+                        # Rotation around the x axis aligns to the line
+                        xRotTgt = xRotPID(angle)
+
+                        # Rotation around the Y and Z axes keep the robot upright
+                        yRotTgt = yRotPID(newestSensorState["imu"]["gyro"]["y"])
+                        zRotTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
+
+                        # Movement on the x axis keeps a specific distance from the line
+                        xPosTgt = xPosPID(dist)
+
+                        speeds = DC.calcMotorValues(xPosTgt, 0, 1, xRotTgt, yRotTgt, zRotTgt)
+
+                        # Update motor speeds
+                        handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+
+                        # Send the CV Debug image
+                        imgPacket = CommunicationUtils.packet(tag="cam", data=CommunicationUtils.encodeImage(cvImage))
+                        airCamQueues["cvCam"].put(imgPacket)
                     else:
-                        dist, angle = ComputerVisionUtils.detectLines(newestImage)
-                    
-                    # Rotation around the x axis aligns to the line
-                    xRotTgt = xRotPID(angle)
-
-                    # Rotation around the Y and Z axes keep the robot upright
-                    yRotTgt = yRotPID(newestSensorState["imu"]["gyro"]["y"])
-                    zRotTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
-
-                    # Movement on the x axis keeps a specific distance from the line
-                    xPosTgt = xPosPID(dist)
-
-                    speeds = DC.calcMotorValues(xPosTgt, 0, 1, xRotTgt, yRotTgt, zRotTgt)
-
-                    handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+                        print("failure")
+                        handlePacket(CommunicationUtils.packet(tag="stateChange", data="failed", metadata="follow-line"))
             elif (mode == "hold-angle-init"): # Initialize hold angle mode
                 # Reset PID rotation controllers
                 xRotPID.reset()
@@ -405,11 +408,6 @@ def mainThread(debug=False):
         # Handle coral reef algorthim
         if coralReefDone:
             handlePacket(CommunicationUtils.packet(tag="stateChange", data="done", metadata="analyze-coral-reef"))
-        
-        if cvImage.size > 0: # Send a computer vision debugging image if available
-            imgPacket = CommunicationUtils.packet(tag="cam", data=CommunicationUtils.encodeImage(cvImage))
-            airCamQueues["cvCam"].put(imgPacket)
-            cvImage = np.array([])
 
         # Update the mode and override state that the AirNode displays
         # * Stabilization is a special case because one mode in code is used to represent two robot modes
@@ -428,8 +426,14 @@ def mainThread(debug=False):
             handlePacket(CommunicationUtils.packet(tag="stateChange", data=override, metadata="override"))
             lastOverride = override
 
-        # Sleep to control the loop speed
-        time.sleep(loopFrequency)
+        # Control loop speed
+        timeDiff = time.time()-lastLoop
+        if loopFrequency-timeDiff > 0:
+            time.sleep(loopFrequency-timeDiff)
+
+        now = time.time()
+        handlePacket(CommunicationUtils.packet(tag="stateChange", data=1/(now-lastLoop), metadata="earth-fps"))
+        lastLoop = now
 
 def receiveVideoStreams(debug=False):
     """ Recieves and processes video from the Water Node then sends it to the Air Node

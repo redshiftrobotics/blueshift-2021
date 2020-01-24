@@ -7,7 +7,7 @@ import numpy as np
 lf_lower_blue = np.array([70,119,87])
 lf_upper_blue = np.array([109,255,225])
 lf_kernel = np.ones((3,3), np.uint8)
-lf_min_countour_area = 20000.0
+lf_min_countour_area = 7000.0
 lf_percent_of_image_blue_lines_should_fill = 0.75 # Equal to (total_width - blue_to_red_dist) / total_width
 lf_target_angle = 90.0
 
@@ -18,7 +18,7 @@ def point_slope_line(pt,sl,num,given_axis):
     elif given_axis == "y":
         return (int((num-pt[1])/sl + pt[0]), num)
 
-def detectLines(img, cvOutLevel=False, debug=False):
+def detectLines(img, cvOutLevel=None):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, lf_lower_blue, lf_upper_blue)
 
@@ -31,7 +31,7 @@ def detectLines(img, cvOutLevel=False, debug=False):
     # This will contain points on each line in the format: start, end, middle, and slope
     lines = []
 
-    if len(contours) > 0:
+    if len(contours) >= 2:
         for contour in contours:
             if cv2.contourArea(contour) > lf_min_countour_area:
                 # Fit a line to the contour
@@ -44,7 +44,7 @@ def detectLines(img, cvOutLevel=False, debug=False):
                 line_top = point_slope_line((x,y),slope,0,"y")
                 line_bottom = point_slope_line((x,y), slope, height, "y")
 
-                if debug:
+                if cvOutLevel == "Base":
                     # Draw the line on the image
                     cv2.line(img, line_top, line_bottom, (0,0,0) ,5)
                     # Draw the center on the image
@@ -53,45 +53,33 @@ def detectLines(img, cvOutLevel=False, debug=False):
                 # Append the start, end, middle, and slope of each line to the array
                 lines.append([np.array(line_top), np.array(line_bottom), np.array([x,y]), slope])
         
-        # Display images for debugging
-        if debug:
-            cv2.imshow("Input", img)
-            cv2.moveWindow("Input", 50,50)
+        if len(lines) >= 2:
+            # Find the distance between the centers of both lines
+            line_dist = np.linalg.norm(lines[0][2]-lines[1][2])
 
-            cv2.imshow("Mask", filtered)
-            cv2.moveWindow("Mask", 500,50)
+            # Calculate the angle of each line based on it's slope
+            line_a_angle = np.degrees(np.arctan(lines[0][3]))
+            line_b_angle = np.degrees(np.arctan(lines[1][3]))
 
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-        
-        # Find the distance between the centers of both lines
-        line_dist = np.linalg.norm(lines[0][2]-lines[1][2])
+            # Fix negative Angles
+            if line_a_angle < 0:
+                line_a_angle += 180
+            if line_b_angle < 0:
+                line_b_angle += 180
 
-        # Calculate the angle of each line based on it's slope
-        line_a_angle = np.degrees(np.arctan(lines[0][3]))
-        line_b_angle = np.degrees(np.arctan(lines[1][3]))
+            # Average the angles for a more accurate result
+            avg_angle = (line_a_angle+line_b_angle)/2.0
 
-        # Fix negative Angles
-        if line_a_angle < 0:
-            line_a_angle += 180
-        if line_b_angle < 0:
-            line_b_angle += 180
-
-        # Average the angles for a more accurate result
-        avg_angle = (line_a_angle+line_b_angle)/2.0
-
-        # This function will be called on a streaming video, so each run only one debug image needs to be returned
-        if cvOutLevel:
-            if cvOutLevel == "Original":
-                return line_dist, avg_angle-lf_target_angle, img
-            elif cvOutLevel == "Mask":
-                return line_dist, avg_angle-lf_target_angle, mask
-            elif cvOutLevel == "Smooth":
-                return line_dist, avg_angle-lf_target_angle, filtered
-            elif cvOutLevel == "Contours":
-                return line_dist, avg_angle-lf_target_angle, cv2.drawContours(img, contours, -1, (0,255,0), 3)
-        else:
-            return line_dist, avg_angle-lf_target_angle
+            # This function will be called on a streaming video, so each run only one debug image needs to be returned
+            if cvOutLevel:
+                if cvOutLevel == "Base":
+                    return line_dist, avg_angle-lf_target_angle, img
+                elif cvOutLevel == "Mask":
+                    return line_dist, avg_angle-lf_target_angle, filtered
+                elif cvOutLevel == "Contours":
+                    return line_dist, avg_angle-lf_target_angle, cv2.drawContours(img, contours, -1, (0,255,0), 3)
+            else:
+                return line_dist, avg_angle-lf_target_angle
     return None
 
 ### CORAL HEALTH CODE ###
