@@ -49,8 +49,8 @@ settings = {
 	"minMotorSpeed": 0,
 	"maxMotorSpeed": 180,
 	"mainCameraResolution": {
-		"x": 1280,
-		"y": 720
+		"x": 1920,
+		"y": 1080
 	},
 	"bkpCameraResolution": {
 		"x": 640,
