@@ -341,7 +341,6 @@ def mainThread(debug=False):
                 if newestImage.size > 0:
                     cvOut = ComputerVisionUtils.detectLines(newestImage, cvOutLevel=lineFollowingDebugLevel)
                     if cvOut:
-                        print("success")
                         dist, angle, cvImage = cvOut
                         
                         # Rotation around the x axis aligns to the line
@@ -363,7 +362,6 @@ def mainThread(debug=False):
                         imgPacket = CommunicationUtils.packet(tag="cam", data=CommunicationUtils.encodeImage(cvImage))
                         airCamQueues["cvCam"].put(imgPacket)
                     else:
-                        print("failure")
                         handlePacket(CommunicationUtils.packet(tag="stateChange", data="failed", metadata="follow-line"))
             elif (mode == "hold-angle-init"): # Initialize hold angle mode
                 # Reset PID rotation controllers

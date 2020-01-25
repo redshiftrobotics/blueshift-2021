@@ -19,10 +19,6 @@
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/dashboard.css') }}" />
 
   <style>
-    #cvCamDisplay {
-      width: 100%;
-      height: auto;
-    }
     #camDisplay {
       width: 100%;
       height: auto;
@@ -110,9 +106,6 @@
                 <div class="text-center">
                   <img id="camDisplay" src="{{ url_for('static', filename='assets/noCamera.png') }}">
                 </div>
-                <div class="text-center">
-                  <img id="cvCamDisplay" src="{{ url_for('static', filename='assets/noCamera.png') }}">
-                </div>
               </div>
             </div>
             <div class="col-md-2">
@@ -138,9 +131,9 @@
                       Transect Line
                     </button>
                     <div class="dropdown-menu" id="transectLineDropdown">
-                      <a class="dropdown-item" href="#">Base</a>
-                      <a class="dropdown-item" href="#">Mask</a>
-                      <a class="dropdown-item" href="#">Contours</a>
+                      <a class="dropdown-item">Base</a>
+                      <a class="dropdown-item">Mask</a>
+                      <a class="dropdown-item">Contours</a>
                     </div>
                   </div>
                 </div>
@@ -151,10 +144,10 @@
                       Coral Health
                     </button>
                     <div class="dropdown-menu" id="coralHealthDropdown">
-                      <a class="dropdown-item" href="#">Background Mask</a>
-                      <a class="dropdown-item" href="#">Features</a>
-                      <a class="dropdown-item" href="#">Alignment</a>
-                      <a class="dropdown-item" href="#">Subtraction</a>
+                      <a class="dropdown-item" href="">Background Mask</a>
+                      <a class="dropdown-item" href="">Features</a>
+                      <a class="dropdown-item" href="">Alignment</a>
+                      <a class="dropdown-item" href="">Subtraction</a>
                     </div>
                   </div>
                 </div>
@@ -286,39 +279,19 @@
           }
         }
 
-        // Hide the cvCamera Display
-        $('#cvCamDisplay').hide();
-
         $("#screenshotBtn").click(function () {
           takeScreenshot();
         });
 
-        // Switch computer vision source based on radio buttons
+        
+        // Set inital camera source
+        $("#camDisplay").attr("src", "/videoFeed/mainCam");
+
+        // Switch image source based on radio buttons
         $('input[type=radio][name=camera-source]').change(function () {
-          if (this.value != 'cvCam') {
-            $('#camDisplay').show()
-            $('#cvCamDisplay').hide()
-
-            // Reset source incase camera is not yet available
-            $("#camDisplay").attr("src","{{ url_for('static', filename='assets/noCamera.png') }}");
-
-            if (this.value == 'mainCam') {
-              $("#camDisplay").attr("src","/videoFeed/mainCam");
-              selectedCamera = "mainCam";
-            }
-            else if (this.value == 'bkpCam1') {
-              $("#camDisplay").attr("src","/videoFeed/bkpCam1");
-              selectedCamera = "bkpCam1";
-            }
-          } else {
-            $('#cvCamDisplay').show()
-            $('#camDisplay').hide()
-            
-            // Reset source incase camera is not yet available
-            $("#cvCamDisplay").attr("src","{{ url_for('static', filename='assets/noCamera.png') }}");
-            $("#cvCamDisplay").attr("src","/videoFeed/cvCam");
-            selectedCamera = "cvCam";
-          }
+          $("#camDisplay").attr("src", "{{ url_for('static', filename='assets/noCamera.png') }}");
+          $("#camDisplay").attr("src", "/videoFeed/"+this.value);
+          selectedCamera = this.value;
         });
 
         // Switch transect line debug levl based on drop down
@@ -339,10 +312,6 @@
           var id = $(this).text();
           console.log(id);
         });
-
-        // Set inital computer vision display source
-        $("#cvCamDisplay").attr("src", "/videoFeed/cvCam");
-        $("#camDisplay").attr("src", "/videoFeed/"+selectedCamera);
       });
     </script>
 </body>
