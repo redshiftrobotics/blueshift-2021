@@ -1,7 +1,7 @@
 import serial
 from time import sleep
 
-def earthSensorThread(out):
+def earthSensorThread(run, out):
     ser = serial.Serial('/dev/ttyACM0',9600,timeout=1)
     ser.flushOutput()
 

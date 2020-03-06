@@ -470,7 +470,7 @@ def receiveData(debug=False):
         "amps": 0,
         "volts": 0
     }
-    arduinoThread = threading.Thread(target=ArduinoUtils.earthSensorThread, args=(arduinoData,))
+    arduinoThread = threading.Thread(target=ArduinoUtils.earthSensorThread, args=(execute['receiveData'], arduinoData,))
 
     # Setup socket communication
     HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
@@ -496,6 +496,9 @@ def receiveData(debug=False):
     conn.close()
     snsr.close()
 
+    # Close arduino communication
+    arduinoThread.join()
+
 def sendData(debug=False):
     """ Sends JSON data to the Water Node
 
@@ -519,6 +522,7 @@ def sendData(debug=False):
     
     conn.close()
     cntlr.close()
+
 
 def startAirNode(debug=False):
     app = Flask(__name__)
