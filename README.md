@@ -8,6 +8,8 @@ Download and install anaconda for your system based on [these](https://docs.cond
 
 Activate the environment with `conda activate robot-controller`.
 
+To use the Arduino, you will need to download either the Arduino IDE or setup the web IDE. The Odoo Bolt has an integrated Arduino Leonardo.
+
 # Usage
 ![Flowchart showing the air earth and water nodes](README/overview.png)
 ## Overview

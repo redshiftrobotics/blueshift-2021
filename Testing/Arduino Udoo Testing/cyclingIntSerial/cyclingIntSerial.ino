@@ -16,15 +16,20 @@ void setup() {
   Serial.begin(9600);
 }
 
-int cycleTest = 0;
+float ampMult = 0.0732;
+float voltMult = 0.2423;
 
 // the loop routine runs over and over again forever:
 void loop() {
   // read the input on analog pin 0:
-//  int sensorValue = analogRead(A0);
+  float amps = analogRead(A0) * ampMult;
+  float volts = analogRead(A1 * voltMult);
   // print out the value you read:
-  cycleTest ++;
-  if (cycleTest == 31) cycleTest = 0;
-  Serial.print(cycleTest);
+  //Serial.print("[");
+  Serial.print(amps);
+  Serial.print(",");
+  Serial.print(volts);
+  //Serial.print("]");
+  Serial.println("\n");
   delay(100);        // delay in between reads for stability
 }
