@@ -29,11 +29,12 @@ import cv2
 import imagezmq
 import numpy as np
 
-# Imports for Socket Communication
+# Imports for Communication
 import socket
 import CommunicationUtils
 import simplejson as json
 import time
+import ArduinoUtils
 
 # Imports for Controller Communication and Processing
 import ControllerUtils
@@ -464,6 +465,14 @@ def receiveData(debug=False):
             debug: (optional) log debugging data
     """
 
+    # Setup arduino communication
+    arduinoData = {
+        "amps": 0,
+        "volts": 0
+    }
+    arduinoThread = threading.Thread(target=ArduinoUtils.earthSensorThread, args=(arduinoData,))
+
+    # Setup socket communication
     HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
     PORT = CommunicationUtils.SNSR_PORT
 
@@ -476,6 +485,12 @@ def receiveData(debug=False):
 
     while execute['receiveData']:
         recvPacket = CommunicationUtils.recvMsg(conn)
+        
+        # Add EarthNode sensor data to the WaterNode sensor data
+        if recvPacket['tag'] == "sensor":
+            recvPacket["amps"] = arduinoData["amps"]
+            recvPacket["volts"] = arduinoData["volts"]
+        
         handlePacket(recvPacket)
     
     conn.close()
