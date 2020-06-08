@@ -14,4 +14,4 @@ def earthSensorThread(run, out):
                 "volts": v
             }
 
-        sleep(0.01)
+        sleep(1/30.0)
