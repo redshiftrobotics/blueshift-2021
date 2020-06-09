@@ -21,7 +21,7 @@ import logging
 
 # Imports for Threading
 import threading
-from queue import Queue
+from queue import Queue, LifoQueue
 
 # Imports for Video Streaming
 sys.path.insert(0, 'imagezmq/imagezmq')
@@ -29,11 +29,12 @@ import cv2
 import imagezmq
 import numpy as np
 
-# Imports for Socket Communication
+# Imports for Communication
 import socket
 import CommunicationUtils
 import simplejson as json
 import time
+import ArduinoUtils
 
 # Imports for Controller Communication and Processing
 import ControllerUtils
@@ -81,11 +82,12 @@ execute = {
 # Queues to send data to specific Threads
 airQueue = Queue(0)
 airCamQueues = {
-    "mainCam": Queue(0),
-    "bkpCam1": Queue(0),
-    "bkpCam2": Queue(0),
-    "cvCam": Queue(0)
+    "mainCam": LifoQueue(0),#CommunicationUtils.packet(tag="cam", data=b"", metadata="mainCam"),
+    "bkpCam1": LifoQueue(0),#CommunicationUtils.packet(tag="cam", data=b"", metadata="bkpCam1"),
+    "bkpCam2": LifoQueue(0),#CommunicationUtils.packet(tag="cam", data=b"", metadata="bkpCam2"),
+    "cvCam": LifoQueue(0)#CommunicationUtils.packet(tag="cam", data=b"", metadata="cvCam")
 }
+
 recvDataQueue = Queue(0)
 sendDataQueue = Queue(0)
 recvImageQueue = Queue(0)
@@ -129,6 +131,7 @@ def handlePacket(qData, debug=False):
     if qData['tag'] in tags:
         if qData['tag'] ==  "cam":
             for threadQueue in tags[qData['tag']][qData['metadata']]:
+                CommunicationUtils.clearQueue(threadQueue)
                 threadQueue.put(qData)
         else:
             for threadQueue in tags[qData['tag']]:
@@ -263,6 +266,10 @@ def mainThread(debug=False):
         
         override = False
 
+        # Get newest image from the WaterNode
+        #if airCamQueues['mainCam']['data']:
+        #    newestImage = CommunicationUtils.decodeImage(airCamQueues['mainCam']['data'])
+
         # Edit this to change the gamepad mapping
         gamepadMapping = {
             "x-mov": gamepad.left["stick"]["x"],
@@ -359,8 +366,8 @@ def mainThread(debug=False):
                         handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
 
                         # Send the CV Debug image
-                        imgPacket = CommunicationUtils.packet(tag="cam", data=CommunicationUtils.encodeImage(cvImage))
-                        airCamQueues["cvCam"].put(imgPacket)
+                        imgPacket = CommunicationUtils.packet(tag="cam", data=CommunicationUtils.encodeImage(cvImage), metadata="cvCam")
+                        handlePacket(imgPacket)
                     else:
                         handlePacket(CommunicationUtils.packet(tag="stateChange", data="failed", metadata="follow-line"))
             elif (mode == "hold-angle-init"): # Initialize hold angle mode
@@ -445,16 +452,16 @@ def receiveVideoStreams(debug=False):
         image_b64 = ""
         imgInfo = ""
         if not simpleMode:
-            imgInfo, jpg_buffer = image_hub.recv_jpg()
-            image_b64 = jpg_buffer
+            imgInfo, image_b64 = image_hub.recv_jpg()
         else:
             imgInfo, image_raw = image_hub.recv_image()
             image_b64 = CommunicationUtils.encodeImage(image_raw)
 
-        deviceName,timestamp = imgInfo.split("|")
+        deviceName, timestamp = imgInfo.split("|")
+
         image_hub.send_reply(b'OK')
         
-        imgPacket = CommunicationUtils.packet(tag="cam", data=image_b64, timestamp=timestamp, metadata=deviceName)
+        imgPacket = CommunicationUtils.packet(tag="cam", data=image_b64, timestamp=timestamp, metadata=deviceName, copy_data=False)
         handlePacket(imgPacket)
 
 def receiveData(debug=False):
@@ -464,6 +471,15 @@ def receiveData(debug=False):
             debug: (optional) log debugging data
     """
 
+    # Setup arduino communication
+    arduinoData = {
+        "amps": 0,
+        "volts": 0
+    }
+    arduinoThread = threading.Thread(target=ArduinoUtils.earthSensorThread, args=(execute['receiveData'], arduinoData,))
+    arduinoThread.start()
+
+    # Setup socket communication
     HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
     PORT = CommunicationUtils.SNSR_PORT
 
@@ -476,10 +492,19 @@ def receiveData(debug=False):
 
     while execute['receiveData']:
         recvPacket = CommunicationUtils.recvMsg(conn)
+        
+        # Add EarthNode sensor data to the WaterNode sensor data
+        if recvPacket['tag'] == "sensor":
+            recvPacket["amps"] = arduinoData["amps"]
+            recvPacket["volts"] = arduinoData["volts"]
+        
         handlePacket(recvPacket)
     
     conn.close()
     snsr.close()
+
+    # Close arduino communication
+    arduinoThread.join()
 
 def sendData(debug=False):
     """ Sends JSON data to the Water Node
@@ -500,7 +525,7 @@ def sendData(debug=False):
     while execute['sendData']:
         while not sendDataQueue.empty():
             sendPacket = sendDataQueue.get()
-            sent = CommunicationUtils.sendMsg(conn, sendPacket)
+            CommunicationUtils.sendMsg(conn, sendPacket)
     
     conn.close()
     cntlr.close()
@@ -543,18 +568,18 @@ def startAirNode(debug=False):
         
 
     def camGen(camName):
-        myCamStream = airCamQueues[camName]
+        camQueue = airCamQueues[camName]
         while True:
-            time.sleep(settings["camStreamSleep"])
-            while not myCamStream.empty():
-                camPacket = myCamStream.get()
-                tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + camPacket['data'] + b'\r\n\r\n')
-                '''
-                if debug:
-                    logger.debug("Sending new image to Air Node")
-                '''
-                yield tosend
-                myCamStream.task_done()
+            # test = camQueue.get()
+            # print(time.time() - test['timestamp'])
+            # tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + test['data'] + b'\r\n\r\n')
+            
+            tosend = (b'--frame\r\n'+b'Content-Type: image/jpeg\r\n\r\n' + camQueue.get()['data'] + b'\r\n\r\n')
+            '''
+            if debug:
+                logger.debug("Sending new image to Air Node")
+            '''
+            yield tosend
 
     @app.route('/videoFeed/<camName>')
     def videoFeed(camName):

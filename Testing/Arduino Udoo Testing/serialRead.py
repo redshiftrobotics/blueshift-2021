@@ -28,9 +28,12 @@ ser.flushOutput()
 
 print('Serial connected')
 
+a = 0
+v = 0
+
 while True:
-    r = ser.read(1)
-
-    print(r)
-
-    time.sleep(0.1) 		# delay for 1 second
+    r = ser.readline()[:-1]
+    if r.strip():
+        a,v = eval(r.decode("utf-8"))
+    print(a,v)
+    time.sleep(0.01)

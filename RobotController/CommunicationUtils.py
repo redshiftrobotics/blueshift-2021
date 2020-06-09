@@ -19,10 +19,10 @@ SIMPLE_EARTH_IP = "localhost"
 
 LENGTH_MARKER = b'|'
 
-def packet(tag="",data="",timestamp=False,metadata="",highPriority=False):
+def packet(tag="",data="",timestamp=False,metadata="",highPriority=False, copy_data=True):
 	dataPacket = {
 		"tag": tag,
-		"data": copy(data),
+		"data": copy(data) if copy_data else data,
 		"timestamp": float(timestamp if timestamp else time.time()),
 		"metadata": metadata,
 		"highPriority": highPriority
