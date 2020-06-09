@@ -1,7 +1,7 @@
 /* Code modified from: https://github.com/raspberrypi/linux/issues/1297 */
 /* Run:
  *    c++ -O3 -Wall -shared -std=c++11 -fPIC `python3 -m pybind11 --includes` v4l2_camera.cpp -o v4l2_camera`python3-config --extension-suffix`
- * to compile this program as a python library
+ *    to compile this program as a python library
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <time.h>
+#include <math.h>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
@@ -26,6 +27,25 @@ namespace py = pybind11;
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
 using namespace std;
+
+uint64_t getEpochTimeShift(){
+    struct timeval epochtime;
+    struct timespec  vsTime;
+
+    gettimeofday(&epochtime, NULL);
+    clock_gettime(CLOCK_MONOTONIC, &vsTime);
+
+    uint64_t uptime_ms = vsTime.tv_sec * 1000 + (uint64_t)  round( vsTime.tv_nsec/ 1000000.0);
+    uint64_t epoch_ms = (uint64_t)epochtime.tv_sec * 1000 + (uint64_t)epochtime.tv_usec/1000;
+    // cout << epoch_ms << " " << uptime_ms << " " << epoch_ms - uptime_ms << endl;
+    return epoch_ms - uptime_ms;
+}
+
+struct frame {
+    py::array_t<int8_t> img;
+    double timestamp;
+};
+
 class Camera {
     private:
         char* un_fourcc(uint32_t fcc);
@@ -48,10 +68,11 @@ class Camera {
         size_t size;
         clock_t clock_s, clock_e;
         struct timeval tvs, tve;
-        int frame_count = 0;
         int index;
         size_t len;
         int QUEUE_NUM = 4;
+
+        uint64_t toEpochOffset_ms;
 
     public:
         Camera(const std::string& device = "/dev/video0",
@@ -60,7 +81,7 @@ class Camera {
                int q_num = 4);
         
         ~Camera();
-        py::array_t<int8_t> get_frame();
+        frame get_frame();
 };
 
 Camera::Camera(const std::string& device, int width, int height, int q_num) {
@@ -75,13 +96,15 @@ Camera::Camera(const std::string& device, int width, int height, int q_num) {
         // throw error
     } else printf("init camera ok\n");
     */
+
+    toEpochOffset_ms = getEpochTimeShift();
 }
 
 Camera::~Camera() {
     close_camera(fd);
 }
 
-py::array_t<int8_t> Camera::get_frame() {
+frame Camera::get_frame() {
     struct v4l2_buffer buf;
 
     CLEAR(buf);
@@ -90,6 +113,11 @@ py::array_t<int8_t> Camera::get_frame() {
         printf("\n dqbuf nok\n");
         // throw error
     }
+
+    uint64_t temp_ms = buf.timestamp.tv_sec * 1000 + (uint64_t) round(  buf.timestamp.tv_usec / 1000.0);
+    uint64_t epochTimeStamp_ms = temp_ms + toEpochOffset_ms;
+    // cout << temp_ms << " " << toEpochOffset_ms << endl;
+    //cout << epochTimeStamp_ms << endl;
 
     int8_t* img_array = (int8_t *) image_buf[index];
     py::array_t<int8_t> img = py::array_t<int8_t>(len);
@@ -112,12 +140,14 @@ py::array_t<int8_t> Camera::get_frame() {
         // throw error
     }
 
-    frame_count++;
-    return img;
+    frame image;
+    image.img = img;
+    image.timestamp = (double)epochTimeStamp_ms / 1000;
+
+    return image;
 }
 
-char* Camera::un_fourcc(uint32_t fcc)
-{
+char* Camera::un_fourcc(uint32_t fcc) {
     static char s[5];
 
     s[0] = fcc & 0xFF;
@@ -129,8 +159,7 @@ char* Camera::un_fourcc(uint32_t fcc)
     return s;
 }
 
-int Camera::open_device(int *camfd)
-{
+int Camera::open_device(int *camfd) {
     struct v4l2_capability cap;
     struct v4l2_format format;
 
@@ -194,8 +223,7 @@ int Camera::open_device(int *camfd)
     return 0;
 }
 
-int Camera::setup_device(int fd)
-{
+int Camera::setup_device(int fd) {
     struct v4l2_requestbuffers reqbuf;
     CLEAR(reqbuf);
     reqbuf.count = QUEUE_NUM;
@@ -236,8 +264,7 @@ int Camera::setup_device(int fd)
     return 0;
 }
 
-int Camera::dq_buffer(int fd, struct v4l2_buffer *buf, int *index, size_t *size)
-{
+int Camera::dq_buffer(int fd, struct v4l2_buffer *buf, int *index, size_t *size) {
     buf->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     buf->memory = V4L2_MEMORY_USERPTR;
     if (ioctl(fd, VIDIOC_DQBUF, buf) == -1) {
@@ -253,8 +280,7 @@ int Camera::dq_buffer(int fd, struct v4l2_buffer *buf, int *index, size_t *size)
     return 0;
 }
 
-int Camera::q_buffer(int fd, struct v4l2_buffer *buf)
-{
+int Camera::q_buffer(int fd, struct v4l2_buffer *buf) {
     if (ioctl(fd, VIDIOC_QBUF, buf) == -1) {
         printf("ioctl QBUF %s", strerror(errno));
         return 1;
@@ -263,8 +289,7 @@ int Camera::q_buffer(int fd, struct v4l2_buffer *buf)
     return 0;
 }
 
-int Camera::init_camera(int *camera_fd)
-{
+int Camera::init_camera(int *camera_fd) {
     fd = 0;
 
     rv = open_device(&fd);
@@ -278,8 +303,7 @@ int Camera::init_camera(int *camera_fd)
     return 0;
 }
 
-void Camera::close_camera(int fd)
-{
+void Camera::close_camera(int fd) {
     enum v4l2_buf_type type;
 
     type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -300,7 +324,11 @@ PYBIND11_MODULE(v4l2_camera,m)
             }
             )
         )
-    .def( "get_frame", &Camera::get_frame, "A function to retrieve a frame of video from the camera");
+        .def( "get_frame", &Camera::get_frame, "A function to retrieve a frame of video from the camera");
+
+    py::class_<frame>(m, "frame")
+        .def_readwrite("img", &frame::img)
+        .def_readwrite("timestamp", &frame::timestamp);
 }
 
 

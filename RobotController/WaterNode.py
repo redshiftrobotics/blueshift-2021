@@ -56,7 +56,7 @@ settings = {
 		"x": 640,
 		"y": 480
 	},
-	"v4l2QueueNum": 4,
+	"v4l2QueueNum": 1
 }
 
 # Dict to stop threads
@@ -72,8 +72,13 @@ lock = threading.Lock()
 restartCamStream = False
 
 # IMU and PWM interface classes
-#IMU = HardwareUtils.IMUFusion()
-#SD = HardwareUtils.ServoDriver(enumerate(["T100"]*8))
+IMU = HardwareUtils.IMUFusion()
+SD = HardwareUtils.ServoDriver([(8, "T100"), (9, "T100"), (10, "T100"), (11, "T100"), (12, "T100"), (13, "T100"), (14, "T100"), (15, "T100")])
+drivetrain_motor_mapping = [8, 9, 10, 11, 12, 13, 14, 15]
+
+# Initialize ESC
+SD.set_all_servos(0, only_type="T100")
+time.sleep(7)
 
 def stopAllThreads(callback=0):
 	""" Stops all currently running threads
@@ -86,6 +91,15 @@ def stopAllThreads(callback=0):
 	execute['receiveData'] = False
 	execute['sendData'] = False
 	time.sleep(0.5)
+
+def restartVideoStream():
+	lock.acquire()
+	try:
+		restartCamStream = True
+	except:
+		pass
+	finally:
+		lock.release()		
 
 def sendVideoStreams(debug=False):
 	""" Sends video from each camera to the Earth Node
@@ -102,7 +116,10 @@ def sendVideoStreams(debug=False):
 		camCaps = [v4l2_camera.Camera("/dev/video0", settings["mainCameraResolution"]["x"], settings["mainCameraResolution"]["y"], settings["v4l2QueueNum"])]
 	else:
 		camCaps = [cv2.VideoCapture(0)]
-
+	
+	# NOTE: UNCOMMENT LATER
+	# These changes simulate the bandwidth necessary for three cameras by sending each frame three times, but only reading it once
+	'''
 	for i in range(1,settings['numCams']):
 		camNames.append("bkpCam"+str(i))
 		if not simpleMode:
@@ -110,6 +127,8 @@ def sendVideoStreams(debug=False):
 			camCaps.append(camCaps[0])
 		else:
 			camCaps.append(camCaps[0])
+	'''
+	
 	numCams = len(camCaps)
 
 	time.sleep(2.0)
@@ -117,8 +136,14 @@ def sendVideoStreams(debug=False):
 		for i in range(0,numCams):
 			jpg_img = ""
 			if not simpleMode:
-				jpg_img = camCaps[i].get_frame()
-				sender.send_jpg(camNames[i]+"|"+str(time.time()), jpg_img)
+				frame = camCaps[i].get_frame()
+				# NOTE: UNCOMMENT LATER
+				#sender.send_jpg(camNames[i]+"|"+str(frame.timestamp), frame.img)
+
+				sender.send_jpg("mainCam"+"|"+str(frame.timestamp), frame.img)
+				sender.send_jpg("bkpCam1"+"|"+str(frame.timestamp), frame.img)
+				sender.send_jpg("bkpCam2"+"|"+str(frame.timestamp), frame.img)
+				
 			else:
 				_, img = camCaps[i].read()
 				sender.send_image(camNames[i]+"|"+str(time.time()), img)
@@ -153,10 +178,10 @@ def receiveData(debug=False):
 
 	try:
 		cntlr.connect((HOST, PORT))
-		print("inital connection check succeded")
+		print("receiveData inital connection check succeded")
 	except ConnectionRefusedError:
 		connected = False
-		print("inital connection check failed")
+		print("receiveData inital connection check failed")
 	
 	while execute['receiveData']:
 		try:
@@ -165,32 +190,31 @@ def receiveData(debug=False):
 				if recv['data'] == 'close':
 					stopAllThreads()
 				elif recv['data'] == 'restartCamStream':
-					lock.acquire()
-					try:
-						restartCamStream = True
-					except:
-						pass
-					finally:
-						lock.release()		
+					restartCamStream()
 			elif recv['tag'] == 'settingChange':
 				if recv['metadata'] == 'imuStraighten':
 					IMU.set_offset(recv["data"])
 			elif recv['tag'] == "motorData":
 				if recv['metadata'] == "drivetrain":
-					for loc,spd in enumerate(recv['data']):
-						SD.set_servo(loc,spd)
+					if time.time() - recv['timestamp'] < 0.1:
+						remapped_speeds = []
+						for loc,spd in enumerate(recv['data']):
+							remapped_speed = spd
+							remapped_speeds.append(remapped_speed)
+							SD.set_servo(drivetrain_motor_mapping[loc], remapped_speed)
+						print(remapped_speeds)
 
 		except (OSError, KeyboardInterrupt):
-			print("connection lost")
+			print("receiveData connection lost")
 			connected = False
 			cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			while (not connected) and execute['sendData']:
 				try:
 					cntlr.connect((HOST, PORT))
 					connected = True
-					print("successful reconnection")
+					print("receiveData successful reconnection")
 				except ConnectionRefusedError:
-					print("reconnect failed. trying in 2 seconds")
+					print("receiveData reconnect failed. trying in 2 seconds")
 					time.sleep(2)
 	cntlr.close()
 
@@ -212,32 +236,30 @@ def sendData(debug=False):
 
 	try:
 		snsr.connect((HOST, PORT))
-		print("inital connection check succeded")
+		print("sendData inital connection check succeded")
 	except ConnectionRefusedError:
 		connected = False
-		print("inital connection check failed")
+		print("sendData inital connection check failed")
 	
 	lastMsgTime = time.time()
-	minTime = 1.0/30.0
 	
 	while execute['sendData']:
 		try:
 			# Get gyro, accel readings
 			sensors = IMU.get_full_state()
-			if (time.time() - lastMsgTime > minTime):
-				CommunicationUtils.sendMsg(snsr, CommunicationUtils.packet(tag="sensor",data=sensors))
-			time.sleep(1.0/100.0)
+			CommunicationUtils.sendMsg(snsr, CommunicationUtils.packet(tag="sensor",data=sensors))
+			time.sleep(0.05)
 		except (ConnectionResetError, BrokenPipeError, KeyboardInterrupt):
-			print("connection lost")
+			print("sendData connection lost")
 			connected = False
 			snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			while (not connected) and execute['sendData']:
 				try:
 					snsr.connect((HOST, PORT))
 					connected = True
-					print("successful reconnection")
+					print("sendData successful reconnection")
 				except ConnectionRefusedError:
-					print("reconnect failed. trying in 2 seconds")
+					print("sendData reconnect failed. trying in 2 seconds")
 					time.sleep(2)
 	snsr.close()
 
@@ -249,12 +271,12 @@ if( __name__ == "__main__"):
 	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
 	sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
 	vidStreamThread.start()
-	#recvDataThread.start()
-	#sendDataThread.start()
+	recvDataThread.start()
+	sendDataThread.start()
 
 	# Begin the Shutdown
 	while execute['streamVideo'] and execute['receiveData'] and execute['sendData']:
 		time.sleep(0.1)
 	recvDataThread.join()
-	#sendDataThread.join()
-	#vidStreamThread.join()
+	sendDataThread.join()
+	vidStreamThread.join()

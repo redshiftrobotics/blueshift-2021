@@ -6,12 +6,16 @@ import time
 c = Camera("/dev/video0",1920,1080,4)
 
 num_images = 100
+start = time.time()
+latency = 0
 
-now = time.time()
 for i in range(num_images):
-    img = c.get_frame()
+    frame = c.get_frame()
+    latency += time.time() - frame.timestamp
     #print(len(img))
     #print(img)
     #cv2.imwrite("cam-" + str(i) + ".jpg",cv2.imdecode(np.array(list(img)),-1))
-print("took",time.time()-now,"total")
-print(num_images/(time.time()-now),"fps")
+end = time.time()
+print("total time:",end-start)
+print("fps: ",num_images/(end-start))
+print("average latency:", latency/num_images)
