@@ -82,10 +82,10 @@ execute = {
 # Queues to send data to specific Threads
 airQueue = Queue(0)
 airCamQueues = {
-    "mainCam": LifoQueue(0),#CommunicationUtils.packet(tag="cam", data=b"", metadata="mainCam"),
-    "bkpCam1": LifoQueue(0),#CommunicationUtils.packet(tag="cam", data=b"", metadata="bkpCam1"),
-    "bkpCam2": LifoQueue(0),#CommunicationUtils.packet(tag="cam", data=b"", metadata="bkpCam2"),
-    "cvCam": LifoQueue(0)#CommunicationUtils.packet(tag="cam", data=b"", metadata="cvCam")
+    "mainCam": LifoQueue(0),
+    "bkpCam1": LifoQueue(0),
+    "bkpCam2": LifoQueue(0),
+    "cvCam": LifoQueue(0)
 }
 
 recvDataQueue = Queue(0)
@@ -266,10 +266,6 @@ def mainThread(debug=False):
         
         override = False
 
-        # Get newest image from the WaterNode
-        #if airCamQueues['mainCam']['data']:
-        #    newestImage = CommunicationUtils.decodeImage(airCamQueues['mainCam']['data'])
-
         # Edit this to change the gamepad mapping
         gamepadMapping = {
             "x-mov": gamepad.left["stick"]["x"],
@@ -409,6 +405,7 @@ def mainThread(debug=False):
                                         gamepadMapping["z-rot"])
             
             handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+
         
         # Handle coral reef algorthim
         if coralReefDone:
