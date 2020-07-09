@@ -197,12 +197,8 @@ def receiveData(debug=False):
 			elif recv['tag'] == "motorData":
 				if recv['metadata'] == "drivetrain":
 					if time.time() - recv['timestamp'] < 0.1:
-						remapped_speeds = []
 						for loc,spd in enumerate(recv['data']):
-							remapped_speed = spd
-							remapped_speeds.append(remapped_speed)
-							SD.set_servo(drivetrain_motor_mapping[loc], remapped_speed)
-						print(remapped_speeds)
+							SD.set_servo(drivetrain_motor_mapping[loc], spd*0.5)
 
 		except (OSError, KeyboardInterrupt):
 			print("receiveData connection lost")
