@@ -1,3 +1,6 @@
+'''
+This file has both the Air and Earth nodes
+'''
 # Utility Imports
 import sys
 import os
@@ -108,48 +111,74 @@ def sendVideoStreams(debug=False):
 			debug: (optional) log debugging data
 	"""
 	global restartCamStream
+
+	# Initialize the ZMQ client
 	sender = imagezmq.ImageSender(connect_to='tcp://'+ (CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP) +':'+str(CommunicationUtils.CAM_PORT))
 
-	camNames = ["mainCam"]
-	camCaps = []
+	# Initialize arrays to keep track of camera objects and names
+	camNames = ["mainCam"] # Names of all of the cameras
+	camCaps = [] # Video capture objects
 	if not simpleMode:
+		# Initialize a camera using the custom V4L2 Camera Driver
 		camCaps = [v4l2_camera.Camera("/dev/video0", settings["mainCameraResolution"]["x"], settings["mainCameraResolution"]["y"], settings["v4l2QueueNum"])]
 	else:
+		# Initialize a camera using OpenCV
 		camCaps = [cv2.VideoCapture(0)]
 	
+	# Automatically initialize the rest of the cameras
+
 	# NOTE: UNCOMMENT LATER
 	# These changes simulate the bandwidth necessary for three cameras by sending each frame three times, but only reading it once
 	'''
 	for i in range(1,settings['numCams']):
+
+		# Add the camera name
 		camNames.append("bkpCam"+str(i))
 		if not simpleMode:
-			#camCaps.append(v4l2_camera.Camera("/dev/video"+str(i), settings["bkpCameraResolution"]["x"],settings["bkpCameraResolution"]["y"], settings["v4l2QueueNum"]))
+			# Add the camera object
+
+			# This line is currently commented out because I only have one camera to test with so, for now, I just read data from that camera many times
+			# camCaps.append(v4l2_camera.Camera("/dev/video"+str(i), settings["bkpCameraResolution"]["x"],settings["bkpCameraResolution"]["y"], settings["v4l2QueueNum"]))
 			camCaps.append(camCaps[0])
 		else:
 			camCaps.append(camCaps[0])
 	'''
 	
+	
+	# Calculate the total number of camera
 	numCams = len(camCaps)
 
+	# Wait 2 seconds for the cameras to warm up
 	time.sleep(2.0)
+
 	while execute['streamVideo']:
+		# Loop through each camera and stream its video
 		for i in range(0,numCams):
 			jpg_img = ""
 			if not simpleMode:
+				# Read a single frame (this is already jpg compressed)
 				frame = camCaps[i].get_frame()
 				# NOTE: UNCOMMENT LATER
 				#sender.send_jpg(camNames[i]+"|"+str(frame.timestamp), frame.img)
 
+				# Send the frame over ZMQ
+				# The name of the camera is in the format [camera_name]|[timestamp] so that we can tell when the image was sent after it is recieved
 				sender.send_jpg("mainCam"+"|"+str(frame.timestamp), frame.img)
 				sender.send_jpg("bkpCam1"+"|"+str(frame.timestamp), frame.img)
 				sender.send_jpg("bkpCam2"+"|"+str(frame.timestamp), frame.img)
 				
 			else:
+				# Read a frame from the camera (This is uncompressed)
 				_, img = camCaps[i].read()
+
+				# Send it over ZMQ, the name follows the same formatting as before
 				sender.send_image(camNames[i]+"|"+str(time.time()), img)
-			 
+			
+		# If we recieve the command to restart the camera stream, do so
 		if restartCamStream:
 				sender = imagezmq.ImageSender(connect_to='tcp://'+ (CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP) +':'+str(CommunicationUtils.CAM_PORT))
+
+				# Reset restartCamStream
 				lock.acquire()
 				try:
 					restartCamStream = False
@@ -169,14 +198,16 @@ def receiveData(debug=False):
 	global restartCamStream
 	global SD
 
-
+	# Get the IP address and port of the earth node
 	HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
 	PORT = CommunicationUtils.CNTLR_PORT
 	
+	# Create the socket connection
 	connected = True
 	cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 	try:
+		# Try to connect
 		cntlr.connect((HOST, PORT))
 		print("receiveData inital connection check succeded")
 	except ConnectionRefusedError:
@@ -185,6 +216,7 @@ def receiveData(debug=False):
 	
 	while execute['receiveData']:
 		try:
+			# Recieve messages over the socket, each message is handled differently based on its tag and metatdata
 			recv = CommunicationUtils.recvMsg(cntlr)
 			if recv['tag'] == 'stateChange':
 				if recv['data'] == 'close':
@@ -200,6 +232,7 @@ def receiveData(debug=False):
 						for loc,spd in enumerate(recv['data']):
 							SD.set_servo(drivetrain_motor_mapping[loc], spd*0.5)
 
+		# If we loose conenction, try to reconnect
 		except (OSError, KeyboardInterrupt):
 			print("receiveData connection lost")
 			connected = False
@@ -212,6 +245,7 @@ def receiveData(debug=False):
 				except ConnectionRefusedError:
 					print("receiveData reconnect failed. trying in 2 seconds")
 					time.sleep(2)
+	# Close the socket connection
 	cntlr.close()
 
 def sendData(debug=False):
@@ -224,13 +258,16 @@ def sendData(debug=False):
 	"""
 	global IMU
 
+	# Get the IP address and port of the earth node
 	HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
 	PORT = CommunicationUtils.SNSR_PORT
 
+	# Create the socket connection
 	connected = True
 	snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 	try:
+		# Try to connect
 		snsr.connect((HOST, PORT))
 		print("sendData inital connection check succeded")
 	except ConnectionRefusedError:
@@ -243,8 +280,12 @@ def sendData(debug=False):
 		try:
 			# Get gyro, accel readings
 			sensors = IMU.get_full_state()
+			
+			# TODO: Update this with a proper sleep loop time managment system thing
 			CommunicationUtils.sendMsg(snsr, CommunicationUtils.packet(tag="sensor",data=sensors))
 			time.sleep(0.05)
+
+		# If we loose connection, try to reconnect
 		except (ConnectionResetError, BrokenPipeError, KeyboardInterrupt):
 			print("sendData connection lost")
 			connected = False
@@ -257,12 +298,14 @@ def sendData(debug=False):
 				except ConnectionRefusedError:
 					print("sendData reconnect failed. trying in 2 seconds")
 					time.sleep(2)
+	# Close the socket connection
 	snsr.close()
 
 if( __name__ == "__main__"):
 	# Setup Logging preferences
 	verbose = [False,True]
 	
+	# Start all of the threads for communication
 	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose[0],))
 	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
 	sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
@@ -270,7 +313,7 @@ if( __name__ == "__main__"):
 	recvDataThread.start()
 	sendDataThread.start()
 
-	# Begin the Shutdown
+	# We don't want the program to end uptil all of the threads are stopped
 	while execute['streamVideo'] and execute['receiveData'] and execute['sendData']:
 		time.sleep(0.1)
 	recvDataThread.join()

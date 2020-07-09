@@ -1,3 +1,6 @@
+'''
+This file has both the Air and Earth nodes
+'''
 # Utility Imports
 import sys
 import os
@@ -15,6 +18,7 @@ args = parser.parse_args()
 
 simpleMode = args.simple
 
+# TODO: Bring back the logging system
 # Imports for Logging
 import logging
 #from pythonjsonlogger import jsonlogger
@@ -93,6 +97,9 @@ sendDataQueue = Queue(0)
 recvImageQueue = Queue(0)
 mainQueue = Queue(0)
 
+# TODO: Move this to a more central location
+# Maybe make a communication manager that handles sending and recieving messages through queues and sockets
+
 # Dict that stores message tags and the threads the go to
 tags = {
     "sensor": [airQueue, mainQueue],
@@ -128,6 +135,8 @@ def handlePacket(qData, debug=False):
         Arguments:
             debug: (optional) log debugging data
     """
+
+    # Figure out where a packet should be sent based on its tag, and put it in the correct queue(s)
     if qData['tag'] in tags:
         if qData['tag'] ==  "cam":
             for threadQueue in tags[qData['tag']][qData['metadata']]:
@@ -144,9 +153,11 @@ def mainThread(debug=False):
             debug: (optional) log debugging data
     """
 
+    # Initialize a drive controller object to hande generating motor values
     DC = ControllerUtils.DriveController(flip=[1,0,1,0,0,0,0,0])
 
-    # Get Controller
+    # TODO: Combine selecting a controller, and starting the update controller thread with the controller class for easier use
+    # Select a controller object
     dev = None
     while (not dev) and execute['mainThread']:
         time.sleep(5)
@@ -154,12 +165,13 @@ def mainThread(debug=False):
             dev = ControllerUtils.identifyController()
         except Exception as e:
             print(e)
-    
+    # Initialize a gamepad object
     gamepad = ControllerUtils.Gamepad()
-    
+    # Create and start a thread to update the gamepad object based on the state of the controller
     updateGamepadStateThreads = threading.Thread(target=ControllerUtils.updateGamepadState, args=(gamepad, dev, execute['mainThread'],), daemon=True)
     updateGamepadStateThreads.start()
 
+    # Create empty objects to store sensor and image data
     newestImage = np.array([])
     newestSensorState = {
         'imu': {
@@ -223,50 +235,66 @@ def mainThread(debug=False):
     coralReefOutPath = "static/assets/coralHealth/"
     coralReefDone = False
 
+    # Create an empty array to store computer vision data
     cvImage = np.array([])
     
     # This is the fastest speed that the loop should run at in seconds
     loopFrequency = 1.0/25.0
     lastLoop = time.time()
 
+    # This is the main control loop
     while execute['mainThread']:
+        # Read all the messages in our queue
         while not mainQueue.empty():
             recvMsg = mainQueue.get()
+
             if recvMsg['tag'] == 'cam':
+                # Update the camera array
                 newestImage = CommunicationUtils.decodeImage(recvMsg['data'])
             elif recvMsg['tag'] == 'sensor':
+                # Update the sensor dict
                 newestSensorState = recvMsg['data']
             elif recvMsg['tag'] == 'stateChange':
                 if recvMsg['metadata'] == "stop-motors":
+                    # Send a stop motor signal
                     handlePacket(CommunicationUtils.packet("motorData", DC.zeroMotors(), metadata="drivetrain"))
+                    # Set the mode to user control
                     mode = "user-control"
                 elif recvMsg['metadata'] == "follow-line":
                     if recvMsg['data'] == "run":
+                        # Enable follow line mode
                         mode = "follow-line-init"
                 elif recvMsg['metadata'] == "analyze-coral-reef":
                     if recvMsg['data'] == "run":
+                        # If there is camera data, run coral reef analysis
                         if newestImage.size > 0:
                             analyzeCoralReefThread = threading.Thread(target=ComputerVisionUtils.findCoralHealth, args=(newestImage, coralReefOutPath, coralReefDone,), daemon=True)
                             analyzeCoralReefThread.start()
                         else:
+                            # TODO: handle the [noCamera] command in the correct places
                             handlePacket(CommunicationUtils.packet(tag="stateChange", data="noCamera", metadata="analyze-coral-reef"))
                 elif recvMsg['metadata'] == "stabilize":
+                    # Set the correct rotation target
                     stabilizeRot["x"] = recvMsg["data"]["x"]
                     stabilizeRot["y"] = recvMsg["data"]["y"]
                     stabilizeRot["z"] = recvMsg["data"]["z"]
+                    # Set the mode to initialize stabilization
                     mode = "stabilize-init"
                 elif recvMsg['metadata'] == "hold-angle":
+                    # Set the rotation target
                     stabilizeRot["x"] = recvMsg["data"]["x"]
                     stabilizeRot["y"] = recvMsg["data"]["y"]
                     stabilizeRot["z"] = recvMsg["data"]["z"]
+                    # Set the mode to initialize holding the current angle
                     mode = "hold-angle-init"
             elif recvMsg['tag'] == 'settingChange':
                 if recvMsg['metadata'] == "follow-line":
+                    # Set the computer vision debugging algorithm and data
                     lineFollowingDebugLevel = recvMsg['data']
         
         override = False
 
-        # Edit this to change the gamepad mapping
+        # Setup the gamepad mapping
         gamepadMapping = {
             "x-mov": gamepad.left["stick"]["x"],
             "y-mov": gamepad.left["stick"]["y"],
@@ -279,21 +307,27 @@ def mainThread(debug=False):
         # Set mode based on gamepad state
         if (gamepad.left["stick"]["button"] and gamepad.right["stick"]["button"]): # Enable Override
             override = True
-        elif (gamepad.buttons["back"]): # Stop the program
+        elif (gamepad.buttons["back"]):
+            # Shutdown the program
             handlePacket(CommunicationUtils.packet("stateChange", "close"))
             time.sleep(1)
             stopAllThreads()
-        elif (gamepad.buttons["x"]): # Activate user-control mode and stop motors
+        elif (gamepad.buttons["x"]):
+            # Activate user-control mode and stop motors
             handlePacket(CommunicationUtils.packet("motorData", DC.zeroMotors(), metadata="drivetrain"))
             mode = "user-control"
-        elif (gamepad.buttons["y"]): # Activate stabilize mode
+        elif (gamepad.buttons["y"]):
+            # Activate stabilize mode
             if (mode != "stabilize" and mode != "stabilize-init"):
+                # Zero the rotation target
                 stabilizeRot["x"] = 0
                 stabilizeRot["y"] = 0
                 stabilizeRot["z"] = 0
+                # Set the mode to initialize stabilization
                 mode = "stabilize-init"
 
         # Run the selected mode
+        # If override is on, we want to ignore the selected mode and give user full control
         if (not override):
             if (mode == "stabilize-init"): # Initialize stabilize mode
                 # Reset PID rotation controllers
@@ -308,16 +342,23 @@ def mainThread(debug=False):
                 xRotPID.setpoint = stabilizeRot["x"]
                 yRotPID.setpoint = stabilizeRot["y"]
                 zRotPID.setpoint = stabilizeRot["z"]
+                # Set the mode to stabilize
                 mode = "stabilize"
-            elif (mode == "stabilize"): # Run stabilize mode
+            elif (mode == "stabilize"):
+                # Run stabilize mode
+
+                # Get rotation values from the PID controllers
                 xTgt = xRotPID(newestSensorState["imu"]["gyro"]["x"])
                 yTgt = yRotPID(newestSensorState["imu"]["gyro"]["y"])
                 zTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
 
+                # Use the rotation values to generate motor speeds
                 speeds = DC.calcMotorValues(0, 0, 0, xTgt, yTgt, zTgt)
 
+                # Create and send the motor speeds packet
                 handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
-            elif (mode == "follow-line-init"): # Initialize line following mode
+            elif (mode == "follow-line-init"): 
+                # Initialize line following mode
                 if newestImage.size > 0:
                     # Reset PID rotation controllers
                     xRotPID.reset()
@@ -336,11 +377,16 @@ def mainThread(debug=False):
                     xPosPID.reset()
                     xPosPID.tunings = (pos["Kp"], pos["Kd"], pos["Ki"])
                     xPosPID.setpoint = newestImage.shape[0]*ComputerVisionUtils.lf_percent_of_image_blue_lines_should_fill
+                    # Enable follow line mode
                     mode = "follow-line"
                 else:
+                    # If we don't have camera data streaming, send a message, and revert to user control mode
                     handlePacket(CommunicationUtils.packet(tag="stateChange", data="noCamera", metadata="follow-line"))
                     mode = "user-control"
-            elif (mode == "follow-line"): # Run line following mode
+            elif (mode == "follow-line"):
+                # Run line following mode
+                
+                # We only want to run the computer vision if we have a valid image
                 if newestImage.size > 0:
                     cvOut = ComputerVisionUtils.detectLines(newestImage, cvOutLevel=lineFollowingDebugLevel)
                     if cvOut:
@@ -356,15 +402,17 @@ def mainThread(debug=False):
                         # Movement on the x axis keeps a specific distance from the line
                         xPosTgt = xPosPID(dist)
 
+                        # Calculate motor speeds
                         speeds = DC.calcMotorValues(xPosTgt, 0, 1, xRotTgt, yRotTgt, zRotTgt)
 
-                        # Update motor speeds
+                        # Calculate motor speeds
                         handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
 
                         # Send the CV Debug image
                         imgPacket = CommunicationUtils.packet(tag="cam", data=CommunicationUtils.encodeImage(cvImage), metadata="cvCam")
                         handlePacket(imgPacket)
                     else:
+                        # If the line following failed, send a message
                         handlePacket(CommunicationUtils.packet(tag="stateChange", data="failed", metadata="follow-line"))
             elif (mode == "hold-angle-init"): # Initialize hold angle mode
                 # Reset PID rotation controllers
@@ -393,7 +441,7 @@ def mainThread(debug=False):
                                             xTgt,
                                             yTgt,
                                             zTgt)
-
+                # Create and send the motor speeds packet
                 handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
         if (mode == "user-control" or override): # Run user control mode
             # Calculate new motor values
@@ -404,11 +452,14 @@ def mainThread(debug=False):
                                         gamepadMapping["y-rot"],
                                         gamepadMapping["z-rot"])
             
+            # Create and send the motor speeds packet
             handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
 
         
         # Handle coral reef algorthim
         if coralReefDone:
+            # TODO: Add this to the website
+            # Send a message when the coral reef algorithm is done
             handlePacket(CommunicationUtils.packet(tag="stateChange", data="done", metadata="analyze-coral-reef"))
 
         # Update the mode and override state that the AirNode displays
@@ -424,11 +475,13 @@ def mainThread(debug=False):
             handlePacket(CommunicationUtils.packet(tag="stateChange", data=mode, metadata="mode"))
             lastMode = mode
         
+        # Send a message if we are in the override mode
         if (override != lastOverride):
             handlePacket(CommunicationUtils.packet(tag="stateChange", data=override, metadata="override"))
             lastOverride = override
 
-        # Control loop speed
+        # TODO: Maybe make a custom sleep class to handle these timed loops
+        # Sleep to control the loop speed
         timeDiff = time.time()-lastLoop
         if loopFrequency-timeDiff > 0:
             time.sleep(loopFrequency-timeDiff)
@@ -444,20 +497,26 @@ def receiveVideoStreams(debug=False):
             debug: (optional) log debugging data
     """
 
+	# Initialize the ZMQ server
     image_hub = imagezmq.ImageHub(open_port='tcp://*:'+str(CommunicationUtils.CAM_PORT))
     while execute['streamVideo']:
         image_b64 = ""
         imgInfo = ""
         if not simpleMode:
+            # Read and store an encoded jpg image
             imgInfo, image_b64 = image_hub.recv_jpg()
         else:
+            # Read and encode an image
             imgInfo, image_raw = image_hub.recv_image()
             image_b64 = CommunicationUtils.encodeImage(image_raw)
 
+        # Separate the timestamp from the device name
         deviceName, timestamp = imgInfo.split("|")
 
+        # Let the clent know we got the image
         image_hub.send_reply(b'OK')
         
+        # Create and send the image packet
         imgPacket = CommunicationUtils.packet(tag="cam", data=image_b64, timestamp=timestamp, metadata=deviceName, copy_data=False)
         handlePacket(imgPacket)
 
@@ -476,18 +535,20 @@ def receiveData(debug=False):
     arduinoThread = threading.Thread(target=ArduinoUtils.earthSensorThread, args=(execute['receiveData'], arduinoData,))
     arduinoThread.start()
 
-    # Setup socket communication
+    # Get the IP address and port of the earth node
     HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
     PORT = CommunicationUtils.SNSR_PORT
 
+    # Create the socket connection
     snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
     snsr.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     snsr.bind((HOST, PORT))
+    # Listen and accept connections
     snsr.listen()
     conn, addr = snsr.accept()
 
     while execute['receiveData']:
+        # Recieve and handle messages
         recvPacket = CommunicationUtils.recvMsg(conn)
         
         # Add EarthNode sensor data to the WaterNode sensor data
@@ -497,6 +558,7 @@ def receiveData(debug=False):
         
         handlePacket(recvPacket)
     
+    # Close the connection
     conn.close()
     snsr.close()
 
@@ -509,25 +571,31 @@ def sendData(debug=False):
         Arguments:
             debug: (optional) log debugging data
     """
+
+    # Get the IP address and port of the earth node
     HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
     PORT = CommunicationUtils.CNTLR_PORT
 
+    # Create the socket connection
     cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
     cntlr.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     cntlr.bind((HOST, PORT))
+    # Listen and accept connections
     cntlr.listen()
     conn, addr = cntlr.accept()
 
     while execute['sendData']:
         while not sendDataQueue.empty():
+            # Get and send all of our queued messages
             sendPacket = sendDataQueue.get()
             CommunicationUtils.sendMsg(conn, sendPacket)
     
+    # Close the connection
     conn.close()
     cntlr.close()
 
 def startAirNode(debug=False):
+    # Initialize Flask
     app = Flask(__name__)
 
     # Disable Logging
@@ -535,6 +603,7 @@ def startAirNode(debug=False):
     log.disabled = True
     app.logger.disabled = True
 
+    # Initialize SocketIO
     socketio = SocketIO(app)
 
     @app.route('/pilot')
@@ -554,16 +623,25 @@ def startAirNode(debug=False):
 
     @socketio.on('getAirNodeUpdates')
     def getAir(recv, methods=["GET","POST"]):
+        # Send queued messages to the airNode on its request
         while not airQueue.empty():
             tosend = airQueue.get()
+
+            # TODO: Add this check globally
+            # and take into account whether a message is high priority or not
+
+            # We only send messages that are newer than 0.1 seconds
+            # This only works assuming that ALL of the data being sent is in streams
+            # Such as sensor or camera data
             if (tosend['timestamp'] - time.time() < 0.1):
                 socketio.emit("updateAirNode", tosend)
     
     @socketio.on('sendUpdate')
     def getUpdate(recv, methods=["GET","POST"]):
+        # Handle messages from the airNode
         handlePacket(recv)
         
-
+    # Handle streaming all of the different cameras
     def camGen(camName):
         camQueue = airCamQueues[camName]
         while True:
@@ -582,6 +660,8 @@ def startAirNode(debug=False):
     def videoFeed(camName):
         return Response(camGen(camName), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+    # TODO: Improve mode system with a development, deployment, simple mode, etc.
+    # Setup auto reload of files for easy development 
     app.jinja_env.auto_reload = True
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
@@ -593,7 +673,7 @@ if( __name__ == "__main__"):
     # Setup Logging preferences
     verbose = [False,True]
 
-    # Start all necessary threads
+	# Start all of the threads for communication
     mainThread = threading.Thread(target=mainThread, args=(verbose[0],))
     vidStreamThread = threading.Thread(target=receiveVideoStreams, args=(verbose[0],))
     recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
@@ -605,7 +685,7 @@ if( __name__ == "__main__"):
     sendDataThread.start()
     airNodeThread.start()
 
-    # Begin the Shutdown
+	# We don't want the program to end uptil all of the threads are stopped
     while execute['streamVideo'] or execute['receiveData'] or execute['sendData'] or execute['mainThread']:
         time.sleep(0.1)
     mainThread.join()
@@ -617,4 +697,7 @@ if( __name__ == "__main__"):
     logger.debug("Stopped all Threads")
     logger.info("Shutting Down Ground Node")
     '''
+
+    # TODO: Actually make this clear ALL of the queues, not just the air node
+    # Clear all queues
     CommunicationUtils.clearQueue(airQueue)

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Robot Diagram</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.0.13/svg.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+</head>
+<style>
+  body {}
+
+  canvas {
+    border-width: 1px;
+    border-style: solid;
+    border-color: blue;
+    background: #303337;
+  }
+
+  @font-face {
+    font-family: 'Ubuntu-Title';
+    src: url('robotDiagram/ubuntu_title/Ubuntu-Title.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
+</style>
+
+<body>
+  <canvas id="robotDiagram" width="1000" height="1000"></canvas>
+  <script>
+    // Setup the canvas for drawing on
+    var canvas = document.getElementById('robotDiagram');
+    var ctx = canvas.getContext('2d');
+
+    // Load all the images we need
+    var chassis = new Image();
+    chassis.src = 'robotDiagram/robotDiagram-Chassis.svg';
+
+    var sideThruster = new Image();
+    sideThruster.src = 'robotDiagram/robotDiagram-sideThruster.svg';
+
+    var sideThrusterPower = new Image();
+    sideThrusterPower.src = 'robotDiagram/robotDiagram-sideThrusterPower.svg';
+
+    var upThruster = new Image();
+    upThruster.src = 'robotDiagram/robotDiagram-UpThruster.svg';
+
+    var stillThruster = new Image();
+    stillThruster.src = 'robotDiagram/robotDiagram-StillThruster.svg';
+
+    var downThruster = new Image();
+    downThruster.src = 'robotDiagram/robotDiagram-DownThruster.svg';
+
+    var ESCController = new Image();
+    ESCController.src = 'robotDiagram/robotDiagram-ESC.svg';
+
+    var FathomX = new Image();
+    FathomX.src = 'robotDiagram/robotDiagram-FathomX.svg';
+
+    var IMUSensor = new Image();
+    IMUSensor.src = 'robotDiagram/robotDiagram-IMU.svg';
+
+    var PWMController = new Image();
+    PWMController.src = 'robotDiagram/robotDiagram-PWM.svg';
+
+    var rasPi = new Image();
+    rasPi.src = 'robotDiagram/robotDiagram-RasPi.svg';
+
+
+    function drawImg(img, x, y, degrees = 0, scale = 1, hFlip = 1, vFlip = 1, tint) {
+      /* Draws an image at a with a given scale, translation, orientation, and tint */
+
+      // Only draw the image if it is done loading
+      if (img.complete) {
+        // Save the translation of the canvas so we revert back to it later
+        ctx.save();
+
+        // Apply the input transformations
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+        //ctx.translate(canvas.width/2, canvas.height/2);
+        ctx.rotate(degrees * Math.PI / 180);
+        ctx.scale(hFlip, vFlip);
+
+        // Draw the image
+        ctx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
+
+        // Rever back to the old canvas translation
+        ctx.restore();
+
+      }
+    }
+
+    function drawText(text, x, y, font, size, color, align, style = "") {
+      /* Draws text with an input style */
+
+      // Set the font style
+      ctx.fillStyle = color;
+      ctx.textAlign = align;
+      ctx.font = size.toString() + "px  " + font + " " + style;
+
+      // Set the font alignment
+      if (align == "center") {
+        ctx.textBaseline = "middle";
+      }
+
+      // Draw the text
+      ctx.fillText(text, x, y);
+    }
+
+    function clearCanvas(clearTransforms) {
+      /* Clears the canvas */
+
+      if (!clearTransforms) ctx.save(); // If we don't want to clear the transforms, save the current transform for later
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // Clear transforms
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+      if (!clearTransforms) ctx.restore(); // If we don't want to clear transforms, revert to the transform we saved before
+    }
+
+    function drawTopThruster(loc, speed, xLoc, yLoc) {
+      /* Draws the four vertical thrusters */
+      s = 0.65;
+      x = 39.5;
+      y = 145;
+      r = 0;
+      v = 1;
+      h = 1;
+
+      // Calculate the xy coordinate of the thruster based on its location the robot
+      switch (loc) {
+        case "TL":
+          x *= -1;
+          y *= -1;
+          break;
+        case "TR":
+          y *= -1;
+          break;
+        case "BL":
+          x *= -1;
+          h *= -1;
+          break;
+        case "BR":
+          h *= -1;
+          break;
+      }
+
+       // Calculate the xy coordinate of the thruster based on its location the robot
+      if (speed > 0) {
+        drawImg(upThruster, xLoc + x, yLoc + y, r, s, v, h);
+      } else if (speed == 0) {
+        drawImg(stillThruster, xLoc + x, yLoc + y, r, s, v, h);
+      } else {
+        drawImg(downThruster, xLoc + x, yLoc + y, r, s, v, h);
+      }
+
+      // Draw the text with the speed of the thruster
+      drawText(speed * 100.0, xLoc + x, yLoc + (y * 1.51), "Ubuntu-Title", 40, "#D1D1D1", "center");
+    }
+
+    function drawSideThruster(loc, speed, xLoc, yLoc) {
+      /* Draws the four side thrusters */
+      s = 0.65;
+      x = 0;
+      y = 0;
+      r = 0;
+      v = 1;
+      h = 1;
+      xThrust = 7;
+      yThrust = 7;
+      rThrust = 0;
+      vThrust = 1;
+      hThrust = 1;
+
+      // Calculate the xy coordinate, rotation, and thrust direction of the thruster based on its location the robot
+      switch (loc) {
+        case "TL":
+          x = xLoc - 160;
+          y = yLoc - 135;
+          r = -45;
+          xThrust *= -1;
+          yThrust *= -1;
+          rThrust = r;
+          break;
+        case "TR":
+          x = xLoc + 165;
+          y = yLoc - 132;
+          r = 45;
+          yThrust *= -1;
+          rThrust = r;
+          break;
+        case "BL":
+          x = xLoc - 160;
+          y = yLoc + 135;
+          r = 45;
+          xThrust *= -1;
+          h = -1;
+          rThrust = r;
+          break;
+        case "BR":
+          x = xLoc + 165;
+          y = yLoc + 132;
+          r = -45;
+          h = -1;
+          rThrust = r;
+          break;
+      }
+
+      if (speed != 0) {
+        // Normalize the speed
+        vThrust = Math.abs(speed);
+        if (speed < 0) {
+          rThrust = 180 + rThrust;
+
+        }
+
+        // Draw the thrust coming out of the robot
+        drawImg(sideThrusterPower, x + xThrust, y + yThrust, rThrust, s, vThrust, hThrust);
+      }
+
+      // Draw the thruster
+      drawImg(sideThruster, x, y, r, s, v, h);
+      // Draw text with the speed
+      drawText(speed * 100.0, x + (xThrust * 9), y + (yThrust * 9), "Ubuntu-Title", 40, "#D1D1D1", "center");
+    }
+
+    function drawDevice(devName, working, xLoc, yLoc) {
+      /* Draws the electronics in the tube */
+      x = xLoc;
+      y = yLoc;
+      s = 1;
+      r = 0
+      
+      // Get the location and image of component based on its name
+      image = new Image();
+      switch (devName) {
+        case "ESC":
+          image = ESCController;
+          s = 0.32;
+          x = xLoc - 75;
+          y = yLoc + 15;
+          break;
+        case "IMU":
+          image = IMUSensor;
+          s = 0.15;
+          x = xLoc - 75;
+          y = yLoc - 28;
+          break;
+        case "FathomX":
+          image = FathomX;
+          s = 0.2;
+          x = xLoc + 75;
+          y = yLoc;
+          break;
+        case "PWM":
+          image = PWMController;
+          s = 0.24;
+          x = xLoc;
+          y = yLoc + 25;
+          break;
+        case "RasPi":
+          image = rasPi;
+          s = 0.3;
+          x = xLoc;
+          y = yLoc - 17;
+          break;
+      }
+
+      // Apply a red filter if the component is not operational
+      ctx.filter = "sepia(100%) saturate(250%) hue-rotate(-50deg)";
+      if (working) {
+        ctx.filter = "none";
+      }
+
+      // Draw the component and reset the filter
+      drawImg(image, x, y, r, s);
+      ctx.filter = "none";
+    }
+
+    function updateDiagram() {
+      // Clear the canvas
+      clearCanvas(true);
+
+      // Zoom in a bit
+      scaleAmnt = 1.5;
+      ctx.scale(scaleAmnt, scaleAmnt);
+
+      // find the center of the canvas (modified by the scale amount)
+      xLoc = (canvas.width / 2) / scaleAmnt;
+      yLoc = (canvas.height / 2) / scaleAmnt;
+
+      // Draw the side thrusters
+      drawSideThruster("TL", 0, xLoc, yLoc);
+      drawSideThruster("TR", 0, xLoc, yLoc);
+      drawSideThruster("BL", 0, xLoc, yLoc);
+      drawSideThruster("BR", 0, xLoc, yLoc);
+
+      // Draw the top thrusters
+      drawTopThruster("TL", 0, xLoc, yLoc);
+      drawTopThruster("TR", 0, xLoc, yLoc);
+      drawTopThruster("BL", 0, xLoc, yLoc);
+      drawTopThruster("BR", 0, xLoc, yLoc);
+
+      // Draw the chassis
+      drawImg(chassis, xLoc, yLoc, 0, 1.5);
+
+      // Draw all of the devices
+      drawDevice("ESC", true, xLoc, yLoc);
+      drawDevice("FathomX", true, xLoc, yLoc);
+      drawDevice("IMU", true, xLoc, yLoc);
+      drawDevice("PWM", true, xLoc, yLoc);
+      drawDevice("RasPi", true, xLoc, yLoc);
+
+      requestAnimationFrame(updateDiagram);
+    }
+    requestAnimationFrame(updateDiagram);
+  </script>
+</body>
+
+</html>

@@ -1,3 +1,6 @@
+'''
+At one point, this file was used as a custom logger. It should be brought back with the logging system
+'''
 import logging
 from pythonjsonlogger import jsonlogger
 from queue import Queue

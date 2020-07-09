@@ -1,12 +1,19 @@
+'''
+This script tests image streaming from python to a flask website
+It is used to stream cameras on our dashboard
+'''
+
+# Import necessary libraries
 import base64
 import glob
 import cv2
 from flask import Flask, render_template, Response
 import time
 
+# Initialize the flask app
 app = Flask(__name__)
 
-
+# Setup and load all images in the images/ folder
 counter = 0
 images = []
 
@@ -35,6 +42,15 @@ def video_feed():
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 def encode_img(image):
+    '''
+    Encodes an image into base64
+
+    Arguments:
+        image: the image to encode
+    
+    Returns:
+        The encoded base64 image
+    '''
 	retval, bffr = cv2.imencode('.jpg', image)
 	return bffr.tobytes()
 

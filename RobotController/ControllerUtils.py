@@ -1,3 +1,8 @@
+'''
+This fine contains tools for reading and processing controller data
+'''
+
+# Import necessary libraries
 simpleMode = False
 try:
     import evdev
@@ -23,12 +28,16 @@ class DriveController():
         self.mtrSpeeds = [0]*len(order)
 
     def calcMotorValues(self, xm, ym, zm, xr, yr, zr):
-        """ Calculates the speed for each motor 6 inputs, each representing a degree of freedom
+        """ 
+        Calculates the speed for each motor 6 inputs, each representing a degree of freedom
 
-            Returns:
-                An array of calculated motors speed values
+        Returns:
+            An array of calculated motors speed values
         """
+
         if self.settings["style"] == "holonomic":
+            # Calculate motor speeds based on holonomic math
+            # I have not been able to find a good source of documentation on exactly what the math is, so at this point, it is mostly trial and error
             self.mtrSpeeds[self.settings["motor_order"]["frontLeft"]] = self.clamp((xm+ym+zr), -1, 1)
             self.mtrSpeeds[self.settings["motor_order"]["frontRight"]] = self.clamp((-xm+ym+zr), -1, 1)
             self.mtrSpeeds[self.settings["motor_order"]["backLeft"]] = self.clamp((xm-ym+zr), -1, 1)
@@ -38,44 +47,54 @@ class DriveController():
             self.mtrSpeeds[self.settings["motor_order"]["verticalBackLeft"]] = self.clamp((zm+xr-yr), -1, 1)
             self.mtrSpeeds[self.settings["motor_order"]["verticalBackRight"]] = self.clamp((zm-xr-yr), -1, 1)
         
+        # Flip any motors that need to be reversed
         for i in range(len(self.mtrSpeeds)):
             if self.settings['motor_flip'][i]:
                 self.mtrSpeeds[i] = -1 * self.mtrSpeeds[i]
         return self.mtrSpeeds
     
     def clamp(self, n, minn, maxn):
-        """ Clamps a number in a range
+        """ 
+        Clamps a number in a range
 
-            Arguments:
-                n: number to clamp
-                minn: minimum value for n
-                maxn: maximum value for n
+        Arguments:
+            n: number to clamp
+            minn: minimum value for n
+            maxn: maximum value for n
 
-            Returns:
-                the clamped value
+        Returns:
+            the clamped value
         """
         return max(min(maxn, n), minn)
 
     def zeroMotors(self):
+        """
+        Returns all motor speeds of zero
+        """
         return [0]*len(self.mtrSpeeds)
 
 def updateGamepadState(gamepadOut, device, stop):
-    """ Updates the state of a gamepad object to based on evdev events
-
-        Arguments:
-            gamepadOut: gamepad object to update
-            device: evdev device to read updates from 
-            stop: reference to variable that can stop the loop
     """
+    Updates the state of a gamepad object to based on evdev events
+
+    Arguments:
+        gamepadOut: gamepad object to update
+        device: evdev device to read updates from 
+        stop: reference to variable that can stop the loop
+    """
+    # Constants used for normalization of values
     stickScale = 32768.0
     triggerScale = 255.0
     for event in device.read_loop():
+        # TODO: Stop is an unintuitive name
         if not stop:
             break
         if event.type !=0:
             code = event.code
             value = event.value
 
+            # Update the gamepad state based on the event type and value
+            # This mapping works specifically for the logitech F310, it has not been tested on anything else
             if code == 0:
                 gamepadOut.left["stick"]["x"] = -value/stickScale
             elif code == 1:
@@ -186,10 +205,11 @@ class Gamepad:
         }
 
 def identifyController():
-        """ Searches the available devices for a controller and returns it
+        """
+        Searches the available devices for a controller and returns it
 
-            Returns:
-                A controller device if it can find any
+        Returns:
+            A controller device if it can find any
         """
         if not simpleMode:
             controller_names = ["Logitech Gamepad F710", "Logitech Gamepad F310", "Microsoft X-Box One S pad", "PowerA Xbox One wired controller"]

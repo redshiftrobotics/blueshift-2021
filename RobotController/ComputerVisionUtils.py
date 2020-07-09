@@ -1,3 +1,8 @@
+'''
+This file has computer vision tools for line following and coral reef health
+All of the code is taken from their respective files in Testing/
+'''
+
 import cv2
 import numpy as np
 
@@ -11,14 +16,36 @@ lf_min_countour_area = 7000.0
 lf_percent_of_image_blue_lines_should_fill = 0.75 # Equal to (total_width - blue_to_red_dist) / total_width
 lf_target_angle = 90.0
 
-# Given a slope and a point, this function returns a point that on that line with a specific value on the specified axis (https://www.mathsisfun.com/algebra/line-equation-point-slope.html)
 def point_slope_line(pt,sl,num,given_axis):
+    '''
+    Calcualates a where a line intersects an input point
+
+    The line is defined in point slope form (https://www.mathsisfun.com/algebra/line-equation-point-slope.html)
+    The input number represents a horizontal or vertical line
+    The goal of this function is to calculate where the two lines intersect
+
+    Arguments:
+        pt: The point that defines the line
+        sl: The slope that defines the line
+        num: The x OR y coordinate to intersect the line
+        given_axis: Whether num is an x or y value
+    
+    Returns:
+        The coordinate of itersection between the two lines
+    '''
     if given_axis == "x":
         return (num, int(sl*(num-pt[0]) + pt[1]))
     elif given_axis == "y":
         return (int((num-pt[1])/sl + pt[0]), num)
 
 def detectLines(img, cvOutLevel=None):
+    '''
+    Detects two parallel lines in an image, and gets the distance between them and average angle
+
+    Arguments:
+        img: The image to detect lines in
+        cvOutLevel: What level of debugging to output ("Base", "Mask", "Contours")
+    '''
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, lf_lower_blue, lf_upper_blue)
 
@@ -166,6 +193,18 @@ coral_reference_path = "static/assets/coralHealth/coral_old.png"
 # Coral Health Helper functions
 
 def overlay_image_alpha(img, img_overlay, pos, alpha_mask):
+    '''
+    Overlay one image ontop of another given an imput transparency mask
+
+    Arguments:
+        img: The base image
+        img_overlay: The image to overlay (should be smaller than img)
+        pos: the location of to overlay img_overlay
+        alpha_mask: the alpha of the overlay images
+
+    Returns:
+        The new image with the overlay appled
+    '''
     img = img.copy()
 
     x, y = pos
@@ -193,6 +232,18 @@ def overlay_image_alpha(img, img_overlay, pos, alpha_mask):
     return img
 
 def alignImages(reference, toAlign, toAlignMask):
+    '''
+    Aligns two images using ORB features
+
+    Arguments:
+        reference: The reference image to align to
+        toAlign: The image that is being aligned
+        toAlignMask: A mask for toAlign to specifiy what parts of it should be used in alignment calculations
+
+    Returns:
+        An image with the matched features marked
+        A homography matrix that can be used to align the images
+    '''
     # Convert images to grayscale
     im1Gray = cv2.cvtColor(toAlign, cv2.COLOR_BGR2GRAY)
     im2Gray = cv2.cvtColor(reference, cv2.COLOR_BGR2GRAY)
@@ -230,11 +281,33 @@ def alignImages(reference, toAlign, toAlignMask):
     return imMatches, h 
 
 def HSVThreshold(img, lower, upper):
+    '''
+    Applies a HSV threshold to a BGR image
+
+    Arguments:
+        img: The image to threshold
+        lower: The lower HSV bound
+        upper: The upper HSV bound
+    
+    Returns:
+        The thresholded image in the form of a mask
+    '''
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, lower, upper)
     return mask
 
 def smoothImage(img, dilate, erode):
+    '''
+    Smoothes a mask using dilation and erosion (dilation is applied before erosion)
+
+    Arguments:
+        img: The mask to smooth
+        dilate: The amount to dilate
+        erode: The amount to erode
+    
+    Returns:
+        The smoothed image
+    '''
     smoothed = cv2.dilate(img, kernel, dilate)
     smoothed = cv2.erode(smoothed, kernel, erode)
     return smoothed
@@ -242,6 +315,21 @@ def smoothImage(img, dilate, erode):
 # Coral Health Main Function
 
 def findCoralHealth(coral_to_align, cvOutPath, done=None):
+    '''
+    Finds the change health of a coral reef by comparing two images of it
+
+    Arguments:
+        coral_reference: The reference image of the coral reef (This will be provided by MATE)
+        coral_to_align: The target image to compare against the reference (This will likely come from our camera)
+    
+    Returns:
+        A dictionary containing several images:
+            backgroundMask: The target image with the background removed (used to evaluate the background removal)
+            features: A mapping of image alignment features between the reference and target images (used to evaluate image alignment)
+            alignment: The reference image overlayed with the aligned target image (used to evaluate alignment)
+            subtraction: The change in color between the reference and target images (used to evaluate detection of areas of change)
+            final: The target image with all areas of change marked in their respective colors
+    '''
     coral_reference = cv2.imread(coral_reference_path)
     cv2.imwrite(cvOutPath+"input.png", coral_to_align)
 

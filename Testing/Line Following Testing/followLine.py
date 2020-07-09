@@ -1,3 +1,9 @@
+'''
+One of the challenges in the MATE 2020 Game was to follow two parallel lines on the ground
+This script handles detecting both lines, calculating the average angle between the, and calculating the distance between them
+'''
+
+# Import necessary libraries
 import cv2
 import numpy as np
 
@@ -11,14 +17,36 @@ min_countour_area = 20000.0
 percent_of_image_blue_lines_should_fill = 0.75 # Equal to (total_width - blue_to_red_dist) / total_width
 target_angle = 90.0
 
-# Given a slope and a point, this function returns a point that on that line with a specific value on the specified axis (https://www.mathsisfun.com/algebra/line-equation-point-slope.html)
-def point_slope_line(pt,sl,num,given_axis):
+def point_slope_line(pt, sl, num, given_axis):
+    '''
+    Calcualates a where a line intersects an input point
+
+    The line is defined in point slope form (https://www.mathsisfun.com/algebra/line-equation-point-slope.html)
+    The input number represents a horizontal or vertical line
+    The goal of this function is to calculate where the two lines intersect
+
+    Arguments:
+        pt: The point that defines the line
+        sl: The slope that defines the line
+        num: The x OR y coordinate to intersect the line
+        given_axis: Whether num is an x or y value
+    
+    Returns:
+        The coordinate of itersection between the two lines
+    '''
     if given_axis == "x":
         return (num, int(sl*(num-pt[0]) + pt[1]))
     elif given_axis == "y":
         return (int((num-pt[1])/sl + pt[0]), num)
 
 def detectLines(img, debug=False):
+    '''
+    Detects two parallel lines in an image, and gets the distance between them and average angle
+
+    Arguments:
+        img: The image to detect lines in
+        debug (optional): Whether to log debug information
+    '''
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, lower_blue, upper_blue)
 

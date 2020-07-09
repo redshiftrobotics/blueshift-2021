@@ -5,6 +5,6 @@ pycache
 /Testing/ZMQ\ Video\ Test/*.zip
 *.vscode
 RobotController/__pycache__/*
-Testing/Website-Testing/Robot 3D/Full-Robot-Body.blend
-Testing/Website-Testing/Robot 3D/Full-Robot-Body.blend1
-Testing/Website-Testing/Robot 3D/Full-Robot-Body.stl
+Testing/Website Testing/Robot 3D/Full-Robot-Body.blend
+Testing/Website Testing/Robot 3D/Full-Robot-Body.blend1
+Testing/Website Testing/Robot 3D/Full-Robot-Body.stl

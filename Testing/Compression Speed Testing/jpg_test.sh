@@ -1,3 +1,5 @@
+# This is a bash script that evaluates different image compression methods in Python.
+
 SETUP="
 import cv2
 import sys

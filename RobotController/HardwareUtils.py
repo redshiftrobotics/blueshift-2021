@@ -1,3 +1,8 @@
+'''
+This file contains tools for interfacing with hardware in the tube over I2C such as a servo driver and IMU
+'''
+
+# Import necessary libraries
 simpleMode = False
 try:
     # Import I2C Communication Libraries
@@ -16,6 +21,11 @@ except:
     from random import randint
     import time
 
+# TODO: find some way to globalize settings.
+# In this specific case, it would make more sense to define the motor type when it is initialized
+# but in general there should be a global settings file that is automatically synced
+
+# Settings for the servo driver
 settings = {
     # We need to add 50 to all of the pulse lengths, because the PCA9685 is always about 50 to slow
     "servo_settings": {
@@ -29,6 +39,7 @@ settings = {
 if not simpleMode:
     i2c = busio.I2C(SCL, SDA)
 
+# TODO: Upate this to something much more like what FRC has where motors are individually initialized
 class ServoDriver():
     def __init__(self, servo_locs, frequency=50):
         if not simpleMode:
@@ -42,6 +53,14 @@ class ServoDriver():
                                     s_type)
 
     def set_servo(self, loc, speed):
+        '''
+        Sets the speed of a single servo
+
+        Arguments:
+            loc: The servo location
+            speed: The servo speed
+        '''
+
         if not simpleMode:
             if self.servos[loc]:
                 self.servos[loc][0].throttle = speed
@@ -49,6 +68,13 @@ class ServoDriver():
                 raise Exception("There is no servo at {}".format(loc))
 
     def set_all_servos(self, speed, only_type=False):
+        '''
+        Sets the speed of all of the servos
+
+        Arguments:
+            speed: The speed to set
+            only_type (optional): Only set set the speed of a specified type of servo
+        '''
         if not simpleMode:
             for s in self.servos:
                 if s:
@@ -57,6 +83,9 @@ class ServoDriver():
                         servo.throttle = speed
     
     def shutdown(self):
+        '''
+        Shuts down the servo driver
+        '''
         if not simpleMode:
             self.set_all_servos(0)
             self.pca.deinit()
@@ -111,6 +140,9 @@ class IMUFusion():
             self.octaves = 2
     
     def set_offset(self, offset=False):
+        '''
+        Straightens the IMU
+        '''
         if not simpleMode:
             if offset:
                 self.calibration["gyro-offset"]["x"] += offset["x"]
@@ -122,6 +154,9 @@ class IMUFusion():
                 self.calibration["gyro-offset"]["z"] += self.calibration["last"]["gyro"]["z"]
     
     def get_full_state(self):
+        '''
+        Returns the full state of the IMU
+        '''
         state = {
             "imu": {
                 "calibration": {
@@ -145,17 +180,21 @@ class IMUFusion():
         }
 
         if not simpleMode:
+            # Read data from the sensor
             gyro = self.imu.euler
             lin_accel = self.imu.linear_acceleration
             temp = self.imu.temperature
             calib = self.imu.calibration_status
 
+            # Store calibration data
             state["imu"]["calibration"]["sys"] = calib[0]
             state["imu"]["calibration"]["gyro"] = calib[1]
             state["imu"]["calibration"]["accel"] = calib[2]
             state["imu"]["calibration"]["mag"] = calib[3]
 
+            # Store gyro data (if the current snapsnot does not have the data, we use data from last time)
             if gyro[0] is not None:
+                # Subtract the offests to normalize the orientation
                 state["imu"]["gyro"]["x"] = gyro[2] - self.calibration["gyro-offset"]["x"]
                 state["imu"]["gyro"]["y"] = gyro[1] - self.calibration["gyro-offset"]["y"]
                 state["imu"]["gyro"]["z"] = gyro[0] - self.calibration["gyro-offset"]["z"]
@@ -167,7 +206,9 @@ class IMUFusion():
                 state["imu"]["gyro"]["y"] = self.calibration["last"]["gyro"]["y"]
                 state["imu"]["gyro"]["z"] = self.calibration["last"]["gyro"]["z"]
             
+            # Store velocity data (if the current snapsnot does not have the data, we use data from last time)
             if lin_accel[0] is not None:
+                # The IMU returns acceleration, so we need to integrate to get velocity
                 state["imu"]["vel"]["x"] += lin_accel[0]
                 state["imu"]["vel"]["y"] += lin_accel[1]
                 state["imu"]["vel"]["z"] += lin_accel[2]
@@ -179,6 +220,7 @@ class IMUFusion():
                 state["imu"]["vel"]["y"] = self.calibration["last"]["vel"]["y"]
                 state["imu"]["vel"]["z"] = self.calibration["last"]["vel"]["z"]
             
+            # Store temperature data (if the current snapsnot does not have the data, we use data from last time)
             if temp > 0:
                 state["temp"] = temp
                 self.calibration["last"]["temp"] = state["temp"]
@@ -186,6 +228,7 @@ class IMUFusion():
                 state["temp"] = self.calibration["last"]["temp"]
 
         else:
+            # TODO: As part of revamping the mode system, make a proper noise generation class
             x = float(-(time.time()-self.start))/150.0
 
             state["imu"]["calibration"]["sys"] = (pnoise1(x+self.offsets["imu"]["calibration"]["sys"], self.octaves))*2+2

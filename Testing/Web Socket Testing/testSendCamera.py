@@ -1,3 +1,9 @@
+'''
+This script tests streaming from a camera to a website over websockets
+This is a bad solution compared to doing it with flask, the code is messier and it is slower
+'''
+
+# Import necessary libraries
 import asyncio
 import websockets
 import base64
@@ -7,6 +13,7 @@ import numpy as np
 import time
 
 try:
+	# Initialize a camera
 	cap = cv2.VideoCapture(0)
 	width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
 	height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
@@ -16,6 +23,7 @@ try:
 
 	ret, frame = cap.read()
 
+	# Stream images from the camera to a website using websockets
 	def encode_img(image):
 		retval, bffr = cv2.imencode('.jpg', image)
 		return base64.b64encode(bffr).decode("utf-8") 

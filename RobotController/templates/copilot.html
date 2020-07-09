@@ -235,8 +235,10 @@
                       Rotation</button>
                   </div>
                   <div class="col-md-4">
-                    <button type="button" class="btn btn-secondary btn-lg mb-2" id="followTransectLineButton">Follow Transect Line</button>
-                    <button type="button" class="btn btn-secondary btn-lg" id="coralReefButton">Analyze Coral Reef</button>
+                    <button type="button" class="btn btn-secondary btn-lg mb-2" id="followTransectLineButton">Follow
+                      Transect Line</button>
+                    <button type="button" class="btn btn-secondary btn-lg" id="coralReefButton">Analyze Coral
+                      Reef</button>
                   </div>
                 </div>
               </div>
@@ -311,9 +313,11 @@
       svgElement.setAttribute("viewBox", "0 0 360 360");
       svgElement.setAttribute("id", "attitudeSVG");
 
+      // Draw the ground and sky inner circle
       var groundInner = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#594218' }).stroke({ color: "#ffffff", width: lineWidth / 2 });
       var skyInner = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#87ceeb' }).stroke({ color: "#ffffff", width: lineWidth / 2 });
 
+      // Draw all of the pitch line and number markings
       var pitchMarkings = [
         attitudeDisplay.line(cx - 30, cy, cx + 30, cy).center(cx, cy + (120 * pitchScaleFactor)).stroke({ color: "#ffffff", width: lineWidth / 2 }),
         attitudeDisplay.text("120").center(cx - 50, cy + (120 * pitchScaleFactor)).fill("#ffffff"), attitudeDisplay.text("120").center(cx + 50, cy + (120 * pitchScaleFactor)).fill("#ffffff"),
@@ -337,14 +341,17 @@
         attitudeDisplay.text("120").center(cx - 50, cy + (-120 * pitchScaleFactor)).fill("#ffffff"), attitudeDisplay.text("120").center(cx + 50, cy + (-120 * pitchScaleFactor)).fill("#ffffff")];
       var pitchMarkingLocs = [120, 120, 120, 90, 60, 60, 60, 45, 30, 30, 30, 20, 10, -10, -20, -30, -30, -30, -45, -60, -60, -60, -90, -120, -120, -120];
 
+      // Draw the ground and sky outer circle
       var groundOuter = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#594218' }).stroke({ color: "#ffffff", width: lineWidth });
       var skyOuter = attitudeDisplay.rect(elementWidth, height).attr({ fill: '#87ceeb' }).stroke({ color: "#ffffff", width: lineWidth });
 
+      // Center the ground and sky
       groundInner.move(xOffset, 180);
       skyInner.move(xOffset, -180);
       groundOuter.move(xOffset, 180);
       skyOuter.move(xOffset, -180);
 
+      // Draw all of the pitch markings
       var rollMarkings = [[-60, attitudeDisplay.line(cx, outerRadius / 10, cx, outerRadius).stroke({ color: "#ffffff", width: lineWidth })],
       [-45, attitudeDisplay.circle(lineWidth * 1.25).center(cx, outerRadius / 2).fill("#ffffff")],
       [-30, attitudeDisplay.line(cx, outerRadius / 10, cx, outerRadius).stroke({ color: "#ffffff", width: lineWidth })],
@@ -357,19 +364,23 @@
       [45, attitudeDisplay.circle(lineWidth * 1.25).center(cx, outerRadius / 2).fill("#ffffff")],
       [60, attitudeDisplay.line(cx, outerRadius / 10, cx, outerRadius).stroke({ color: "#ffffff", width: lineWidth })]];
 
+      // Setup and initialize the roll axis
       updateMarkers(0, 1);
 
+      // Create a mask for the inner section
       var maskOuter = attitudeDisplay.mask();
       maskOuter.add(attitudeDisplay.circle(360).fill("#ffffff"));
       maskOuter.add(attitudeDisplay.circle(width - (2 * outerRadius)).dmove(outerRadius, outerRadius).fill("#000000"));
       groundOuter.maskWith(maskOuter);
       skyOuter.maskWith(maskOuter);
 
+      // Create a mask for the outer section
       var maskInner = attitudeDisplay.mask();
       maskInner.add(attitudeDisplay.circle(360).fill("#ffffff"));
       groundInner.maskWith(maskInner);
       skyInner.maskWith(maskInner);
 
+      // Add a shadow gradient to simulate a 3d lens
       var shadowGradient = attitudeDisplay.gradient('radial', function (add) {
         add.stop({ offset: 0, color: "#000000", opacity: 0 })
         add.stop({ offset: 0.5, color: "#000000", opacity: 0.1 })
@@ -377,16 +388,19 @@
         add.stop({ offset: 1, color: "#000000", opacity: 1 })
       })
 
+      // Add a light gradient to simulate a 3d lens
       var lightGradient = attitudeDisplay.gradient('radial', function (add) {
         add.stop({ offset: 1 - (2 * outerRadius / width), color: "#ffffff", opacity: 1 })
         add.stop({ offset: (1 - (2 * outerRadius / width)) * 1.07, color: "#ffffff", opacity: 0.3 })
         add.stop({ offset: 1, color: "#ffffff", opacity: 0 })
       })
 
+      // Display and mask the shadow and light gradients
       var shadow = attitudeDisplay.circle(width - (2 * outerRadius)).dmove(outerRadius, outerRadius).fill(shadowGradient).opacity(0.4);
       var light = attitudeDisplay.circle(width).fill(lightGradient).opacity(0.5);
       light.maskWith(maskOuter);
 
+      // Draw the general markings in the center
       var markerColor = "#fc4646";
       var markerStand = attitudeDisplay.polyline([[cx - 10, height], [cx - 1, cy + 40], [cx + 1, cy + 40], [cx + 10, height]]).fill(markerColor).stroke({ color: markerColor, width: lineWidth });
       var markerLine = attitudeDisplay.line(cx, cy, cx, height).stroke({ color: markerColor, width: lineWidth / 1.5 });
@@ -395,6 +409,15 @@
 
       var lastRoll = 0;
       function updateAttitude(gyroData) {
+        /*
+         * Updates the state of the attitude meter based on gyro data
+         * 
+         * Arguments:
+         *  gyroData: an object containing the the x and y rotation of the robot
+         * 
+         * Returns:
+         *  Nothing
+         */
         var roll = gyroData.x - lastRoll; // -180 to 180 (Data from the gyro will probably be 0-360. Check if # is > 180, if so subtract 180 and multiply by -1)
         var pitch = gyroData.y; // ''
         var pScale = 1; // 1-3 (Take max of circular array *1.2? should automatically adjust based on the pitch values)
@@ -419,6 +442,16 @@
       }
 
       function updateMarkers(roll, initialize = 0) {
+        /*
+         * Rotates all of the markers to match an input roll
+         *
+         * Arguments:
+         *  roll: The roll to rotate to
+         *  initialize: Whether to initialize the markers
+         * 
+         * Returns:
+         *  Nothing
+         */
         for (var i = 0; i < rollMarkings.length; i++) {
           rollMarkings[i][1].rotate(initialize * rollMarkings[i][0] + roll, cx, cy);
         }
@@ -438,23 +471,30 @@
       }
     </script>
     <script id="robot3D_Script">
+      // General parameters
       const DEGREES_TO_RADIANS = Math.PI / 180;
       var sceneLoaded = false;
       const camDist = 25;
 
+      // Create a new Three.JS Scene
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x303337);
 
+      // Setup the render
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(window.devicePixelRatio);
+
+      // Initialize the display
       var container = document.getElementById('robot3D');
       var w = container.offsetWidth;
       var h = container.offsetWidth;
       renderer.setSize(w, h);
       container.appendChild(renderer.domElement);
 
+      // Create a camera
       camera = new THREE.PerspectiveCamera(70, w / h, 1, 1000);
 
+      // Add lights
       hlight = new THREE.AmbientLight(0x404040, 2);
       scene.add(hlight);
       light = new THREE.PointLight(0xc4c4c4, 10);
@@ -470,10 +510,12 @@
       light4.position.set(-500, 300, 500);
       scene.add(light4);
 
+      // Load the robot
       let loader = new THREE.GLTFLoader();
       var fullRobotBody;
       var arrowLoc;
       loader.load("{{ url_for('static', filename='assets/Full-Robot-Body.gltf') }}", function (gltf) {
+        // Add the robot to the scene
         scene.add(gltf.scene);
         fullRobotBody = gltf;
         arrowLoc = 20;
@@ -481,6 +523,7 @@
       });
 
       function vectorSize(vec) {
+        /* Calculate the magnitude of a vector */
         var sum = 0;
         for (i = 0; i < vec.length; i++) {
           sum += Math.pow(vec[i], 2);
@@ -489,6 +532,7 @@
       }
 
       function normalizeVector(vec) {
+        /* Make a vector a unit vector*/
         var magnitude = vectorSize(vec);
         var norm = []
         for (i = 0; i < vec.length; i++) {
@@ -499,18 +543,19 @@
 
       function update3D(state) {
         if (sceneLoaded) {
+          // Normalize the directin of the arrow
           velVec = [state.vel.x, state.vel.y, state.vel.z];
           velNorm = normalizeVector(velVec);
 
-          // Direction of Arrow
+          // Update the direction of Arrow
           fullRobotBody.scene.children[arrowLoc].rotation.x = Math.acos(velNorm[0]);
           fullRobotBody.scene.children[arrowLoc].rotation.y = Math.asin(velNorm[1]);
           fullRobotBody.scene.children[arrowLoc].rotation.z = Math.atan(velNorm[2]);
 
-          // Scale of Arrow
+          // Update the scale of Arrow
           fullRobotBody.scene.children[arrowLoc].scale.y = (vectorSize(velVec)) / 6 + 0.5;
 
-          // Orientation of Camera
+          // Update the orientation of Camera
           camera.rotation.x = -state.gyro.y * DEGREES_TO_RADIANS;
           camera.rotation.y = state.gyro.z * DEGREES_TO_RADIANS;
           camera.rotation.z = state.gyro.x * DEGREES_TO_RADIANS;
@@ -519,23 +564,35 @@
           camera.position.z = 0;
           camera.translateZ(camDist);
 
+          // Render the new frame
           renderer.render(scene, camera);
         }
       }
 
       function resizeRobot3d() {
+        /* Resize the canvas to fit the new window size */
+
+        // Get the new size
         var w = container.offsetWidth;
         var h = container.offsetWidth;
+
+        // Update the camera
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
 
+        // Update the renderer
         renderer.setSize(w, h);
       }
 
     </script>
     <script id="robotDiagram_Script">
+      // TODO: WHAT IS THIS VARIABLE FOR?????????????
       var numLength = 2;
 
+      // TODO: use jquery
+      // Setup the canvases for drawing on
+      // We use three canvases, so that the whole thing doesn't need to be cleared each time
+      // Static element and elements that are updated together have their own canvases
       var canvasFg = document.getElementById('robotDiagram-fg');
       var ctxFg = canvasFg.getContext('2d');
 
@@ -545,6 +602,7 @@
       var canvasBg = document.getElementById('robotDiagram-bg');
       var ctxBg = canvasBg.getContext('2d');
 
+      // Load all the images we need
       var chassis = new Image();
       chassis.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-Chassis.svg') }}";
 
@@ -579,17 +637,25 @@
       rasPi.src = "{{ url_for('static', filename='assets/robotDiagram/robotDiagram-RasPi.svg') }}";
 
       function drawImg(ctx, img, x, y, degrees = 0, scale = 1, hFlip = 1, vFlip = 1) {
-        if (img.complete) {
-          ctx.save();
-          ctx.translate(x, y);
+        /* Draws an image at a with a given scale, translation, and orientation */
 
+        // Only draw the image if it is done loading
+        if (img.complete) {
+          // Save the translation of the canvas so we revert back to it later
+          ctx.save();
+
+          // Apply the input transformations
+          ctx.translate(x, y);
           ctx.scale(scale, scale);
           ctx.rotate(degrees * Math.PI / 180);
           ctx.scale(hFlip, vFlip);
           var xCoord = roundNumber(-img.width / 2);
           var yCoord = roundNumber(-img.height / 2);
+
+          // Draw the image
           ctx.drawImage(img, xCoord, yCoord, img.width, img.height);
 
+          // Rever back to the old canvas translation
           ctx.restore();
         }
       }
@@ -603,32 +669,44 @@
       }
 
       function drawText(ctx, text, x, y, font, size, color, align, style = "") {
+        /* Draws text with an input style */
+
+        // Set the font style
         ctx.fillStyle = color;
         ctx.textAlign = align;
         ctx.font = size.toString() + "px  " + font + " " + style;
 
+        // Set the font alignment
         if (align == "center") {
           ctx.textBaseline = "middle";
         }
 
+        // Draw the text
         ctx.fillText(text, x, y);
       }
 
       function clearCanvas(ctx, canvas, clearTransforms) {
+        /* Clears the canvas */
+
+        // If we don't want to clear the transforms, save the current transform for later
         if (!clearTransforms) ctx.save();
+
+        // Clear the canvas and transforms
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // If we don't want to clear transforms, revert to the transform we saved before
         if (!clearTransforms) ctx.restore();
       }
 
       function drawTopThruster(ctx, loc, speed, xLoc, yLoc) {
+        /* Draws the four vertical thrusters */
         s = 0.65;
         x = 39.5;
         y = 145;
         r = 0;
         v = 1;
         h = 1;
-
+        // Calculate the xy coordinate of the thruster based on its location the robot
         switch (loc) {
           case "TL":
             x *= -1;
@@ -645,7 +723,7 @@
             h *= -1;
             break;
         }
-
+        // Calculate the xy coordinate of the thruster based on its location the robot
         if (speed > 0) {
           drawImg(ctx, upThruster, xLoc + x, yLoc + y, r, s, v, h);
         } else if (speed == 0) {
@@ -654,10 +732,12 @@
           drawImg(ctx, downThruster, xLoc + x, yLoc + y, r, s, v, h);
         }
 
+        // Draw the text with the speed of the thruster
         drawText(ctx, Math.trunc(speed * 100.0), xLoc + x, yLoc + (y * 1.51), "Ubuntu-Title", 40, "#D1D1D1", "center");
       }
 
       function drawSideThruster(ctx, loc, speed, xLoc, yLoc, toDraw) {
+        /* Draws the four side thrusters */
         s = 0.65;
         x = 0;
         y = 0;
@@ -670,6 +750,7 @@
         vThrust = 1;
         hThrust = 1;
 
+        // Calculate the xy coordinate, rotation, and thrust direction of the thruster based on its location the robot
         switch (loc) {
           case "TL":
             x = xLoc - 160;
@@ -704,10 +785,12 @@
         }
 
 
-
+        // Draw the thruster or the thrust itself depending on the input
         if (toDraw == "part") {
+          // Draw the thruster
           drawImg(ctx, sideThruster, x, y, r, s, v, h);
         } else if (toDraw == "thrust") {
+          // Normalize the speed
           if (speed != 0) {
             vThrust = Math.abs(speed);
             if (speed < 0) {
@@ -715,17 +798,22 @@
 
             }
 
+            // Draw the thrust coming out of the robot
             drawImg(ctx, sideThrusterPower, x + xThrust, y + yThrust, rThrust, s, vThrust, hThrust);
           }
+          // Draw text with the speed
           drawText(ctx, Math.trunc(speed * 100.0), x + (xThrust * 9), y + (yThrust * 9), "Ubuntu-Title", 40, "#D1D1D1", "center");
         }
       }
 
       function drawDevice(ctx, devName, working, xLoc, yLoc) {
+        /* Draws the electronics in the tube */
         x = xLoc;
         y = yLoc;
         s = 1;
         r = 0;
+
+        // Get the location and image of component based on its name
         image = new Image();
         switch (devName) {
           case "ESC":
@@ -761,15 +849,20 @@
         }
 
         if (working) {
+          // Draw the component
           drawImg(ctx, image, x, y, r, s);
         } else {
+          // Apply a red filter if the component is not operational
           ctx.filter = "sepia(100%) saturate(250%) hue-rotate(-50deg)";
+
+          // Draw the component and reset the filter
           drawImg(ctx, image, x, y, r, s);
           ctx.filter = "none";
         }
       }
 
       function remapArray(arr, oldMin, oldMax, newMin, newMax) {
+        /* Remaps an array */
         mapped = [];
         for (i = 0; i < arr.length; i++) {
           mapped.push(newMin + (newMax - newMin) * (arr[i] - oldMin) / (oldMax - oldMin));
@@ -777,6 +870,7 @@
         return mapped;
       }
 
+      // Scale the midground canvas
       scaleAmnt = 0.7;
       xLoc = ((canvasFg.width / 2) / scaleAmnt);
       yLoc = (canvasFg.height / 2) / scaleAmnt;
@@ -784,6 +878,7 @@
       ctxMg.scale(scaleAmnt, scaleAmnt);
 
       function drawRobotDiagramStatic() {
+        /* Draw the static parts of the robot diagram */
         drawSideThruster(ctxMg, "TL", 0, xLoc, yLoc, "part");
         drawSideThruster(ctxMg, "TR", 0, xLoc, yLoc, "part");
         drawSideThruster(ctxMg, "BL", 0, xLoc, yLoc, "part");
@@ -792,6 +887,7 @@
       }
 
       function truncateArrayEntries(arr, decimals = 2) {
+        /* Truncate extra numbers after the decimal on each element in an array */
         var pow = Math.pow(10, decimals);
         for (var i = 0; i < arr.length; i++) {
           arr[i] = Math.trunc(arr[i] * pow) / pow;
@@ -800,23 +896,28 @@
       }
 
       function updateDiagram(speeds) {
+        // Clear the foreground and background canvases
         clearCanvas(ctxFg, canvasFg, true);
         clearCanvas(ctxBg, canvasBg, true);
 
+        // Scale the midground canvas
         ctxFg.scale(scaleAmnt, scaleAmnt);
         ctxBg.scale(scaleAmnt, scaleAmnt);
 
 
+        // Draw the only the thrust of the side thrusters
         drawSideThruster(ctxBg, "TL", speeds[2], xLoc, yLoc, "thrust");
         drawSideThruster(ctxBg, "TR", speeds[0], xLoc, yLoc, "thrust");
         drawSideThruster(ctxBg, "BL", speeds[3], xLoc, yLoc, "thrust");
         drawSideThruster(ctxBg, "BR", speeds[1], xLoc, yLoc, "thrust");
 
+        // Draw the top thrusters
         drawTopThruster(ctxBg, "TL", speeds[6], xLoc, yLoc);
         drawTopThruster(ctxBg, "TR", speeds[4], xLoc, yLoc);
         drawTopThruster(ctxBg, "BL", speeds[7], xLoc, yLoc);
         drawTopThruster(ctxBg, "BR", speeds[5], xLoc, yLoc);
 
+        // Draw all of the devices
         drawDevice(ctxFg, "ESC", true, xLoc, yLoc);
         drawDevice(ctxFg, "FathomX", true, xLoc, yLoc);
         drawDevice(ctxFg, "IMU", true, xLoc, yLoc);
@@ -825,7 +926,10 @@
       }
     </script>
     <script id="realtimeGraphs_Script">
+      // TODO: use jquery
       var graphContainer = document.getElementById("graphContainer");
+
+      // Style the graph
       var layout = {
         showlegend: true,
         paper_bgcolor: 'rgba(0,0,0,0)',
@@ -884,10 +988,14 @@
           },
         }
       };
+
+      // Settings for the graph
       settings = {
         displayModeBar: false
       };
 
+
+      // Initialize the amperage graph
       var amperageData = [
         {
           y: [0],
@@ -900,9 +1008,15 @@
           name: "Amps"
         }
       ];
+      // TODO: Write a copy functin and replace the messy JSON code
+      // When the graph is created
+      // we make a copy of the settings so that they can be changed without affecting the other graphs
+
+      // Setup the amperage graph
       Plotly.plot('amperageGraph', amperageData, JSON.parse(JSON.stringify(layout)), settings);
       Plotly.relayout('amperageGraph', { yaxis: { range: [0, 30] } });
 
+      // Initialize the voltage graph
       var voltageData = [
         {
           y: [0],
@@ -915,9 +1029,12 @@
           name: "Volts"
         }
       ];
+
+      // Setup the voltage graph
       Plotly.plot('voltageGraph', voltageData, JSON.parse(JSON.stringify(layout)), settings);
       Plotly.relayout('voltageGraph', { yaxis: { range: [0, 15] } });
 
+      // Initialize the speed graph
       var speedData = [
         {
           y: [0],
@@ -930,9 +1047,12 @@
           name: "Speed"
         }
       ];
+
+      // Setup the speed graph
       Plotly.plot('speedGraph', speedData, JSON.parse(JSON.stringify(layout)), settings);
       Plotly.relayout('speedGraph', { yaxis: { range: [0, 30] } });
 
+      // Initialize the temperature graph
       var temperatureData = [
         {
           y: [0],
@@ -945,13 +1065,18 @@
           name: "Temp"
         }
       ];
+
+      // Setup the temperature graph
       Plotly.plot('temperatureGraph', temperatureData, JSON.parse(JSON.stringify(layout)), settings);
       Plotly.relayout('temperatureGraph', { yaxis: { range: [10, 30] } });
 
+      // Set the current and max number of items per graph
       var cnt = 1;
       var maxCnt = 50;
 
+      // Add new data to the graphs and delete the old data
       function updateGraphs(sensors) {
+        // Add new data to all of the graphs
         Plotly.prependTraces(
           'amperageGraph',
           {
@@ -984,6 +1109,7 @@
           [0]
         );
 
+        // Remove old data from all of the graphs
         cnt++;
         if (cnt > maxCnt) {
           amperageData[0].y.pop();
@@ -992,7 +1118,8 @@
           temperatureData[0].y.pop();
           cnt--;
         }
-
+        
+        // Update all of the graphs with the new range
         Plotly.relayout('amperageGraph', {
           'xaxis.range': [cnt, 0]
         });
@@ -1011,6 +1138,7 @@
       }
 
       function resizeGraphs() {
+        /* Resize the graphs to fit the new window size */
         var w = graphContainer.offsetWidth;
         var h = (window.innerHeight - window.innerWidth * 0.28) / 4;
         Plotly.relayout('amperageGraph', {
@@ -1038,6 +1166,7 @@
       // Timestamp to keep track of FPS
       var lastLoop = new Date();
 
+      // Update the console with the new data
       function updateConsole(mode, override, earthFpsCounter) {
         var thisLoop = new Date();
         var fps = 1000 / (thisLoop - lastLoop);
@@ -1049,10 +1178,16 @@
       }
     </script>
     <script id="main_Script">
+      // TODO: Move all of the separate widgets into separate flask files
+      // Also use flask inheritance to have a separate file for the general dashboard parts
       $(document).ready(function () {
+        // Create a websocket connection with the Earth Node
         var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        // Setup an event handler for when messages are recieved
         socket.on('updateAirNode', handleUpdates);
 
+        // Variables to track the state of the system
         var controlMode = "user-control";
         var userOverride = "false";
         var earthFps = 0;
@@ -1080,7 +1215,9 @@
 
         var drivetrainSpeeds = new Array(8).fill(0);
 
+
         function handleUpdates(parsed) {
+          /* Handle messages from the Earth Node */
           switch (parsed.tag) {
             case "log":
               console.log(parsed.data);
@@ -1110,6 +1247,7 @@
         }
 
         // List elements to display the IMU calibration status
+        // TODO: Switch to JQuery
         var imuCalibSys = document.getElementById("imu-calib-sys");
         var imuSpanSys = document.getElementById("imu-span-sys");
 
@@ -1123,8 +1261,15 @@
         var imuSpanMag = document.getElementById("imu-span-mag");
 
         function updateSite() {
+          /* This is the main control loop of the site */
+
+          // TODO: Test with requestAnimationFrame at the beginning of this function
+
+          // Ask the air node for new data
           socket.emit("getAirNodeUpdates", Date.now());
 
+          // TODO: Switch to jquery
+          // Update the calibration status of the IMU
           for (const [part, status] of Object.entries(sensorData.imu.calibration)) {
             var selectedCalib;
             var selectedSpan;
@@ -1179,6 +1324,7 @@
           requestAnimationFrame(updateSite);
         }
 
+        // TODO: Maybe switch this to just calling update?
         requestAnimationFrame(updateSite);
 
         // IMU Calibration Event Handler
@@ -1190,6 +1336,7 @@
             "metadata": "imuStraighten",
             "highPriority": false
           }
+          // Send a command to straighten the IMU
           socket.emit("sendUpdate", packet);
         });
 
@@ -1212,6 +1359,7 @@
               "metadata": "stabilize",
               "highPriority": false
             }
+            // Send a command to stabilize the robot to a specific angle
             socket.emit("sendUpdate", packet);
           } else {
             $('#invalidAngleToast').toast('show');
@@ -1230,6 +1378,7 @@
             "metadata": "stabilize",
             "highPriority": false
           }
+          // Send a command to stabilize the robot to a (0,0,0)
           socket.emit("sendUpdate", packet);
         });
 
@@ -1241,6 +1390,7 @@
             "metadata": "stop-motors",
             "highPriority": false
           }
+          // Send a command to stop the motors
           socket.emit("sendUpdate", packet);
         });
 
@@ -1252,10 +1402,12 @@
             "metadata": "follow-line",
             "highPriority": false
           }
+
+          // Send a command to start following the transect line
           console.log(packet)
           socket.emit("sendUpdate", packet);
         });
-        
+
         $('#coralReefButton').click(function () {
           var packet = {
             "tag": "stateChange",
@@ -1264,6 +1416,7 @@
             "metadata": "analyze-coral-reef",
             "highPriority": false
           }
+          // Send a command to run the coral reef algorithm
           socket.emit("sendUpdate", packet);
         });
 
@@ -1286,6 +1439,7 @@
                 "metadata": "hold-angle",
                 "highPriority": false
               }
+              // Send a command to hold the input angle
               socket.emit("sendUpdate", packet);
             } else {
               $('#invalidAngleToast').toast('show');

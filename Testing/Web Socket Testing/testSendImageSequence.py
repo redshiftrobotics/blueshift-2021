@@ -1,3 +1,9 @@
+'''
+This script tests streaming a set of images to a website over websockets
+This is a bad solution compared to doing it with flask, the code is messier and it is slower
+'''
+
+# I'm not going to go through and comment this, the code is disgusting, if you want to know how it works, look at testSendCamera.py	
 import asyncio
 import websockets
 import base64
