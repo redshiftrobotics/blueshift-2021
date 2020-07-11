@@ -63,7 +63,6 @@ dependencies:
   - numpy=1.17.2=py37h95a1406_0
   - opencv=4.1.1=py37h0cc45ee_2
   - openh264=1.8.0=hdbcaa40_1000
-  - openssl=1.1.1=h7b6447c_0
   - pcre=8.41=hf484d3e_1003
   - pip=19.2.2=py37_0
   - pixman=0.38.0=h516909a_1003
