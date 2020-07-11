@@ -1264,6 +1264,8 @@
           /* This is the main control loop of the site */
 
           // TODO: Test with requestAnimationFrame at the beginning of this function
+          // Tested this, for some reason it nearly cut the fps in half, not a sure why
+          // Switching back to the original
 
           // Ask the air node for new data
           socket.emit("getAirNodeUpdates", Date.now());
@@ -1321,11 +1323,13 @@
           updateDiagram(drivetrainSpeeds);
           updateConsole(controlMode, userOverride, earthFps);
 
+          // Call this function again in a loop
           requestAnimationFrame(updateSite);
         }
 
         // TODO: Maybe switch this to just calling update?
-        requestAnimationFrame(updateSite);
+        // This works, the changes has been made
+        updateSite();
 
         // IMU Calibration Event Handler
         $('#imu-straighten').click(function () {
