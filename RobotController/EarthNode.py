@@ -38,7 +38,8 @@ import socket
 import CommunicationUtils
 import simplejson as json
 import time
-import ArduinoUtils
+# TODO: Migrate this to the Jetson for V2
+#import ArduinoUtils
 
 # Imports for Controller Communication and Processing
 import ControllerUtils
@@ -51,15 +52,7 @@ if not simpleMode:
 from flask import Flask, render_template, Response
 from flask_socketio import SocketIO
 
-# Imports for finding the ip address of the wifi interface
-import netifaces as ni
-from netifaces import AF_INET
-
-EARTH_IP_WLAN = 'localhost'
-try:
-    EARTH_IP_WLAN = ni.ifaddresses('wlp3s0')[AF_INET][0]['addr']
-except:
-    pass
+EARTH_IP_WLAN = '0.0.0.0'
 
 # Imports for Computer Vision
 import ComputerVisionUtils
@@ -532,8 +525,8 @@ def receiveData(debug=False):
         "amps": 0,
         "volts": 0
     }
-    arduinoThread = threading.Thread(target=ArduinoUtils.earthSensorThread, args=(execute['receiveData'], arduinoData,))
-    arduinoThread.start()
+    # arduinoThread = threading.Thread(target=ArduinoUtils.earthSensorThread, args=(execute['receiveData'], arduinoData,))
+    # arduinoThread.start()
 
     # Get the IP address and port of the earth node
     HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
@@ -563,7 +556,7 @@ def receiveData(debug=False):
     snsr.close()
 
     # Close arduino communication
-    arduinoThread.join()
+    # arduinoThread.join()
 
 def sendData(debug=False):
     """ Sends JSON data to the Water Node
@@ -665,7 +658,7 @@ def startAirNode(debug=False):
     app.jinja_env.auto_reload = True
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
-    socketio.run(app,host=EARTH_IP_WLAN,port=CommunicationUtils.AIR_PORT,debug=False)
+    socketio.run(app,host=EARTH_IP_WLAN, port=CommunicationUtils.AIR_PORT, debug=False)
 
 
 
