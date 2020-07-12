@@ -38,10 +38,10 @@ class DriveController():
         if self.settings["style"] == "holonomic":
             # Calculate motor speeds based on holonomic math
             # I have not been able to find a good source of documentation on exactly what the math is, so at this point, it is mostly trial and error
-            self.mtrSpeeds[self.settings["motor_order"]["frontLeft"]] = self.clamp((xm+ym+zr), -1, 1)
+            self.mtrSpeeds[self.settings["motor_order"]["frontLeft"]] = self.clamp((-xm-ym+zr), -1, 1)
             self.mtrSpeeds[self.settings["motor_order"]["frontRight"]] = self.clamp((-xm+ym+zr), -1, 1)
             self.mtrSpeeds[self.settings["motor_order"]["backLeft"]] = self.clamp((xm-ym+zr), -1, 1)
-            self.mtrSpeeds[self.settings["motor_order"]["backRight"]] = self.clamp((-xm-ym+zr), -1, 1)
+            self.mtrSpeeds[self.settings["motor_order"]["backRight"]] = self.clamp((xm+ym+zr), -1, 1)
             self.mtrSpeeds[self.settings["motor_order"]["verticalFrontLeft"]] = self.clamp((zm+xr+yr), -1, 1)
             self.mtrSpeeds[self.settings["motor_order"]["verticalFrontRight"]] = self.clamp((zm-xr+yr), -1, 1)
             self.mtrSpeeds[self.settings["motor_order"]["verticalBackLeft"]] = self.clamp((zm+xr-yr), -1, 1)
