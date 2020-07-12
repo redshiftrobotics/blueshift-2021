@@ -147,7 +147,7 @@ def mainThread(debug=False):
     """
 
     # Initialize a drive controller object to hande generating motor values
-    DC = ControllerUtils.DriveController(flip=[1,0,1,0,0,0,0,0])
+    DC = ControllerUtils.DriveController(flip=[1,0,1,0,0,0,1,0])
 
     # TODO: Combine selecting a controller, and starting the update controller thread with the controller class for easier use
     # Select a controller object
