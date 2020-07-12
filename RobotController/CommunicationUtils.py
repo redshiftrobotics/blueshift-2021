@@ -19,8 +19,13 @@ SNSR_PORT = 6664
 AIR_PORT = 6663 # TODO: Update this to use port 80 for easier website access
 
 # TODO: Figure out how to set custom link local IP Addresses and make these more human readable
+# Ideally, when we switch to ElectronJS for the front end, we the IP address of the Earth Node will not matter
+# This can be achieved for socket communication by just making the Earth Node connect to the Water Node (it is the other way around right now)
+# It is a bit more complicated for ZMQ image streaming, because imagezmq requires the IP address of the host to be known
+# (Though that also may not be an issue after we switch to using WebRTC or UDP via GStreamer on the Jetson NX)
+
 # Hardcoded IP Addresses for communication
-EARTH_IP = '169.254.219.238'
+EARTH_IP = '169.254.61.199'
 WATER_IP = '169.254.92.92'
 
 SIMPLE_EARTH_IP = "localhost"
