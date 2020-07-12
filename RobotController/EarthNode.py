@@ -288,6 +288,7 @@ def mainThread(debug=False):
         override = False
 
         # Setup the gamepad mapping
+        # TODO: Create "side" classes so we don't need to use dictionaries
         gamepadMapping = {
             "x-mov": gamepad.left["stick"]["x"],
             "y-mov": gamepad.left["stick"]["y"],
