@@ -26,6 +26,7 @@ import logging
 # Imports for Threading
 import threading
 from queue import Queue, LifoQueue
+from copy import copy
 
 # Imports for Video Streaming
 sys.path.insert(0, 'imagezmq/imagezmq')
@@ -227,6 +228,7 @@ def mainThread(debug=False):
     # Store the result of coral reef analysis
     coralReefOutPath = "static/assets/coralHealth/"
     coralReefDone = False
+    coralReefReference = 'static/assets/coralHealth/coral_old.png'
 
     # Create an empty array to store computer vision data
     cvImage = np.array([])
@@ -257,15 +259,20 @@ def mainThread(debug=False):
                     if recvMsg['data'] == "run":
                         # Enable follow line mode
                         mode = "follow-line-init"
+                elif recvMsg['metadata']== "coral-recieve-image":
+                     coralReefReference = recvMsg['data']
+
                 elif recvMsg['metadata'] == "analyze-coral-reef":
                     if recvMsg['data'] == "run":
                         # If there is camera data, run coral reef analysis
+                        print(recvMsg)
                         if newestImage.size > 0:
-                            analyzeCoralReefThread = threading.Thread(target=ComputerVisionUtils.findCoralHealth, args=(newestImage, coralReefOutPath, coralReefDone,), daemon=True)
+                            analyzeCoralReefThread = threading.Thread(target=ComputerVisionUtils.findCoralHealth, args=(copy(newestImage), coralReefOutPath, coralReefReference, coralReefDone,), daemon=True)
                             analyzeCoralReefThread.start()
                         else:
                             # TODO: handle the [noCamera] command in the correct places
                             handlePacket(CommunicationUtils.packet(tag="stateChange", data="noCamera", metadata="analyze-coral-reef"))
+                
                 elif recvMsg['metadata'] == "stabilize":
                     # Set the correct rotation target
                     stabilizeRot["x"] = recvMsg["data"]["x"]
