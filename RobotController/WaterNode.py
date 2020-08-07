@@ -81,7 +81,7 @@ drivetrain_motor_mapping = [8, 9, 10, 11, 12, 13, 14, 15]
 
 # Initialize ESC
 SD.set_all_servos(0, only_type="T100")
-time.sleep(7)
+time.sleep(4)
 
 def stopAllThreads(callback=0):
 	""" Stops all currently running threads
@@ -227,8 +227,10 @@ def receiveData(debug=False):
 				if recv['metadata'] == 'imuStraighten':
 					IMU.set_offset(recv["data"])
 			elif recv['tag'] == "motorData":
+				# TODO: Implement a proper time sync system
 				if recv['metadata'] == "drivetrain":
-					if time.time() - recv['timestamp'] < 0.1:
+					print(time.time() - recv['timestamp'] - 2.5)
+					if time.time() - recv['timestamp'] -2.5 < 0.5:
 						for loc,spd in enumerate(recv['data']):
 							SD.set_servo(drivetrain_motor_mapping[loc], spd*0.5)
 
