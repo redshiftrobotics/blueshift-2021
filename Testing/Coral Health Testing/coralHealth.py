@@ -185,12 +185,12 @@ def findCoralHealth(coral_reference, coral_to_align):
     #  * The images are converted to float16 from uint8 so they can represent negative numbers
     #    They need to be converted back before they can be used in opencv
     coral_subtracted = cv2.GaussianBlur(coral_reference, blurKSize, blurAmmount).astype("float16") - cv2.GaussianBlur(coral_aligned_mask, blurKSize, blurAmmount).astype("float16")
-    outImages["subtraction"] = coral_subtracted
 
     # In order to be able to work with negative numbers, a constant, 64, is added to everything
     #  * This affects the color filtering, so if the constant is adjusted, the filters will need be re-tuned
     #  * Finally the image is clipped within range and converted back to uint8
     coral_subtracted = np.clip(np.abs(coral_subtracted+64), 0, 255).astype("uint8")
+    outImages["subtraction"] = coral_subtracted
 
 
     # Mark Changes on the reef
@@ -308,15 +308,15 @@ coral_reference = cv2.imread("coral_7.png")
 
 coral_to_align = cv2.imread("coral_7-difficult.png")
 
-# cv2.imshow("coral_reference ", coral_reference)
-# cv2.imshow("coral_to_align ", coral_to_align)
-# cv2.imshow("coral_to_align_masked", coral_to_align_masked)
-# cv2.imshow("matches ", coral_matches)
-# cv2.imshow("aligned", coral_aligned_mask)
-# cv2.imshow("aligned overlay", overlay_image_alpha(coral_reference, coral_aligned_mask[:, :, 0:3], (0, 0), 0.5))
-# cv2.imshow("subtraction", coral_subtracted)
+result = findCoralHealth(coral_reference, coral_to_align)
 
-cv2.imshow("coral_annotated", findCoralHealth(coral_reference, coral_to_align)["final"])
+cv2.imshow("coral_to_align_masked", result["backgroundMask"])
+cv2.moveWindow("coral_annotated", 1000,50)
+cv2.imshow("matches ", result["features"])
+cv2.imshow("aligned", result["alignment"])
+cv2.imshow("subtraction", result["subtraction"])
+
+cv2.imshow("coral_annotated", result["final"])
 cv2.moveWindow("coral_annotated", 1000,50)
 
 cv2.imshow("coral_reference", coral_reference)

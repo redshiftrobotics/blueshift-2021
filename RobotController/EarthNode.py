@@ -26,6 +26,7 @@ import logging
 # Imports for Threading
 import threading
 from queue import Queue, LifoQueue
+from copy import copy
 
 # Imports for Video Streaming
 sys.path.insert(0, 'imagezmq/imagezmq')
@@ -38,7 +39,8 @@ import socket
 import CommunicationUtils
 import simplejson as json
 import time
-import ArduinoUtils
+# TODO: Migrate this to the Jetson for V2
+#import ArduinoUtils
 
 # Imports for Controller Communication and Processing
 import ControllerUtils
@@ -51,15 +53,7 @@ if not simpleMode:
 from flask import Flask, render_template, Response
 from flask_socketio import SocketIO
 
-# Imports for finding the ip address of the wifi interface
-import netifaces as ni
-from netifaces import AF_INET
-
-EARTH_IP_WLAN = 'localhost'
-try:
-    EARTH_IP_WLAN = ni.ifaddresses('wlp3s0')[AF_INET][0]['addr']
-except:
-    pass
+EARTH_IP_WLAN = '0.0.0.0'
 
 # Imports for Computer Vision
 import ComputerVisionUtils
@@ -154,7 +148,7 @@ def mainThread(debug=False):
     """
 
     # Initialize a drive controller object to hande generating motor values
-    DC = ControllerUtils.DriveController(flip=[1,0,1,0,0,0,0,0])
+    DC = ControllerUtils.DriveController(flip=[1,0,1,0,0,0,1,0])
 
     # TODO: Combine selecting a controller, and starting the update controller thread with the controller class for easier use
     # Select a controller object
@@ -234,6 +228,7 @@ def mainThread(debug=False):
     # Store the result of coral reef analysis
     coralReefOutPath = "static/assets/coralHealth/"
     coralReefDone = False
+    coralReefReference = 'static/assets/coralHealth/coral_old.png'
 
     # Create an empty array to store computer vision data
     cvImage = np.array([])
@@ -264,15 +259,20 @@ def mainThread(debug=False):
                     if recvMsg['data'] == "run":
                         # Enable follow line mode
                         mode = "follow-line-init"
+                elif recvMsg['metadata']== "coral-recieve-image":
+                     coralReefReference = recvMsg['data']
+
                 elif recvMsg['metadata'] == "analyze-coral-reef":
                     if recvMsg['data'] == "run":
                         # If there is camera data, run coral reef analysis
+                        print(recvMsg)
                         if newestImage.size > 0:
-                            analyzeCoralReefThread = threading.Thread(target=ComputerVisionUtils.findCoralHealth, args=(newestImage, coralReefOutPath, coralReefDone,), daemon=True)
+                            analyzeCoralReefThread = threading.Thread(target=ComputerVisionUtils.findCoralHealth, args=(copy(newestImage), coralReefOutPath, coralReefReference, coralReefDone,), daemon=True)
                             analyzeCoralReefThread.start()
                         else:
                             # TODO: handle the [noCamera] command in the correct places
                             handlePacket(CommunicationUtils.packet(tag="stateChange", data="noCamera", metadata="analyze-coral-reef"))
+                
                 elif recvMsg['metadata'] == "stabilize":
                     # Set the correct rotation target
                     stabilizeRot["x"] = recvMsg["data"]["x"]
@@ -295,6 +295,7 @@ def mainThread(debug=False):
         override = False
 
         # Setup the gamepad mapping
+        # TODO: Create "side" classes so we don't need to use dictionaries
         gamepadMapping = {
             "x-mov": gamepad.left["stick"]["x"],
             "y-mov": gamepad.left["stick"]["y"],
@@ -532,8 +533,8 @@ def receiveData(debug=False):
         "amps": 0,
         "volts": 0
     }
-    arduinoThread = threading.Thread(target=ArduinoUtils.earthSensorThread, args=(execute['receiveData'], arduinoData,))
-    arduinoThread.start()
+    # arduinoThread = threading.Thread(target=ArduinoUtils.earthSensorThread, args=(execute['receiveData'], arduinoData,))
+    # arduinoThread.start()
 
     # Get the IP address and port of the earth node
     HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
@@ -563,7 +564,7 @@ def receiveData(debug=False):
     snsr.close()
 
     # Close arduino communication
-    arduinoThread.join()
+    # arduinoThread.join()
 
 def sendData(debug=False):
     """ Sends JSON data to the Water Node
@@ -665,7 +666,7 @@ def startAirNode(debug=False):
     app.jinja_env.auto_reload = True
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
-    socketio.run(app,host=EARTH_IP_WLAN,port=CommunicationUtils.AIR_PORT,debug=False)
+    socketio.run(app,host=EARTH_IP_WLAN, port=CommunicationUtils.AIR_PORT, debug=False)
 
 
 

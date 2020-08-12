@@ -187,9 +187,6 @@ kernel = np.ones((9,9))
 # Box expansion amount
 expand_amount = 10
 
-# Coral image reference
-coral_reference_path = "static/assets/coralHealth/coral_old.png"
-
 # Coral Health Helper functions
 
 def overlay_image_alpha(img, img_overlay, pos, alpha_mask):
@@ -314,21 +311,19 @@ def smoothImage(img, dilate, erode):
 
 # Coral Health Main Function
 
-def findCoralHealth(coral_to_align, cvOutPath, done=None):
+def findCoralHealth(coral_to_align, cvOutPath, coral_reference_path, done=None):
     '''
     Finds the change health of a coral reef by comparing two images of it
 
     Arguments:
-        coral_reference: The reference image of the coral reef (This will be provided by MATE)
         coral_to_align: The target image to compare against the reference (This will likely come from our camera)
+        cvOutPath: Folder all of the output images are saved to. 
+        coral_reference: The reference image of the coral reef (This will be provided by MATE)
+        done: Keeps track of when the thread is done running.
     
     Returns:
-        A dictionary containing several images:
-            backgroundMask: The target image with the background removed (used to evaluate the background removal)
-            features: A mapping of image alignment features between the reference and target images (used to evaluate image alignment)
-            alignment: The reference image overlayed with the aligned target image (used to evaluate alignment)
-            subtraction: The change in color between the reference and target images (used to evaluate detection of areas of change)
-            final: The target image with all areas of change marked in their respective colors
+        Nothing
+
     '''
     coral_reference = cv2.imread(coral_reference_path)
     cv2.imwrite(cvOutPath+"input.png", coral_to_align)
@@ -366,13 +361,12 @@ def findCoralHealth(coral_to_align, cvOutPath, done=None):
     #  * The images are converted to float16 from uint8 so they can represent negative numbers
     #    They need to be converted back before they can be used in opencv
     coral_subtracted = cv2.GaussianBlur(coral_reference, blurKSize, blurAmmount).astype("float16") - cv2.GaussianBlur(coral_aligned_mask, blurKSize, blurAmmount).astype("float16")
-    outImages["subtraction"] = coral_subtracted
-    cv2.imwrite("subtraction.png", coral_subtracted)
 
     # In order to be able to work with negative numbers, a constant, 64, is added to everything
     #  * This affects the color filtering, so if the constant is adjusted, the filters will need be re-tuned
     #  * Finally the image is clipped within range and converted back to uint8
     coral_subtracted = np.clip(np.abs(coral_subtracted+64), 0, 255).astype("uint8")
+    cv2.imwrite(cvOutPath+"subtraction.png", coral_subtracted)
 
 
     # Mark Changes on the reef
@@ -407,10 +401,8 @@ def findCoralHealth(coral_to_align, cvOutPath, done=None):
                 h += expand_amount*2
                 cv2.rectangle(coral_aligned, (x,y), (x+w,y+h), changes[key]["color"], 2)
     
-    cv2.imwrite("final.png", coral_aligned)
+    cv2.imwrite(cvOutPath+"final.png", coral_aligned)
 
     # If this is run in a thread, the user can specify a place
     # to store the out put without returning it
     done = True
-
-    return outImages
