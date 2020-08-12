@@ -1,0 +1,44 @@
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.js"
+        integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc=" crossorigin="anonymous"></script>
+
+</head>
+
+<body>
+    <input id="inp" type='file'>
+    <p id="b64"></p>
+    <img id="img" height="150">
+
+
+    <script>
+
+
+        function readFile() {
+
+            if (this.files && this.files[0]) {
+
+                var FR = new FileReader();
+
+                FR.addEventListener("load", function (e) {
+
+                    var b64_results = ''
+                    $("#img").attr('src', e.target.result);
+                    $("#b64").html(e.target.result);
+                    console.log(e.target.result)
+
+                });
+
+                FR.readAsDataURL(this.files[0]);
+            }
+
+        }
+        $('#inp').change(readFile)
+
+
+
+
+    </script>
+
+
+
+</body>

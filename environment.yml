@@ -1,0 +1,43 @@
+name: blueshift2020
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - ca-certificates=2019.11.28=hecc5488_0
+  - certifi=2019.11.28=py37_0
+  - freetype=2.10.0=h563cfd7_1
+  - icu=64.2=he025d50_1
+  - intel-openmp=2019.4=245
+  - jpeg=9c=hfa6e2cd_1001
+  - libblas=3.8.0=14_mkl
+  - libcblas=3.8.0=14_mkl
+  - libclang=9.0.1=default_hf44288c_0
+  - liblapack=3.8.0=14_mkl
+  - liblapacke=3.8.0=14_mkl
+  - libopencv=4.2.0=py37_1
+  - libpng=1.6.37=h7602738_0
+  - libtiff=4.1.0=h21b02b4_3
+  - libwebp=1.0.2=hfa6e2cd_5
+  - lz4-c=1.8.3=he025d50_1001
+  - mkl=2019.4=245
+  - opencv=4.2.0=py37_1
+  - openssl=1.1.1d=hfa6e2cd_0
+  - pip=19.3.1=py37_0
+  - py-opencv=4.2.0=py37h5ca1d4c_1
+  - python=3.7.6=h60c2a47_2
+  - qt=5.12.5=h7ef1ec2_0
+  - setuptools=44.0.0=py37_0
+  - sqlite=3.30.1=he774522_0
+  - vc=14.1=h0510ff6_4
+  - vs2015_runtime=14.16.27012=hf0eaf9b_1
+  - wheel=0.33.6=py37_0
+  - wincertstore=0.2=py37_0
+  - xz=5.2.4=h2fa13f4_1001
+  - zlib=1.2.11=h2fa13f4_1006
+  - zstd=1.4.4=hd8a0e53_1
+  - pip:
+    - autopep8==1.5.3
+    - numpy==1.18.1
+    - pycodestyle==2.6.0
+    - toml==0.10.1
+prefix: C:\Users\LionHeart\Anaconda2\envs\blueshift2020
