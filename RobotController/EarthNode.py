@@ -43,11 +43,11 @@ import time
 #import ArduinoUtils
 
 # Imports for Controller Communication and Processing
-import ControllerUtils
-from simple_pid import PID
+#import ControllerUtils
+#from simple_pid import PID
 
-if not simpleMode:
-    import evdev
+#if not simpleMode:
+    #import evdev
 
 # Imports for AirNode
 from flask import Flask, render_template, Response
@@ -662,6 +662,7 @@ def startAirNode(debug=False):
         return Response(camGen(camName), mimetype='multipart/x-mixed-replace; boundary=frame')
 
     # TODO: Improve mode system with a development, deployment, simple mode, etc.
+    
     # Setup auto reload of files for easy development 
     app.jinja_env.auto_reload = True
     app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -680,7 +681,7 @@ if( __name__ == "__main__"):
     recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
     sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
     airNodeThread = threading.Thread(target=startAirNode, args=(verbose[0],))
-    mainThread.start()
+    #mainThread.start()
     vidStreamThread.start()
     recvDataThread.start()
     sendDataThread.start()
@@ -689,7 +690,7 @@ if( __name__ == "__main__"):
 	# We don't want the program to end uptil all of the threads are stopped
     while execute['streamVideo'] or execute['receiveData'] or execute['sendData'] or execute['mainThread']:
         time.sleep(0.1)
-    mainThread.join()
+    #mainThread.join()
     recvDataThread.join()
     sendDataThread.join()
     vidStreamThread.join()

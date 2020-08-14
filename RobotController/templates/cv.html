@@ -20,14 +20,10 @@
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/dashboard.css') }}" />
 
   <style>
-    #camDisplay {
-      width: 100%;
+    
+    .fit-image{
       height: auto;
-    }
-
-    #screenshotCnvs {
       width: 100%;
-      height: auto;
     }
   </style>
 </head>
@@ -91,7 +87,8 @@
     <div class="content">
       <main>
         <div style="position: relative; z-index: 1500;">
-          <div id="coralReefFailedToast" class="toast" data-animation="false" data-delay="1000" style="position: absolute; top: 7.5; left: 43%;">
+          <div id="coralReefFailedToast" class="toast" data-animation="false" data-delay="1000"
+            style="position: absolute; top: 7.5; left: 43%;">
             <div class="toast-header" style="background-color: #6c757d; color: white; border: #6c757d;">
               <h5 class="mr-auto">Couldn't find transect line.</h5>
               <button type="button" class="ml-2 mb-1 close" data-dismiss="toast">
@@ -105,7 +102,7 @@
             <div class="col-md-5">
               <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded">
                 <div class="text-center">
-                  <img id="camDisplay" src="{{ url_for('static', filename='assets/noCamera.png') }}">
+                  <img class = 'fit-image' id="camDisplay" src="{{ url_for('static', filename='assets/noCamera.png') }}">
                 </div>
               </div>
             </div>
@@ -138,9 +135,9 @@
                     </div>
                   </div>
                 </div>
-                <div class="btn-group btn-group-sm mt-1" role="group" aria-label="Button group with nested dropdown">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Button group with nested dropdown">
                   <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown"
+                    <button type="button" class="btn btn-secondary dropdown-toggle " data-toggle="dropdown"
                       aria-haspopup="true" aria-expanded="false">
                       Coral Health
                     </button>
@@ -152,12 +149,16 @@
                     </div>
                   </div>
                 </div>
+                <div class="custom-file mt-2">
+                  <input type="file" id="choose_file" class="custom-file-input bg-secondary">
+                  <label class="custom-file-label">Upload Coral Reef</label>
+                </div>
               </div>
             </div>
             <div class="col-md-5">
               <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded">
                 <div class="text-center">
-                  <canvas id="screenshotCnvs" width="1920" height="1080"></canvas>
+                  <canvas class = 'fit-image' id="screenshotCnvs" width="1920" height="1080"></canvas>
                 </div>
               </div>
             </div>
@@ -165,26 +166,7 @@
           <div class="row">
             <div class="col-md-4">
               <div class="bg-mattBlackLight my-3 p-3 mx-0 rounded">
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                sunt earum tempora veniam.
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                sunt earum tempora veniam.
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                sunt earum tempora veniam.
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                sunt earum tempora veniam.
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-                Ratione libero totam rerum eos nam ab perspiciatis voluptatum
-                in. Quidem natus autem quae. Velit accusamus sit, perspiciatis
-                sunt earum tempora veniam.
+                <img class = 'fit-image' id='referenceCoral' src="{{ url_for('static', filename='assets/noCamera.png') }}">
               </div>
             </div>
             <div class="col-md-4">
@@ -266,7 +248,7 @@
       $(document).ready(function () {
         var socket = io.connect('http://' + document.domain + ':' + location.port);
         socket.on('updateAirNode', handleUpdates);
-        
+
         function handleUpdates(parsed) {
           switch (parsed.tag) {
             case "stateChange":
@@ -284,14 +266,14 @@
           takeScreenshot();
         });
 
-        
+
         // Set inital camera source
         $("#camDisplay").attr("src", "/videoFeed/mainCam");
 
         // Switch image source based on radio buttons
         $('input[type=radio][name=camera-source]').change(function () {
           $("#camDisplay").attr("src", "{{ url_for('static', filename='assets/noCamera.png') }}");
-          $("#camDisplay").attr("src", "/videoFeed/"+this.value);
+          $("#camDisplay").attr("src", "/videoFeed/" + this.value);
           selectedCamera = this.value;
         });
 
@@ -312,8 +294,34 @@
         $("#coralHealthDropdown a").on("click", function () {
           var id = $(this).text();
           console.log(id);
+     
         });
-      });
+        
+        // Upload and display coral reef reference file
+        $('#choose_file').change(readFile)
+        });
+
+      function readFile() {
+
+        if (this.files && this.files[0]) {
+
+          var FR = new FileReader();
+
+          FR.addEventListener("load", function (e) {
+
+            var b64_results = ''
+            $("#referenceCoral").attr('src', e.target.result);
+
+          });
+
+          FR.readAsDataURL(this.files[0]);
+        }
+
+      }
+      
+
+
+
     </script>
 </body>
 
