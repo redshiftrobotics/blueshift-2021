@@ -9,7 +9,7 @@ import argparse
 # Stores if the program is in testing mode or not
 simpleMode = False
 
-# Check if the program is in testing mode and enable it if so
+# Check if the program is in testing mode and enable it if so 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--simple", help="""Run the program in simple mode (fake data and no special libraries).
                     Useful for running on any device other than the robot""",
@@ -43,11 +43,10 @@ import time
 #import ArduinoUtils
 
 # Imports for Controller Communication and Processing
-#import ControllerUtils
-#from simple_pid import PID
+import ControllerUtils
+from simple_pid import PID
 
-#if not simpleMode:
-    #import evdev
+
 
 # Imports for AirNode
 from flask import Flask, render_template, Response
@@ -150,20 +149,15 @@ def mainThread(debug=False):
     # Initialize a drive controller object to hande generating motor values
     DC = ControllerUtils.DriveController(flip=[1,0,1,0,0,0,1,0])
 
-    # TODO: Combine selecting a controller, and starting the update controller thread with the controller class for easier use
     # Select a controller object
-    dev = None
-    while (not dev) and execute['mainThread']:
+    gamepad = None
+    while (not gamepad) and execute['mainThread']:
         time.sleep(5)
         try:
-            dev = ControllerUtils.identifyController()
+            gamepad = ControllerUtils.Joystick(1)
         except Exception as e:
             print(e)
-    # Initialize a gamepad object
-    gamepad = ControllerUtils.Gamepad()
-    # Create and start a thread to update the gamepad object based on the state of the controller
-    updateGamepadStateThreads = threading.Thread(target=ControllerUtils.updateGamepadState, args=(gamepad, dev, execute['mainThread'],), daemon=True)
-    updateGamepadStateThreads.start()
+
 
     # Create empty objects to store sensor and image data
     newestImage = np.array([])
@@ -452,9 +446,15 @@ def mainThread(debug=False):
                                         gamepadMapping["x-rot"],
                                         gamepadMapping["y-rot"],
                                         gamepadMapping["z-rot"])
+                                        
+            armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
+
+            armMovement = 0.1*armDirection
             
             # Create and send the motor speeds packet
             handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+        
+            handlePacket(CommunicationUtils.packet("gripData", armMovement, metadata="arm-angle"))
 
         
         # Handle coral reef algorthim
@@ -681,7 +681,7 @@ if( __name__ == "__main__"):
     recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
     sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
     airNodeThread = threading.Thread(target=startAirNode, args=(verbose[0],))
-    #mainThread.start()
+    mainThread.start()
     vidStreamThread.start()
     recvDataThread.start()
     sendDataThread.start()
@@ -690,7 +690,7 @@ if( __name__ == "__main__"):
 	# We don't want the program to end uptil all of the threads are stopped
     while execute['streamVideo'] or execute['receiveData'] or execute['sendData'] or execute['mainThread']:
         time.sleep(0.1)
-    #mainThread.join()
+    mainThread.join()
     recvDataThread.join()
     sendDataThread.join()
     vidStreamThread.join()
