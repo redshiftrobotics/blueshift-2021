@@ -189,9 +189,21 @@ def mainThread(debug=False):
 
     # Initalize PID Rotation controllers
     rot = {
-        "Kp": 1,
-        "Kd": 0.1,
-        "Ki": 0.05
+        "x": {
+            "Kp": 1/30,
+            "Kd": 0.1,
+            "Ki": 0
+            },
+        "y": {
+            "Kp": 1/30,
+            "Kd": 0.1,
+            "Ki": 0
+            },
+        "z": {
+            "Kp": 1/30,
+            "Kd": 0.1,
+            "Ki": 0
+        }
     }
     xRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
     yRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
@@ -417,21 +429,21 @@ def mainThread(debug=False):
                 # Reset PID rotation controllers
                 xRotPID.reset()
                 yRotPID.reset()
-                zRotPID.reset()
+                #zRotPID.reset()
                 xRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
                 yRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
-                zRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+                #zRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
 
                 # Assuming the robot has been correctly calibrated, (0,0,0) should be upright
                 xRotPID.setpoint = stabilizeRot["x"]
                 yRotPID.setpoint = stabilizeRot["y"]
-                zRotPID.setpoint = stabilizeRot["z"]
+                #zRotPID.setpoint = stabilizeRot["z"]
                 mode = "hold-angle"
             elif (mode == "hold-angle"): # Run hold angle mode
                 # Update the PID controllers
                 xTgt = xRotPID(newestSensorState["imu"]["gyro"]["x"])
                 yTgt = yRotPID(newestSensorState["imu"]["gyro"]["y"])
-                zTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
+                #zTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
 
                 # Calculate new motor values
                 speeds = DC.calcMotorValues(gamepadMapping["x-mov"],
@@ -439,9 +451,14 @@ def mainThread(debug=False):
                                             gamepadMapping["z-mov"],
                                             xTgt,
                                             yTgt,
-                                            zTgt)
+                                            gamepadMapping["z-rot"])
                 # Create and send the motor speeds packet
                 handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+
+                armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
+                armMovement = 1*armDirection
+                handlePacket(CommunicationUtils.packet("gripData", armMovement, metadata="arm-angle"))
+
         if (mode == "user-control" or override): # Run user control mode
             # Calculate new motor values
             speeds = DC.calcMotorValues(gamepadMapping["x-mov"],
@@ -450,7 +467,7 @@ def mainThread(debug=False):
                                         gamepadMapping["x-rot"],
                                         gamepadMapping["y-rot"],
                                         gamepadMapping["z-rot"])
-                                        
+            
             armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
 
             armMovement = 1*armDirection
