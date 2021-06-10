@@ -26,7 +26,7 @@ AIR_PORT = 6663 # TODO: Update this to use port 80 for easier website access
 
 # Hardcoded IP Addresses for communication
 EARTH_IP = '169.254.61.199'
-WATER_IP = '169.254.92.92'
+WATER_IP = '169.254.209.182'
 
 SIMPLE_EARTH_IP = "localhost"
 

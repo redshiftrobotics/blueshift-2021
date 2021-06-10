@@ -46,8 +46,6 @@ import time
 import ControllerUtils
 from simple_pid import PID
 
-
-
 # Imports for AirNode
 from flask import Flask, render_template, Response
 from flask_socketio import SocketIO
@@ -102,6 +100,7 @@ tags = {
         "bkpCam2": [airCamQueues["bkpCam2"]],
         },
     "motorData": [sendDataQueue, airQueue],
+    "gripData": [sendDataQueue, airQueue], # TODO: Explain this to Jenna
     "log": [airQueue],
     "stateChange": [airQueue, recvDataQueue, sendDataQueue, recvImageQueue, mainQueue],
     "settingChange": [mainQueue, sendDataQueue]
@@ -147,17 +146,22 @@ def mainThread(debug=False):
     """
 
     # Initialize a drive controller object to hande generating motor values
-    DC = ControllerUtils.DriveController(flip=[1,0,1,0,0,0,1,0])
+    DC = ControllerUtils.DriveController(flip=[0,0,0,1,0,1,1,0])
 
+    # TODO: Combine selecting a controller, and starting the update controller thread with this controller class for easier use
     # Select a controller object
-    gamepad = None
-    while (not gamepad) and execute['mainThread']:
+    dev = None
+    while (not dev) and execute['mainThread']:
         time.sleep(5)
         try:
-            gamepad = ControllerUtils.Joystick(1)
+            dev = ControllerUtils.identifyController()
         except Exception as e:
             print(e)
-
+    # Initialize a gamepad object
+    gamepad = ControllerUtils.Gamepad()
+    # Create and start a thread to update the gamepad object based on the state of the controller
+    updateGamepadStateThreads = threading.Thread(target=ControllerUtils.updateGamepadState, args=(gamepad, dev, execute['mainThread'],), daemon=True)
+    updateGamepadStateThreads.start()
 
     # Create empty objects to store sensor and image data
     newestImage = np.array([])
@@ -449,10 +453,11 @@ def mainThread(debug=False):
                                         
             armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
 
-            armMovement = 0.1*armDirection
+            armMovement = 1*armDirection
             
             # Create and send the motor speeds packet
             handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+            #print(speeds)
         
             handlePacket(CommunicationUtils.packet("gripData", armMovement, metadata="arm-angle"))
 

@@ -75,13 +75,14 @@ lock = threading.Lock()
 restartCamStream = False
 
 # IMU and PWM interface classes
-IMU = HardwareUtils.IMUFusion()
-SD = HardwareUtils.ServoDriver([(8, "T100"), (9, "T100"), (10, "T100"), (11, "T100"), (12, "T100"), (13, "T100"), (14, "T100"), (15, "T100")])
-drivetrain_motor_mapping = [8, 9, 10, 11, 12, 13, 14, 15]
+#IMU = HardwareUtils.IMUFusion()
+SD = HardwareUtils.ServoDriver([(0, "DS3218MG"), (14, "T100"), (9, "T100"), (10, "T100"), (8, "T100"), (15, "T100"), (13, "T100"), (11, "T100"), (12, "T100")])
+drivetrain_motor_mapping = [14, 9, 10, 8, 15, 13, 11, 12]
+gripper_servo = 0
 
 # Initialize ESC
 SD.set_all_servos(0, only_type="T100")
-time.sleep(4)
+time.sleep(7)
 
 def stopAllThreads(callback=0):
 	""" Stops all currently running threads
@@ -222,19 +223,22 @@ def receiveData(debug=False):
 				if recv['data'] == 'close':
 					stopAllThreads()
 				elif recv['data'] == 'restartCamStream':
-					restartCamStream()
+					restartCamStream = True
 			elif recv['tag'] == 'settingChange':
 				if recv['metadata'] == 'imuStraighten':
-					IMU.set_offset(recv["data"])
+					#IMU.set_offset(recv["data"])
+					pass
 			elif recv['tag'] == "motorData":
-				# TODO: Implement a proper time sync system
 				if recv['metadata'] == "drivetrain":
-					print(time.time() - recv['timestamp'] - 2.5)
-					if time.time() - recv['timestamp'] -2.5 < 0.5:
+					if time.time() - recv['timestamp'] < 0.1:
 						for loc,spd in enumerate(recv['data']):
 							SD.set_servo(drivetrain_motor_mapping[loc], spd*0.5)
+			elif recv['tag'] == "gripData":
+				if recv['metadata'] == "arm-angle":
+					if time.time() - recv['timestamp'] < 0.1:
+						SD.move_servo(gripper_servo, recv['data'], 30, 0)
 
-		# If we loose conenction, try to reconnect
+		# If we loose connection, try to reconnect
 		except (OSError, KeyboardInterrupt):
 			print("receiveData connection lost")
 			connected = False
@@ -313,11 +317,11 @@ if( __name__ == "__main__"):
 	sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
 	vidStreamThread.start()
 	recvDataThread.start()
-	sendDataThread.start()
+	#sendDataThread.start()
 
 	# We don't want the program to end uptil all of the threads are stopped
 	while execute['streamVideo'] and execute['receiveData'] and execute['sendData']:
 		time.sleep(0.1)
 	recvDataThread.join()
-	sendDataThread.join()
+	#sendDataThread.join()
 	vidStreamThread.join()

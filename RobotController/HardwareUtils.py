@@ -31,7 +31,14 @@ settings = {
     "servo_settings": {
         "T100": {
             "min_pulse": 1100 + 50,
-            "max_pulse": 1900 + 50
+            "max_pulse": 1900 + 50,
+            "type": "continuous-servo"
+        },
+        "DS3218MG": {
+            "min_pulse": 500 + 50,
+            "max_pulse": 2500 + 50,
+            "actuation_range": 270,
+            "type": "servo"
         }
     }
 }
@@ -47,28 +54,65 @@ class ServoDriver():
             self.pca.frequency = frequency
             self.servos = [None]*16
             for loc, s_type in servo_locs:
-                self.servos[loc] = (servo.ContinuousServo(self.pca.channels[loc],
-                                                          min_pulse=settings["servo_settings"][s_type]["min_pulse"],
-                                                          max_pulse=settings["servo_settings"][s_type]["max_pulse"]),
-                                    s_type)
+                if settings["servo_settings"][s_type]["type"] == "continuous-servo":
+                    self.servos[loc] = (servo.ContinuousServo(self.pca.channels[loc],
+                                                             min_pulse=settings["servo_settings"][s_type]["min_pulse"],
+                                                             max_pulse=settings["servo_settings"][s_type]["max_pulse"]),
+                                        s_type)
+                elif settings["servo_settings"][s_type]["type"] == "servo":
+                    self.servos[loc] = (servo.Servo(self.pca.channels[loc],
+                                                    actuation_range=settings["servo_settings"][s_type]["actuation_range"],
+                                                    min_pulse=settings["servo_settings"][s_type]["min_pulse"],
+                                                    max_pulse=settings["servo_settings"][s_type]["max_pulse"]),
+                                        s_type)
 
-    def set_servo(self, loc, speed):
+    def set_servo(self, loc, target):
         '''
-        Sets the speed of a single servo
+        Sets the target of a single servo
 
         Arguments:
             loc: The servo location
-            speed: The servo speed
+            target: The servo target
+        '''
+
+        clamped_target = target
+        if max_val:
+            clamped_target = min(clamped_target, max_val)
+        if min_val:
+            clamped_target = max(clamped_target, min_val)
+
+        if not simpleMode:
+            if self.servos[loc]:
+                if settings["servo_settings"][self.servos[loc][1]]["type"] == "continuous-servo":
+                    self.servos[loc][0].throttle = clamped_target
+                if settings["servo_settings"][self.servos[loc][1]]["type"] == "servo":
+                    self.servos[loc][0].angle = clamped_target
+            else:
+                raise Exception("There is no servo at {}".format(loc))
+    
+    def move_servo(self, loc, amount, max_val, min_val):
+        '''
+        !!! Documentation is not up to date !!!
+        Moves a servo by a given amount
+
+        Arguments
+            loc: The servo location
+            amount: The amount to move the servo (can be positive or negative)
         '''
 
         if not simpleMode:
             if self.servos[loc]:
-                self.servos[loc][0].throttle = speed
+                if settings["servo_settings"][self.servos[loc][1]]["type"] == "continuous-servo":
+                    self.servos[loc][0].throttle = max(min(self.servos[loc][0].throttle + amount, max_val), min_val)
+                if settings["servo_settings"][self.servos[loc][1]]["type"] == "servo":
+                    self.servos[loc][0].angle = max(min(self.servos[loc][0].angle + amount, max_val), min_val)
+                    print(self.servos[loc][0].angle)
             else:
                 raise Exception("There is no servo at {}".format(loc))
 
     def set_all_servos(self, speed, only_type=False):
         '''
+        !!! NOT UP TO DATE, DO NOT USE !!!
         Sets the speed of all of the servos
 
         Arguments:
@@ -247,4 +291,3 @@ class IMUFusion():
             state["temp"] = pnoise1(x+self.offsets["temp"], self.octaves)*5+21
         
         return state
-    
