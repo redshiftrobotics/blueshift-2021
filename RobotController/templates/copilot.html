@@ -1221,6 +1221,9 @@
           switch (parsed.tag) {
             case "log":
               console.log(parsed.data);
+              if (parsed.metadata == "earth-fps") {
+                earthFps = parsed.data;
+              }
               break;
             case "sensor":
               sensorData = parsed.data;
@@ -1235,8 +1238,6 @@
                 controlMode = parsed.data;
               } else if (parsed.metadata == "override") {
                 userOverride = parsed.data;
-              } else if (parsed.metadata == "earth-fps") {
-                earthFps = parsed.data;
               } else if (parsed.metadata == "follow-line") {
                 if (parsed.data == "noCamera") {
                   $('#noCameraToast').toast('show');

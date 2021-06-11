@@ -268,7 +268,8 @@ def mainThread(debug=False):
                 elif recvMsg['metadata'] == "follow-line":
                     if recvMsg['data'] == "run":
                         # Enable follow line mode
-                        mode = "follow-line-init"
+                        #mode = "follow-line-init"
+                        pass
                 elif recvMsg['metadata']== "coral-recieve-image":
                      coralReefReference = recvMsg['data']
 
@@ -289,14 +290,14 @@ def mainThread(debug=False):
                     stabilizeRot["y"] = recvMsg["data"]["y"]
                     stabilizeRot["z"] = recvMsg["data"]["z"]
                     # Set the mode to initialize stabilization
-                    mode = "stabilize-init"
+                    #mode = "stabilize-init"
                 elif recvMsg['metadata'] == "hold-angle":
                     # Set the rotation target
                     stabilizeRot["x"] = recvMsg["data"]["x"]
                     stabilizeRot["y"] = recvMsg["data"]["y"]
                     stabilizeRot["z"] = recvMsg["data"]["z"]
                     # Set the mode to initialize holding the current angle
-                    mode = "hold-angle-init"
+                    #mode = "hold-angle-init"
             elif recvMsg['tag'] == 'settingChange':
                 if recvMsg['metadata'] == "follow-line":
                     # Set the computer vision debugging algorithm and data
@@ -335,7 +336,7 @@ def mainThread(debug=False):
                 stabilizeRot["y"] = 0
                 stabilizeRot["z"] = 0
                 # Set the mode to initialize stabilization
-                mode = "stabilize-init"
+                #mode = "stabilize-init"
 
         # Run the selected mode
         # If override is on, we want to ignore the selected mode and give user full control
@@ -458,16 +459,24 @@ def mainThread(debug=False):
 
         if (mode == "user-control" or override): # Run user control mode
             # Calculate new motor values
-            speeds = DC.calcMotorValues(gamepadMapping["x-mov"],
-                                        gamepadMapping["y-mov"],
-                                        gamepadMapping["z-mov"],
-                                        gamepadMapping["x-rot"],
-                                        gamepadMapping["y-rot"],
-                                        gamepadMapping["z-rot"])
+            # speeds = DC.calcMotorValues(gamepadMapping["x-mov"],
+            #                             gamepadMapping["y-mov"],
+            #                             gamepadMapping["z-mov"],
+            #                             gamepadMapping["x-rot"],
+            #                             gamepadMapping["y-rot"],
+            #                             gamepadMapping["z-rot"])
             
             
             # Create and send the motor speeds packet
-            handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+            # handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+            handlePacket(CommunicationUtils.packet("motorData", 
+                                                   [gamepadMapping["x-mov"],
+                                                    gamepadMapping["y-mov"],
+                                                    gamepadMapping["z-mov"],
+                                                    gamepadMapping["x-rot"],
+                                                    gamepadMapping["y-rot"],
+                                                    gamepadMapping["z-rot"]],
+                                                   metadata="drivetrain"))
 
 
         #armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
@@ -507,7 +516,7 @@ def mainThread(debug=False):
             time.sleep(loopFrequency-timeDiff)
 
         now = time.time()
-        handlePacket(CommunicationUtils.packet(tag="stateChange", data=1/(now-lastLoop), metadata="earth-fps"))
+        handlePacket(CommunicationUtils.packet(tag="log", data=1/(now-lastLoop), metadata="earth-fps"))
         lastLoop = now
 
 def receiveVideoStreams(debug=False):
@@ -570,6 +579,7 @@ def receiveData(debug=False):
     while execute['receiveData']:
         # Recieve and handle messages
         recvPacket = CommunicationUtils.recvMsg(conn)
+        #print(time.time() - recvPacket['timestamp'], recvPacket['tag'])
         
         # Add EarthNode sensor data to the WaterNode sensor data
         if recvPacket['tag'] == "sensor":
@@ -704,19 +714,19 @@ if( __name__ == "__main__"):
     airNodeThread = threading.Thread(target=startAirNode, args=(verbose[0],))
 
     sendDataThread.start()
-    #mainThread.start()
-    #vidStreamThread.start()
-    #recvDataThread.start()
-    #airNodeThread.start()
+    mainThread.start()
+    vidStreamThread.start()
+    recvDataThread.start()
+    airNodeThread.start()
 
 	# We don't want the program to end uptil all of the threads are stopped
     while execute['streamVideo'] or execute['receiveData'] or execute['sendData'] or execute['mainThread']:
         time.sleep(0.1)
-    #mainThread.join()
-    #recvDataThread.join()
+    mainThread.join()
+    recvDataThread.join()
     sendDataThread.join()
-    #vidStreamThread.join()
-    #airNodeThread.join()
+    vidStreamThread.join()
+    airNodeThread.join()
     '''
     logger.debug("Stopped all Threads")
     logger.info("Shutting Down Ground Node")
