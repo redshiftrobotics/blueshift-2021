@@ -9,7 +9,7 @@ import argparse
 # Stores if the program is in testing mode or not
 simpleMode = False
 
-# Check if the program is in testing mode and enable it if so
+# Check if the program is in testing mode and enable it if so 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--simple", help="""Run the program in simple mode (fake data and no special libraries).
                     Useful for running on any device other than the robot""",
@@ -43,11 +43,8 @@ import time
 #import ArduinoUtils
 
 # Imports for Controller Communication and Processing
-#import ControllerUtils
-#from simple_pid import PID
-
-#if not simpleMode:
-    #import evdev
+import ControllerUtils
+from simple_pid import PID
 
 # Imports for AirNode
 from flask import Flask, render_template, Response
@@ -103,6 +100,7 @@ tags = {
         "bkpCam2": [airCamQueues["bkpCam2"]],
         },
     "motorData": [sendDataQueue, airQueue],
+    "gripData": [sendDataQueue, airQueue], # TODO: Explain this to Jenna
     "log": [airQueue],
     "stateChange": [airQueue, recvDataQueue, sendDataQueue, recvImageQueue, mainQueue],
     "settingChange": [mainQueue, sendDataQueue]
@@ -148,9 +146,9 @@ def mainThread(debug=False):
     """
 
     # Initialize a drive controller object to hande generating motor values
-    DC = ControllerUtils.DriveController(flip=[1,0,1,0,0,0,1,0])
+    DC = ControllerUtils.DriveController(flip=[0,0,0,1,0,1,1,0])
 
-    # TODO: Combine selecting a controller, and starting the update controller thread with the controller class for easier use
+    # TODO: Combine selecting a controller, and starting the update controller thread with this controller class for easier use
     # Select a controller object
     dev = None
     while (not dev) and execute['mainThread']:
@@ -191,9 +189,21 @@ def mainThread(debug=False):
 
     # Initalize PID Rotation controllers
     rot = {
-        "Kp": 1,
-        "Kd": 0.1,
-        "Ki": 0.05
+        "x": {
+            "Kp": 1/30,
+            "Kd": 0.1,
+            "Ki": 0
+            },
+        "y": {
+            "Kp": 1/30,
+            "Kd": 0.1,
+            "Ki": 0
+            },
+        "z": {
+            "Kp": 1/30,
+            "Kd": 0.1,
+            "Ki": 0
+        }
     }
     xRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
     yRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
@@ -419,21 +429,21 @@ def mainThread(debug=False):
                 # Reset PID rotation controllers
                 xRotPID.reset()
                 yRotPID.reset()
-                zRotPID.reset()
+                #zRotPID.reset()
                 xRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
                 yRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
-                zRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+                #zRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
 
                 # Assuming the robot has been correctly calibrated, (0,0,0) should be upright
                 xRotPID.setpoint = stabilizeRot["x"]
                 yRotPID.setpoint = stabilizeRot["y"]
-                zRotPID.setpoint = stabilizeRot["z"]
+                #zRotPID.setpoint = stabilizeRot["z"]
                 mode = "hold-angle"
             elif (mode == "hold-angle"): # Run hold angle mode
                 # Update the PID controllers
                 xTgt = xRotPID(newestSensorState["imu"]["gyro"]["x"])
                 yTgt = yRotPID(newestSensorState["imu"]["gyro"]["y"])
-                zTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
+                #zTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
 
                 # Calculate new motor values
                 speeds = DC.calcMotorValues(gamepadMapping["x-mov"],
@@ -441,9 +451,14 @@ def mainThread(debug=False):
                                             gamepadMapping["z-mov"],
                                             xTgt,
                                             yTgt,
-                                            zTgt)
+                                            gamepadMapping["z-rot"])
                 # Create and send the motor speeds packet
                 handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+
+                armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
+                armMovement = 1*armDirection
+                handlePacket(CommunicationUtils.packet("gripData", armMovement, metadata="arm-angle"))
+
         if (mode == "user-control" or override): # Run user control mode
             # Calculate new motor values
             speeds = DC.calcMotorValues(gamepadMapping["x-mov"],
@@ -453,8 +468,15 @@ def mainThread(debug=False):
                                         gamepadMapping["y-rot"],
                                         gamepadMapping["z-rot"])
             
+            armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
+
+            armMovement = 1*armDirection
+            
             # Create and send the motor speeds packet
             handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+            #print(speeds)
+        
+            handlePacket(CommunicationUtils.packet("gripData", armMovement, metadata="arm-angle"))
 
         
         # Handle coral reef algorthim
@@ -681,7 +703,7 @@ if( __name__ == "__main__"):
     recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
     sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
     airNodeThread = threading.Thread(target=startAirNode, args=(verbose[0],))
-    #mainThread.start()
+    mainThread.start()
     vidStreamThread.start()
     recvDataThread.start()
     sendDataThread.start()
@@ -690,7 +712,7 @@ if( __name__ == "__main__"):
 	# We don't want the program to end uptil all of the threads are stopped
     while execute['streamVideo'] or execute['receiveData'] or execute['sendData'] or execute['mainThread']:
         time.sleep(0.1)
-    #mainThread.join()
+    mainThread.join()
     recvDataThread.join()
     sendDataThread.join()
     vidStreamThread.join()
