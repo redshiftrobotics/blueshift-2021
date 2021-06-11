@@ -44,6 +44,8 @@ import time
 
 # Imports for Hardware Interfacing
 import HardwareUtils
+import ControllerUtils
+from simple_pid import PID
 
 # Settings Dict to keep track of editable settings for data processing
 settings = {
@@ -76,14 +78,42 @@ lock = threading.Lock()
 restartCamStream = False
 
 # IMU and PWM interface classes
-#IMU = HardwareUtils.IMUFusion()
-#SD = HardwareUtils.ServoDriver([(0, "DS3218MG"), (14, "T100"), (9, "T100"), (10, "T100"), (8, "T100"), (15, "T100"), (13, "T100"), (11, "T100"), (12, "T100")], frequency=330)
+IMU = HardwareUtils.IMUFusion()
+SD = HardwareUtils.ServoDriver([(0, "DS3218MG"), (14, "T100"), (9, "T100"), (10, "T100"), (8, "T100"), (15, "T100"), (13, "T100"), (11, "T100"), (12, "T100")], frequency=330)
 drivetrain_motor_mapping = [14, 9, 10, 8, 15, 13, 11, 12]
 gripper_servo = 0
 
 # Initialize ESC
-#SD.set_all_servos(0, only_type="T100")
+SD.set_all_servos(0, only_type="T100")
 time.sleep(2)
+
+DC = ControllerUtils.DriveController(flip=[0,0,0,1,0,1,1,0])
+
+mode = "user-control"
+override = False
+
+rot = {
+	"x": {
+		"Kp": 1/30,
+		"Kd": 0,
+		"Ki": 0
+		},
+	"y": {
+		"Kp": 1/30,
+		"Kd": 0,
+		"Ki": 0
+		},
+	"z": {
+		"Kp": 1/30,
+		"Kd": 0,
+		"Ki": 0
+	}
+}
+xRotPID = PID(rot["x"]["Kp"], rot["x"]["Kd"], rot["x"]["Ki"], setpoint=0)
+yRotPID = PID(rot["y"]["Kp"], rot["y"]["Kd"], rot["y"]["Ki"], setpoint=0)
+zRotPID = PID(rot["z"]["Kp"], rot["z"]["Kd"], rot["z"]["Ki"], setpoint=0)
+
+imu_state = IMU.get_full_state()
 
 def stopAllThreads(callback=0):
 	""" Stops all currently running threads
@@ -199,6 +229,8 @@ def receiveData(debug=False):
 	"""
 	global restartCamStream
 	global SD
+	global mode
+	global override
 
 	# Get the IP address and port of the earth node
 	HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
@@ -220,11 +252,32 @@ def receiveData(debug=False):
 		try:
 			# Recieve messages over the socket, each message is handled differently based on its tag and metatdata
 			recv = CommunicationUtils.recvMsg(cntlr)
+			#print(time.time() - recv['timestamp'], recv['tag'])
 			if recv['tag'] == 'stateChange':
 				if recv['data'] == 'close':
 					stopAllThreads()
 				elif recv['data'] == 'restartCamStream':
 					restartCamStream = True
+				elif recv['metadata'] == 'hold-angle':
+					mode = 'hold-angle'
+					# Reset PID rotation controllers
+					xRotPID.reset()
+					yRotPID.reset()
+					#zRotPID.reset()
+					xRotPID.tunings = (rot["x"]["Kp"], rot["x"]["Kd"], rot["x"]["Ki"])
+					yRotPID.tunings = (rot["y"]["Kp"], rot["y"]["Kd"], rot["y"]["Ki"])
+					#zRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+
+					# Assuming the robot has been correctly calibrated, (0,0,0) should be upright
+					xRotPID.setpoint = recv['data']['x']
+					yRotPID.setpoint = recv['data']['x']
+					#zRotPID.setpoint = stabilizeRot["z"]
+					mode = "hold-angle"
+				elif recv['metadata'] == 'override':
+					override = recv['data']
+				elif recv['metadata'] == 'stop-motors':
+					mode = 'user-control'
+				print(recv, override, mode)
 			if recv['tag'] == 'config':
 					if recv['metadata'] == 'sync-time':
 						# TODO: We should really be using subprocess here, because os.system is depricated, but I can't get subprocess working
@@ -233,23 +286,39 @@ def receiveData(debug=False):
 			elif recv['tag'] == 'settingChange':
 				if recv['metadata'] == 'imuStraighten':
 					IMU.set_offset(recv["data"])
-					pass
 			elif recv['tag'] == "motorData":
 				if recv['metadata'] == "drivetrain":
-					print(time.time() - recv['timestamp'])
 					if time.time() - recv['timestamp'] < 0.1:
-						print(recv['data'])
-						#for loc,spd in enumerate(recv['data']):
-							#SD.set_servo(drivetrain_motor_mapping[loc], spd*0.6)
+						speeds = [0]*6
+						if (mode == "user-control" or override):
+							speeds = DC.calcMotorValues(recv['data'][0],
+														recv['data'][1],
+														recv['data'][2],
+														recv['data'][3],
+														recv['data'][4],
+														recv['data'][5])
+						elif mode == 'hold-angle':
+							xTgt = xRotPID(imu_state["imu"]["gyro"]["x"])
+							yTgt = yRotPID(imu_state["imu"]["gyro"]["y"])
+
+							speeds = DC.calcMotorValues(recv['data'][0],
+														recv['data'][1],
+														recv['data'][2],
+														xTgt,
+														yTgt,
+														recv['data'][5])
+						#print(recv['data'])
+						for loc,spd in enumerate(speeds):
+							SD.set_servo(drivetrain_motor_mapping[loc], spd*0.5)
 			elif recv['tag'] == "gripData":
 				if recv['metadata'] == "arm-angle":
 					if time.time() - recv['timestamp'] < 0.1:
-						#SD.move_servo(gripper_servo, recv['data'], 45, 3)
-						print(recv['data'])
+						SD.move_servo(gripper_servo, recv['data'], 45, 3)
+						#print(recv['data'])
 						#pass
 
 		# If we loose connection, try to reconnect
-		except (OSError, KeyboardInterrupt):
+		except (OSError):
 			print("receiveData connection lost")
 			connected = False
 			cntlr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -272,7 +341,8 @@ def sendData(debug=False):
 		Arguments:
 			debug: (optional) log debugging data
 	"""
-	#global IMU
+	global IMU
+	global imu_state
 
 	# Get the IP address and port of the earth node
 	HOST = CommunicationUtils.SIMPLE_EARTH_IP if simpleMode else CommunicationUtils.EARTH_IP
@@ -295,14 +365,16 @@ def sendData(debug=False):
 	while execute['sendData']:
 		try:
 			# Get gyro, accel readings
-			#sensors = IMU.get_full_state()
+			sensors = IMU.get_full_state()
+
+			imu_state = sensors
 			
 			# TODO: Update this with a proper sleep loop time managment system thing
 			CommunicationUtils.sendMsg(snsr, CommunicationUtils.packet(tag="sensor",data=sensors))
 			time.sleep(0.05)
 
 		# If we loose connection, try to reconnect
-		except (ConnectionResetError, BrokenPipeError, KeyboardInterrupt):
+		except (ConnectionResetError, BrokenPipeError):
 			print("sendData connection lost")
 			connected = False
 			snsr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -325,13 +397,13 @@ if( __name__ == "__main__"):
 	vidStreamThread = threading.Thread(target=sendVideoStreams, args=(verbose[0],))
 	recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
 	sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
-	#vidStreamThread.start()
+	vidStreamThread.start()
 	recvDataThread.start()
-	#sendDataThread.start()
+	sendDataThread.start()
 
 	# We don't want the program to end uptil all of the threads are stopped
 	while execute['streamVideo'] and execute['receiveData'] and execute['sendData']:
 		time.sleep(0.1)
 	recvDataThread.join()
-	#sendDataThread.join()
-	#vidStreamThread.join()
+	sendDataThread.join()
+	vidStreamThread.join()
