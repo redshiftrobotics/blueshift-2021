@@ -191,23 +191,23 @@ def mainThread(debug=False):
     rot = {
         "x": {
             "Kp": 1/30,
-            "Kd": 0.1,
+            "Kd": 0,
             "Ki": 0
             },
         "y": {
             "Kp": 1/30,
-            "Kd": 0.1,
+            "Kd": 0,
             "Ki": 0
             },
         "z": {
             "Kp": 1/30,
-            "Kd": 0.1,
+            "Kd": 0,
             "Ki": 0
         }
     }
-    xRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
-    yRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
-    zRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
+    xRotPID = PID(rot["x"]["Kp"], rot["x"]["Kd"], rot["x"]["Ki"], setpoint=0)
+    yRotPID = PID(rot["y"]["Kp"], rot["y"]["Kd"], rot["y"]["Ki"], setpoint=0)
+    zRotPID = PID(rot["z"]["Kp"], rot["z"]["Kd"], rot["z"]["Ki"], setpoint=0)
 
     # Store the target rotation
     stabilizeRot = {
@@ -430,8 +430,8 @@ def mainThread(debug=False):
                 xRotPID.reset()
                 yRotPID.reset()
                 #zRotPID.reset()
-                xRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
-                yRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+                xRotPID.tunings = (rot["x"]["Kp"], rot["x"]["Kd"], rot["x"]["Ki"])
+                yRotPID.tunings = (rot["y"]["Kp"], rot["y"]["Kd"], rot["y"]["Ki"])
                 #zRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
 
                 # Assuming the robot has been correctly calibrated, (0,0,0) should be upright
@@ -443,6 +443,7 @@ def mainThread(debug=False):
                 # Update the PID controllers
                 xTgt = xRotPID(newestSensorState["imu"]["gyro"]["x"])
                 yTgt = yRotPID(newestSensorState["imu"]["gyro"]["y"])
+                print("x", xTgt, "y", yTgt)
                 #zTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
 
                 # Calculate new motor values
@@ -455,10 +456,6 @@ def mainThread(debug=False):
                 # Create and send the motor speeds packet
                 handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
 
-                armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
-                armMovement = 1*armDirection
-                handlePacket(CommunicationUtils.packet("gripData", armMovement, metadata="arm-angle"))
-
         if (mode == "user-control" or override): # Run user control mode
             # Calculate new motor values
             speeds = DC.calcMotorValues(gamepadMapping["x-mov"],
@@ -468,16 +465,16 @@ def mainThread(debug=False):
                                         gamepadMapping["y-rot"],
                                         gamepadMapping["z-rot"])
             
-            armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
-
-            armMovement = 1*armDirection
             
             # Create and send the motor speeds packet
             handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
-            #print(speeds)
-        
-            handlePacket(CommunicationUtils.packet("gripData", armMovement, metadata="arm-angle"))
 
+
+        #armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
+
+        #armMovement = 100*armDirection
+        #handlePacket(CommunicationUtils.packet("gripData", armMovement, metadata="arm-angle"))
+        #print(armMovement)
         
         # Handle coral reef algorthim
         if coralReefDone:
@@ -607,6 +604,8 @@ def sendData(debug=False):
     cntlr.listen()
     conn, addr = cntlr.accept()
 
+    CommunicationUtils.sendMsg(conn, CommunicationUtils.packet("config", os.popen('date --rfc-3339=ns').readlines()[0].strip(), metadata="sync-time"))
+
     while execute['sendData']:
         while not sendDataQueue.empty():
             # Get and send all of our queued messages
@@ -703,20 +702,21 @@ if( __name__ == "__main__"):
     recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
     sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
     airNodeThread = threading.Thread(target=startAirNode, args=(verbose[0],))
-    mainThread.start()
-    vidStreamThread.start()
-    recvDataThread.start()
+
     sendDataThread.start()
-    airNodeThread.start()
+    #mainThread.start()
+    #vidStreamThread.start()
+    #recvDataThread.start()
+    #airNodeThread.start()
 
 	# We don't want the program to end uptil all of the threads are stopped
     while execute['streamVideo'] or execute['receiveData'] or execute['sendData'] or execute['mainThread']:
         time.sleep(0.1)
-    mainThread.join()
-    recvDataThread.join()
+    #mainThread.join()
+    #recvDataThread.join()
     sendDataThread.join()
-    vidStreamThread.join()
-    airNodeThread.join()
+    #vidStreamThread.join()
+    #airNodeThread.join()
     '''
     logger.debug("Stopped all Threads")
     logger.info("Shutting Down Ground Node")
