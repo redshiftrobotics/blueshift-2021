@@ -71,7 +71,7 @@ class ServoDriver():
                                                     min_pulse=settings["servo_settings"][s_type]["min_pulse"],
                                                     max_pulse=settings["servo_settings"][s_type]["max_pulse"]),
                                         s_type)
-                    self.servos[loc][0].angle = 3
+                    #self.servos[loc][0].angle = 3
 
     def set_servo(self, loc, target):
         '''

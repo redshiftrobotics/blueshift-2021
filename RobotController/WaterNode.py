@@ -281,7 +281,7 @@ def receiveData(debug=False):
 			if recv['tag'] == 'config':
 					if recv['metadata'] == 'sync-time':
 						# TODO: We should really be using subprocess here, because os.system is depricated, but I can't get subprocess working
-						os.system(f'sudo date --set="{ recv["data"] }"')
+						pass#os.system(f'sudo date --set="{ recv["data"] }"')
 						#subprocess.run(f'sudo date --set="{ recv["data"] }"')
 			elif recv['tag'] == 'settingChange':
 				if recv['metadata'] == 'imuStraighten':
@@ -313,7 +313,7 @@ def receiveData(debug=False):
 			elif recv['tag'] == "gripData":
 				if recv['metadata'] == "arm-angle":
 					if time.time() - recv['timestamp'] < 0.1:
-						SD.move_servo(gripper_servo, recv['data'], 45, 3)
+						SD.move_servo(gripper_servo, recv['data'], 180, 20)
 						#print(recv['data'])
 						#pass
 
