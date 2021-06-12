@@ -39,6 +39,12 @@ settings = {
             "max_pulse": 2500,
             "actuation_range": 270,
             "type": "servo"
+        },
+        "WP120T": {
+            "min_pulse": 500,
+            "max_pulse": 1520,
+            "actuation_range": 270,
+            "type": "servo"
         }
     }
 }

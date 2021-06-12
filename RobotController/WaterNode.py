@@ -79,7 +79,7 @@ restartCamStream = False
 
 # IMU and PWM interface classes
 IMU = HardwareUtils.IMUFusion()
-SD = HardwareUtils.ServoDriver([(0, "DS3218MG"), (14, "T100"), (9, "T100"), (10, "T100"), (8, "T100"), (15, "T100"), (13, "T100"), (11, "T100"), (12, "T100")], frequency=330)
+SD = HardwareUtils.ServoDriver([(0, "WP120T"), (14, "T100"), (9, "T100"), (10, "T100"), (8, "T100"), (15, "T100"), (13, "T100"), (11, "T100"), (12, "T100")], frequency=330)
 drivetrain_motor_mapping = [14, 9, 10, 8, 15, 13, 11, 12]
 gripper_servo = 0
 
