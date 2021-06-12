@@ -479,10 +479,10 @@ def mainThread(debug=False):
                                                    metadata="drivetrain"))
 
 
-        #armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
+        armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
 
-        #armMovement = 100*armDirection
-        #handlePacket(CommunicationUtils.packet("gripData", armMovement, metadata="arm-angle"))
+        armMovement = 180*armDirection
+        handlePacket(CommunicationUtils.packet("gripData", armMovement, metadata="arm-angle"))
         #print(armMovement)
         
         # Handle coral reef algorthim
