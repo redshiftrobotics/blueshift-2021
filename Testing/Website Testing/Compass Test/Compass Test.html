@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Compass</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.0.13/svg.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+    <style>
+      svg {
+        background-color: #303337;
+      }
+    </style>
+  </head>
+
+  <body>
+    Rotation:
+    <input
+      type="range"
+      min="-180"
+      max="180"
+      value="0"
+      class="slider"
+      id="zR"
+      onchange="updateCompass()"
+    />
+    <br />
+    <div id="compass"></div>
+
+    <script>
+      function toRadians(angle) {
+        return angle * (Math.PI / 180);
+      }
+      // General parameters
+      var width = 360;
+      var height = 360;
+      var cx = width / 2;
+      var cy = height / 2 + 20;
+      var radius = 100;
+      var elementWidth = width * Math.sqrt(2);
+      var xOffset = -(elementWidth - 360) / 2;
+      var lineWidth = 4;
+
+      var mainColor = "#ffffff";
+
+      var compassDisplay = SVG().addTo("#compass").size(width, height);
+
+      var rotationGroup = [];
+
+      var smallLineDegree = 3;
+      var smallLineLength = 10;
+      for (var i = 0; i < 360; i += smallLineDegree) {
+        var r = toRadians(i);
+        var l = compassDisplay
+          .line(
+            Math.cos(r) * radius + cx,
+            Math.sin(r) * radius + cy,
+            Math.cos(r) * (radius + smallLineLength) + cx,
+            Math.sin(r) * (radius + smallLineLength) + cy
+          )
+          .stroke({ color: mainColor, width: lineWidth / 3 });
+        rotationGroup.push(l);
+      }
+
+      var largeLineDegree = 30;
+      var largeLineLength = 20;
+      for (var i = -90 + largeLineDegree; i < 270; i += largeLineDegree) {
+        var r = toRadians(i);
+        l = compassDisplay
+          .line(
+            Math.cos(r) * radius + cx,
+            Math.sin(r) * radius + cy,
+            Math.cos(r) * (radius + largeLineLength) + cx,
+            Math.sin(r) * (radius + largeLineLength) + cy
+          )
+          .stroke({ color: mainColor, width: lineWidth / 1.5 });
+        rotationGroup.push(l);
+        t = compassDisplay
+          .text((i + 90).toString())
+          .center(
+            Math.cos(r) * (radius + largeLineLength * 2) + cx,
+            Math.sin(r) * (radius + largeLineLength * 2) + cy
+          )
+          .fill(mainColor);
+        rotationGroup.push(t);
+      }
+
+      var centerCrossSize = 75;
+      compassDisplay.circle(25).center(cx, cy).fill(mainColor).opacity(0.5);
+      compassDisplay
+        .line(cx - centerCrossSize / 2, cy, cx + centerCrossSize / 2, cy)
+        .stroke({ color: mainColor, width: lineWidth / 3 });
+      compassDisplay
+        .line(cx, cy - centerCrossSize / 2, cx, cy + centerCrossSize / 2)
+        .stroke({ color: mainColor, width: lineWidth / 3 });
+
+      var zeroLineLength = largeLineLength * 2;
+      var zeroLineColor = "#ff0000";
+      l = compassDisplay
+        .line(cx, cy - radius, cx, cy - radius - zeroLineLength)
+        .stroke({ color: zeroLineColor, width: lineWidth / 1.5 });
+      rotationGroup.push(l);
+
+      var rotation = 0;
+
+      var headerText = compassDisplay.text(rotation.toString()).center(cx, 30).fill(mainColor);
+
+      function updateCompass(gyroData) {
+        /*
+         * Updates the state of the compas based on gyro data
+         *
+         * Arguments:
+         *  gyroData: an object containing the the z rotation of the robot
+         *
+         * Returns:
+         *  Nothing
+         */
+        rotationGroup.forEach(function (item, index) {
+          if (item.type == "text") {
+            r = parseInt(item.node.textContent) - 90 + parseFloat($("#zR").val())
+            item.center(
+              Math.cos(toRadians(r)) * (radius + largeLineLength * 2) + cx,
+              Math.sin(toRadians(r)) * (radius + largeLineLength * 2) + cy
+            );
+          } else {
+            item.rotate($("#zR").val() - rotation, cx, cy);
+          }
+        });
+        rotation = $("#zR").val();
+        
+        headerText.node.textContent = rotation.toString();
+        headerText.center(cx, 30)
+
+      }
+    </script>
+  </body>
+</html>
