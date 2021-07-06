@@ -3,7 +3,7 @@ import cv2
 mussel_numbers = 0
 
 
-# Load an color image in grayscale
+
 img = cv2.imread('mussels_orange.jpg')
 cv2.imshow('image',img)
 
@@ -41,6 +41,7 @@ quadrat_contours = [quadrat_contours[inner_contour_index]]
 
 #drawing quadrat contours
 quadrat_drawing = cv2.drawContours(img.copy(), quadrat_contours, -1, (0,255,0), 3)
+cv2.imwrite("quadrat_mask.jpg", quadrat_drawing)
 
 #creat img that is white inside of the quadrat contours and black overywhere else.
 white = [255,255,255]
@@ -61,17 +62,25 @@ mussels_in_quadrat = mussels_in_quadrat*255
 
 #creating and drawing contours around mussels
 mussel_contours, hierarchy = cv2.findContours(mussels_in_quadrat.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-drawing = cv2.drawContours(mussels_in_quadrat.copy(),mussel_contours, -1, (225,255,0), 3)
-
+drawing = cv2.drawContours(mussels_in_quadrat.copy(),mussel_contours, -1, (0,255,0), 3)
+cv2.imwrite('final_img.jpg', drawing)
 cv2.imshow('final img', drawing)
+
 
 #counting mussels
 for i in range(len(mussel_contours)):
     mussel_numbers += 1
 mussel_numbers = str(mussel_numbers)
-print("There are " + mussel_numbers + " mussels whithin this quadrat.")
+print(mussel_numbers + " mussels whithin this quadrat.")
 
+areaInQuadrat = 2.5 #meters
+areaMusselBed = 561 #meters
+filtrationRate = 8.97 #L/hr
 
+estimatedTotalMussel = (int(mussel_numbers)/areaInQuadrat)*areaMusselBed
+estimatedWaterFiltered = estimatedTotalMussel*filtrationRate
 
+print('Estimated number of total mussel: ',estimatedTotalMussel)
+print('Estimated amount of water filtered :', estimatedWaterFiltered, 'L/hr')
 cv2.waitKey(0)
 cv2.destroyAllWindows()
