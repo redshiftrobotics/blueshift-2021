@@ -46,8 +46,6 @@ import time
 import ControllerUtils
 from simple_pid import PID
 
-
-
 # Imports for AirNode
 from flask import Flask, render_template, Response
 from flask_socketio import SocketIO
@@ -102,6 +100,7 @@ tags = {
         "bkpCam2": [airCamQueues["bkpCam2"]],
         },
     "motorData": [sendDataQueue, airQueue],
+    "gripData": [sendDataQueue, airQueue], # TODO: Explain this to Jenna
     "log": [airQueue],
     "stateChange": [airQueue, recvDataQueue, sendDataQueue, recvImageQueue, mainQueue],
     "settingChange": [mainQueue, sendDataQueue]
@@ -147,17 +146,22 @@ def mainThread(debug=False):
     """
 
     # Initialize a drive controller object to hande generating motor values
-    DC = ControllerUtils.DriveController(flip=[1,0,1,0,0,0,1,0])
+    DC = ControllerUtils.DriveController(flip=[0,0,0,1,0,1,1,0])
 
+    # TODO: Combine selecting a controller, and starting the update controller thread with this controller class for easier use
     # Select a controller object
-    gamepad = None
-    while (not gamepad) and execute['mainThread']:
+    dev = None
+    while (not dev) and execute['mainThread']:
         time.sleep(5)
         try:
-            gamepad = ControllerUtils.Joystick(1)
+            dev = ControllerUtils.identifyController()
         except Exception as e:
             print(e)
-
+    # Initialize a gamepad object
+    gamepad = ControllerUtils.Gamepad()
+    # Create and start a thread to update the gamepad object based on the state of the controller
+    updateGamepadStateThreads = threading.Thread(target=ControllerUtils.updateGamepadState, args=(gamepad, dev, execute['mainThread'],), daemon=True)
+    updateGamepadStateThreads.start()
 
     # Create empty objects to store sensor and image data
     newestImage = np.array([])
@@ -185,13 +189,25 @@ def mainThread(debug=False):
 
     # Initalize PID Rotation controllers
     rot = {
-        "Kp": 1,
-        "Kd": 0.1,
-        "Ki": 0.05
+        "x": {
+            "Kp": 1/30,
+            "Kd": 0,
+            "Ki": 0
+            },
+        "y": {
+            "Kp": 1/30,
+            "Kd": 0,
+            "Ki": 0
+            },
+        "z": {
+            "Kp": 1/30,
+            "Kd": 0,
+            "Ki": 0
+        }
     }
-    xRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
-    yRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
-    zRotPID = PID(rot["Kp"], rot["Kd"], rot["Ki"], setpoint=0)
+    xRotPID = PID(rot["x"]["Kp"], rot["x"]["Kd"], rot["x"]["Ki"], setpoint=0)
+    yRotPID = PID(rot["y"]["Kp"], rot["y"]["Kd"], rot["y"]["Ki"], setpoint=0)
+    zRotPID = PID(rot["z"]["Kp"], rot["z"]["Kd"], rot["z"]["Ki"], setpoint=0)
 
     # Store the target rotation
     stabilizeRot = {
@@ -252,7 +268,8 @@ def mainThread(debug=False):
                 elif recvMsg['metadata'] == "follow-line":
                     if recvMsg['data'] == "run":
                         # Enable follow line mode
-                        mode = "follow-line-init"
+                        #mode = "follow-line-init"
+                        pass
                 elif recvMsg['metadata']== "coral-recieve-image":
                      coralReefReference = recvMsg['data']
 
@@ -273,14 +290,14 @@ def mainThread(debug=False):
                     stabilizeRot["y"] = recvMsg["data"]["y"]
                     stabilizeRot["z"] = recvMsg["data"]["z"]
                     # Set the mode to initialize stabilization
-                    mode = "stabilize-init"
+                    #mode = "stabilize-init"
                 elif recvMsg['metadata'] == "hold-angle":
                     # Set the rotation target
                     stabilizeRot["x"] = recvMsg["data"]["x"]
                     stabilizeRot["y"] = recvMsg["data"]["y"]
                     stabilizeRot["z"] = recvMsg["data"]["z"]
                     # Set the mode to initialize holding the current angle
-                    mode = "hold-angle-init"
+                    #mode = "hold-angle-init"
             elif recvMsg['tag'] == 'settingChange':
                 if recvMsg['metadata'] == "follow-line":
                     # Set the computer vision debugging algorithm and data
@@ -319,7 +336,7 @@ def mainThread(debug=False):
                 stabilizeRot["y"] = 0
                 stabilizeRot["z"] = 0
                 # Set the mode to initialize stabilization
-                mode = "stabilize-init"
+                #mode = "stabilize-init"
 
         # Run the selected mode
         # If override is on, we want to ignore the selected mode and give user full control
@@ -413,21 +430,22 @@ def mainThread(debug=False):
                 # Reset PID rotation controllers
                 xRotPID.reset()
                 yRotPID.reset()
-                zRotPID.reset()
-                xRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
-                yRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
-                zRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
+                #zRotPID.reset()
+                xRotPID.tunings = (rot["x"]["Kp"], rot["x"]["Kd"], rot["x"]["Ki"])
+                yRotPID.tunings = (rot["y"]["Kp"], rot["y"]["Kd"], rot["y"]["Ki"])
+                #zRotPID.tunings = (rot["Kp"], rot["Kd"], rot["Ki"])
 
                 # Assuming the robot has been correctly calibrated, (0,0,0) should be upright
                 xRotPID.setpoint = stabilizeRot["x"]
                 yRotPID.setpoint = stabilizeRot["y"]
-                zRotPID.setpoint = stabilizeRot["z"]
+                #zRotPID.setpoint = stabilizeRot["z"]
                 mode = "hold-angle"
             elif (mode == "hold-angle"): # Run hold angle mode
                 # Update the PID controllers
                 xTgt = xRotPID(newestSensorState["imu"]["gyro"]["x"])
                 yTgt = yRotPID(newestSensorState["imu"]["gyro"]["y"])
-                zTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
+                print("x", xTgt, "y", yTgt)
+                #zTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
 
                 # Calculate new motor values
                 speeds = DC.calcMotorValues(gamepadMapping["x-mov"],
@@ -435,27 +453,37 @@ def mainThread(debug=False):
                                             gamepadMapping["z-mov"],
                                             xTgt,
                                             yTgt,
-                                            zTgt)
+                                            gamepadMapping["z-rot"])
                 # Create and send the motor speeds packet
                 handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+
         if (mode == "user-control" or override): # Run user control mode
             # Calculate new motor values
-            speeds = DC.calcMotorValues(gamepadMapping["x-mov"],
-                                        gamepadMapping["y-mov"],
-                                        gamepadMapping["z-mov"],
-                                        gamepadMapping["x-rot"],
-                                        gamepadMapping["y-rot"],
-                                        gamepadMapping["z-rot"])
-                                        
-            armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
-
-            armMovement = 0.1*armDirection
+            # speeds = DC.calcMotorValues(gamepadMapping["x-mov"],
+            #                             gamepadMapping["y-mov"],
+            #                             gamepadMapping["z-mov"],
+            #                             gamepadMapping["x-rot"],
+            #                             gamepadMapping["y-rot"],
+            #                             gamepadMapping["z-rot"])
+            
             
             # Create and send the motor speeds packet
-            handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
-        
-            handlePacket(CommunicationUtils.packet("gripData", armMovement, metadata="arm-angle"))
+            # handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+            handlePacket(CommunicationUtils.packet("motorData", 
+                                                   [gamepadMapping["x-mov"],
+                                                    gamepadMapping["y-mov"],
+                                                    gamepadMapping["z-mov"],
+                                                    gamepadMapping["x-rot"],
+                                                    gamepadMapping["y-rot"],
+                                                    gamepadMapping["z-rot"]],
+                                                   metadata="drivetrain"))
 
+
+        armDirection = gamepad.buttons['a'] - gamepad.buttons['b']
+
+        armMovement = 180*armDirection
+        handlePacket(CommunicationUtils.packet("gripData", armMovement, metadata="arm-angle"))
+        #print(armMovement)
         
         # Handle coral reef algorthim
         if coralReefDone:
@@ -488,7 +516,7 @@ def mainThread(debug=False):
             time.sleep(loopFrequency-timeDiff)
 
         now = time.time()
-        handlePacket(CommunicationUtils.packet(tag="stateChange", data=1/(now-lastLoop), metadata="earth-fps"))
+        handlePacket(CommunicationUtils.packet(tag="log", data=1/(now-lastLoop), metadata="earth-fps"))
         lastLoop = now
 
 def receiveVideoStreams(debug=False):
@@ -551,6 +579,7 @@ def receiveData(debug=False):
     while execute['receiveData']:
         # Recieve and handle messages
         recvPacket = CommunicationUtils.recvMsg(conn)
+        #print(time.time() - recvPacket['timestamp'], recvPacket['tag'])
         
         # Add EarthNode sensor data to the WaterNode sensor data
         if recvPacket['tag'] == "sensor":
@@ -584,6 +613,8 @@ def sendData(debug=False):
     # Listen and accept connections
     cntlr.listen()
     conn, addr = cntlr.accept()
+
+    CommunicationUtils.sendMsg(conn, CommunicationUtils.packet("config", os.popen('date --rfc-3339=ns').readlines()[0].strip(), metadata="sync-time"))
 
     while execute['sendData']:
         while not sendDataQueue.empty():
@@ -681,10 +712,11 @@ if( __name__ == "__main__"):
     recvDataThread = threading.Thread(target=receiveData, args=(verbose[0],))
     sendDataThread = threading.Thread(target=sendData, args=(verbose[0],))
     airNodeThread = threading.Thread(target=startAirNode, args=(verbose[0],))
+
+    sendDataThread.start()
     mainThread.start()
     vidStreamThread.start()
     recvDataThread.start()
-    sendDataThread.start()
     airNodeThread.start()
 
 	# We don't want the program to end uptil all of the threads are stopped

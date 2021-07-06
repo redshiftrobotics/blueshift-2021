@@ -9,7 +9,7 @@ import numpy as np
 import time
 
 # Initialize the camera
-c = Camera("/dev/video0", 1920, 1080, 1)
+c = Camera("/dev/video0", 640, 360, 1)
 
 num_images = 10
 start = time.time()
