@@ -259,7 +259,6 @@ def receiveData(debug=False):
 				elif recv['data'] == 'restartCamStream':
 					restartCamStream = True
 				elif recv['metadata'] == 'hold-angle':
-					mode = 'hold-angle'
 					# Reset PID rotation controllers
 					xRotPID.reset()
 					yRotPID.reset()
@@ -270,14 +269,24 @@ def receiveData(debug=False):
 
 					# Assuming the robot has been correctly calibrated, (0,0,0) should be upright
 					xRotPID.setpoint = recv['data']['x']
-					yRotPID.setpoint = recv['data']['x']
+					yRotPID.setpoint = recv['data']['y']
 					#zRotPID.setpoint = stabilizeRot["z"]
 					mode = "hold-angle"
+
 				elif recv['metadata'] == 'override':
 					override = recv['data']
 				elif recv['metadata'] == 'stop-motors':
 					mode = 'user-control'
+				
+				elif recv['metadata'] == 'stabilize':
+					xRotPID.setpoint = recv['data']['x']
+					yRotPID.setpoint = recv['data']['y']
+                    # zRotPID.setpoint = recv['data']['z']
+					mode = 'stabilize'
+				
+
 				print(recv, override, mode)
+
 			if recv['tag'] == 'config':
 					if recv['metadata'] == 'sync-time':
 						# TODO: We should really be using subprocess here, because os.system is depricated, but I can't get subprocess working
@@ -307,6 +316,18 @@ def receiveData(debug=False):
 														xTgt,
 														yTgt,
 														recv['data'][5])
+						elif mode == 'stabilize':
+							xTgt = xRotPID(imu_state["imu"]["gyro"]["x"])
+							yTgt = yRotPID(imu_state["imu"]["gyro"]["y"])
+
+							speeds = DC.calcMotorValues(recv['data'][0],
+														recv['data'][1],
+														recv['data'][2],
+														xTgt,
+														yTgt,
+														recv['data'][5])
+
+
 						#print(recv['data'])
 						for loc,spd in enumerate(speeds):
 							SD.set_servo(drivetrain_motor_mapping[loc], spd*0.5)

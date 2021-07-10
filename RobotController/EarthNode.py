@@ -289,8 +289,10 @@ def mainThread(debug=False):
                     stabilizeRot["x"] = recvMsg["data"]["x"]
                     stabilizeRot["y"] = recvMsg["data"]["y"]
                     stabilizeRot["z"] = recvMsg["data"]["z"]
+                    # handlePacket(CommunicationUtils.packet(tag="stateChange", data="noCamera", metadata="stabilize"
                     # Set the mode to initialize stabilization
                     #mode = "stabilize-init"
+
                 elif recvMsg['metadata'] == "hold-angle":
                     # Set the rotation target
                     stabilizeRot["x"] = recvMsg["data"]["x"]
@@ -335,8 +337,13 @@ def mainThread(debug=False):
                 stabilizeRot["x"] = 0
                 stabilizeRot["y"] = 0
                 stabilizeRot["z"] = 0
-                # Set the mode to initialize stabilization
-                #mode = "stabilize-init"
+               
+
+                # Use the rotation values to generate motor speeds
+                # speeds = DC.calcMotorValues(0, 0, 0, stabilizeRot["x"], stabilizeRot["y"], stabilizeRot["z"])
+
+                # Create and send the motor speeds packet
+                handlePacket(CommunicationUtils.packet("stateChange", stabilizeRot, metadata="stabilize"))
 
         # Run the selected mode
         # If override is on, we want to ignore the selected mode and give user full control
@@ -364,11 +371,7 @@ def mainThread(debug=False):
                 yTgt = yRotPID(newestSensorState["imu"]["gyro"]["y"])
                 zTgt = zRotPID(newestSensorState["imu"]["gyro"]["z"])
 
-                # Use the rotation values to generate motor speeds
-                speeds = DC.calcMotorValues(0, 0, 0, xTgt, yTgt, zTgt)
-
-                # Create and send the motor speeds packet
-                handlePacket(CommunicationUtils.packet("motorData", speeds, metadata="drivetrain"))
+                
             elif (mode == "follow-line-init"): 
                 # Initialize line following mode
                 if newestImage.size > 0:
