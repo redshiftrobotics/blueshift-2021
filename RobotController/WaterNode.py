@@ -279,6 +279,12 @@ def receiveData(debug=False):
 					mode = 'user-control'
 				
 				elif recv['metadata'] == 'stabilize':
+					xRotPID.reset()
+					yRotPID.reset()
+
+					xRotPID.tunings = (rot["x"]["Kp"], rot["x"]["Kd"], rot["x"]["Ki"])
+					yRotPID.tunings = (rot["y"]["Kp"], rot["y"]["Kd"], rot["y"]["Ki"])
+
 					xRotPID.setpoint = recv['data']['x']
 					yRotPID.setpoint = recv['data']['y']
                     # zRotPID.setpoint = recv['data']['z']
