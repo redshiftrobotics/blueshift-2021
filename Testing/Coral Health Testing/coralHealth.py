@@ -47,14 +47,14 @@ def overlay_image_alpha(img, img_overlay, pos, alpha_mask):
                                 alpha_inv * img[y1:y2, x1:x2, c])
     return img
 
-def alignImages(reference, toAlign, toAlignMask):
+def alignImagesORB(reference, toAlign, toAlignMask):
     '''
     Aligns two images using ORB features
 
     Arguments:
         reference: The reference image to align to
         toAlign: The image that is being aligned
-        toAlignMask: A mask for toAlign to specifiy what parts of it should be used in alignment calculations
+        toAlignMask: A mask for toAlign to specify what parts of it should be used in alignment calculations
 
     Returns:
         An image with the matched features marked
@@ -94,7 +94,32 @@ def alignImages(reference, toAlign, toAlignMask):
     # Find homography
     h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
     
-    return imMatches, h 
+    return imMatches, h
+
+def alignImagesECC(reference, toAlign, toAlignMask):
+    '''
+    Aligns two images using ECC
+
+    Arguments:
+        reference: The reference image to align to
+        toAlign: The image that is being aligned
+        toAlignMask: A mask for toAlign to specifiy what parts of it should be used in alignment calculations
+
+    Returns:
+        An image with the matched features marked
+        A homography matrix that can be used to align the images
+    '''
+    # Convert images to grayscale
+    im1Gray = cv2.cvtColor(toAlign, cv2.COLOR_BGR2GRAY)
+    im2Gray = cv2.cvtColor(reference, cv2.COLOR_BGR2GRAY)
+
+    warp_mode = cv2.MOTION_HOMOGRAPHY
+    warp_matrix = np.eye(3, 3, dtype=np.float32)
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, num_iterations, termination_eps)
+
+    (cc, h) = cv2.findTransformECC(im1Gray, im2Gray, warp_matrix, warp_mode, criteria, toAlignMask)
+    
+    return im2Gray, h 
 
 def HSVThreshold(img, lower, upper):
     '''
@@ -128,13 +153,14 @@ def smoothImage(img, dilate, erode):
     smoothed = cv2.erode(smoothed, kernel, erode)
     return smoothed
 
-def findCoralHealth(coral_reference, coral_to_align):
+def findCoralHealth(coral_reference, coral_to_align, alignmentAlgorithm="ORB"):
     '''
     Finds the change health of a coral reef by comparing two images of it
 
     Arguments:
         coral_reference: The reference image of the coral reef (This will be provided by MATE)
         coral_to_align: The target image to compare against the reference (This will likely come from our camera)
+        alignmentAlgorithm: The algorithm to use to align the reference and target images. Valid values are "ORB" and "ECC"
     
     Returns:
         A dictionary containing several images:
@@ -168,15 +194,18 @@ def findCoralHealth(coral_reference, coral_to_align):
 
     # Calculate homography for the reference and target images
     #  * Homography is calculated using the unmasked image, but a mask is passed in to limit feature locations
-    coral_matches, h = alignImages(coral_reference, coral_to_align, coral_to_align_mask)
+    if alignmentAlgorithm == "ORB":
+        coral_matches, h = alignImagesORB(coral_reference, coral_to_align, coral_to_align_mask)
+    elif alignmentAlgorithm == "ECC":
+        coral_matches, h = alignImagesECC(coral_reference, coral_to_align, coral_to_align_mask)
     outImages["features"] = coral_matches
 
     # Apply homography
     #  * The homography is applied to both the image with and without the mask
     #  * The image with the mask is used in subtraction to calculate differences
     #  * The image without the mask is the image that the rectangles are drawn on
-    coral_aligned_mask = cv2.warpPerspective(coral_to_align_masked, h, (width, height))
-    coral_aligned = cv2.warpPerspective(coral_to_align, h, (width, height))
+    coral_aligned_mask = cv2.warpPerspective(coral_to_align_masked, h, (coral_reference.shape[1], coral_reference.shape[0]), flags=cv2.INTER_LINEAR)
+    coral_aligned = cv2.warpPerspective(coral_to_align, h, (coral_reference.shape[1], coral_reference.shape[0]), flags=cv2.INTER_LINEAR)
 
     # Overlay the aligned and masked image on the reference image to check alignment
     outImages["alignment"] = overlay_image_alpha(coral_reference, coral_aligned_mask[:, :, 0:3], (0, 0), 0.5)
@@ -232,19 +261,19 @@ def findCoralHealth(coral_reference, coral_to_align):
 Hyperparamters that have been found to work the best for our scenario
 '''
 
-# Image alignment parameters
+# ORB Image alignment parameters
 max_features = 10000
 good_match_percent = 0.15
 
-# Image size parameters
-width = 1920
-height = 1080
+# ECC Image alignment parameters
+termination_eps = 1e-5
+num_iterations = 100
 
 # Area of change parameters
 blurKSize = (5,5)
 blurAmmount = 10
 
-min_countour_area = 2000.0
+min_countour_area = 3000.0
 
 kernel = np.ones((9,9))
 
@@ -252,7 +281,7 @@ expand_amount = 10
 
 background_mask = {
     "bleached": {
-        "lower": (73, 0, 133),
+        "lower": (73, 0, 193),
         "upper": (112, 98, 255)
     },
     "healthy": {
@@ -304,11 +333,11 @@ changes =  {
     }
 }
 
-coral_reference = cv2.imread("coral_7.png")
+coral_reference = cv2.imread("old_reef_square.jpg")
 
-coral_to_align = cv2.imread("coral_7-difficult.png")
+coral_to_align = cv2.resize(cv2.imread("Coral Colony F.png"), (coral_reference.shape[1],coral_reference.shape[0]), interpolation=cv2.INTER_AREA)
 
-result = findCoralHealth(coral_reference, coral_to_align)
+result = findCoralHealth(coral_reference, coral_to_align, alignmentAlgorithm="ECC")
 
 cv2.imshow("coral_to_align_masked", result["backgroundMask"])
 cv2.moveWindow("coral_annotated", 1000,50)

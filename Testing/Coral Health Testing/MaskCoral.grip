@@ -1,18 +1,18 @@
 <grip:Pipeline>
   <sources>
     <grip:MultiImageFile>
-      <property name="path[9]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\old_reef_square.jpg"/>
-      <property name="path[6]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_6.png"/>
-      <property name="path[3]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_3.png"/>
-      <property name="path[0]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\all_coral_square.jpg"/>
-      <property name="path[8]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_7-difficult.png"/>
+      <property name="path[9]" value="D:\MATE\blueshift2020\Testing\Coral Health Testing\old_reef_square.jpg"/>
+      <property name="path[6]" value="D:\MATE\blueshift2020\Testing\Coral Health Testing\coral_6.png"/>
+      <property name="path[3]" value="D:\MATE\blueshift2020\Testing\Coral Health Testing\coral_3.png"/>
+      <property name="path[0]" value="D:\MATE\blueshift2020\Testing\Coral Health Testing\all_coral_square.jpg"/>
+      <property name="path[8]" value="D:\MATE\blueshift2020\Testing\Coral Health Testing\coral_7-difficult.png"/>
       <property name="index" value="8"/>
       <property name="numImages" value="10"/>
-      <property name="path[5]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_5.png"/>
-      <property name="path[2]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_2.png"/>
-      <property name="path[7]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_7.png"/>
-      <property name="path[4]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_4.png"/>
-      <property name="path[1]" value="E:\MATE\blueshift2020\Testing\Coral Health Testing\coral_1.png"/>
+      <property name="path[5]" value="D:\MATE\blueshift2020\Testing\Coral Health Testing\coral_5.png"/>
+      <property name="path[2]" value="D:\MATE\blueshift2020\Testing\Coral Health Testing\coral_2.png"/>
+      <property name="path[7]" value="D:\MATE\blueshift2020\Testing\Coral Health Testing\coral_7.png"/>
+      <property name="path[4]" value="D:\MATE\blueshift2020\Testing\Coral Health Testing\coral_4.png"/>
+      <property name="path[1]" value="D:\MATE\blueshift2020\Testing\Coral Health Testing\coral_1.png"/>
     </grip:MultiImageFile>
   </sources>
   <steps>
