@@ -170,6 +170,8 @@ def findCoralHealth(coral_reference, coral_to_align, alignmentAlgorithm="ORB"):
             subtraction: The change in color between the reference and target images (used to evaluate detection of areas of change)
             final: The target image with all areas of change marked in their respective colors
     '''
+
+   
     outImages = {
         "backgroundMask": None,
         "features": None,
@@ -268,6 +270,7 @@ good_match_percent = 0.15
 # ECC Image alignment parameters
 termination_eps = 1e-5
 num_iterations = 100
+
 
 # Area of change parameters
 blurKSize = (5,5)
