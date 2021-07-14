@@ -144,6 +144,8 @@ def findCoralHealth(coral_reference, coral_to_align):
             subtraction: The change in color between the reference and target images (used to evaluate detection of areas of change)
             final: The target image with all areas of change marked in their respective colors
     '''
+
+   
     outImages = {
         "backgroundMask": None,
         "features": None,
@@ -233,12 +235,17 @@ Hyperparamters that have been found to work the best for our scenario
 '''
 
 # Image alignment parameters
-max_features = 10000
-good_match_percent = 0.15
+max_features = 100000
+good_match_percent = 0.05
+#used to be: 10000, 0.15
+
 
 # Image size parameters
+# width = 800
+# height = 724
 width = 1920
 height = 1080
+
 
 # Area of change parameters
 blurKSize = (5,5)
@@ -304,9 +311,19 @@ changes =  {
     }
 }
 
-coral_reference = cv2.imread("coral_7.png")
+coral_reference = cv2.imread("old_reef_square.jpg")
 
-coral_to_align = cv2.imread("coral_7-difficult.png")
+coral_to_align = cv2.imread("Coral Colony F (1).png")
+
+width = 1920
+height = 1080
+dim = (width, height)
+
+# resize image
+coral_to_align = cv2.resize(coral_to_align, dim, interpolation = cv2.INTER_AREA)
+coral_reference = cv2.resize(coral_reference, dim, interpolation = cv2.INTER_AREA)
+
+
 
 result = findCoralHealth(coral_reference, coral_to_align)
 
