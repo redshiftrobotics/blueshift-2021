@@ -21,7 +21,7 @@ Jinja2==2.11.3
 MarkupSafe==1.1.1
 noise==1.2.2
 numpy==1.17.2
-opencv-contrib-python==3.4.3.18
+opencv-contrib-python==3.4.7.28
 picamera==1.13
 Pillow==8.3.2
 pkg-resources==0.0.0
